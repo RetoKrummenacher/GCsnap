@@ -1,0 +1,37 @@
+# Configuration file to set arguments for GCsnap.
+# To change argument, change: value: entry.
+# E.g. value: 1 to value: 2
+# ---------------------------------------
+
+out_dir:
+    value: C:\MT\run\
+    type: str
+    help: Folder where the results are written to.
+
+n_cpu: 
+    value: 1
+    type: int
+    help: Number of CPUs to use.
+
+n_flanking:
+    value: 4
+    type: int
+    help: Number of flanking sequences to take on each side.
+n_flanking5:
+    value: 4
+    type: int
+    help: Number of flanking sequences to take on 5' end.
+n_flanking3:
+    value: 4
+    type: int
+    help: Number of flanking sequences to take on 3' end.
+exclude_partial:
+    value: True
+    type: bool
+    help: Exclude partial operon/genomic_context blocks. If turned off, partial cases will still be ignored to get the most common genomic features.
+
+
+overwrite_config:
+    value: False
+    type: bool
+    help: Overwrite the argument value in config file with CLI value.
