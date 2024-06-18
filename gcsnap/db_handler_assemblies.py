@@ -4,6 +4,7 @@ import sqlite3
 class AssembliesDBHandler:
     def __init__(self, db_path: str ,db_name: str ='assemblies.db'):
         self.db = os.path.join(db_path, db_name)
+        self.db_name = db_name
         
     def create_tables(self) -> None:
         self.create_assembly_table()
@@ -17,8 +18,7 @@ class AssembliesDBHandler:
         cursor.execute('''
             CREATE TABLE mappings (
                 ncbi_code TEXT PRIMARY KEY,
-                assembly_accession TEXT,
-                sequence_db TEXT
+                assembly_accession TEXT
             )
         ''')
         conn.commit()
@@ -39,7 +39,7 @@ class AssembliesDBHandler:
         conn.commit()
         conn.close()    
         
-    def _disable_indices(self):
+    def _disable_indices(self) -> None:
         conn = sqlite3.connect(self.db)
         # Disabling indices and other performance-related settings
         conn.execute('PRAGMA synchronous = OFF')
@@ -49,7 +49,7 @@ class AssembliesDBHandler:
         conn.commit()
         conn.close()
         
-    def _enable_indices(self):
+    def _enable_indices(self) -> None:
         conn = sqlite3.connect(self.db)
         # Re-enabling indices and other settings
         conn.execute('PRAGMA synchronous = NORMAL')
@@ -59,7 +59,10 @@ class AssembliesDBHandler:
         conn.commit()
         conn.close()  
         
-    def reindex_mappings(self):
+    def reindex(self) -> None:
+        self._reindex_mappings()
+                
+    def _reindex_mappings(self) -> None:
         self._enable_indices()        
         conn = sqlite3.connect(self.db)
         cursor = conn.cursor()
@@ -67,7 +70,7 @@ class AssembliesDBHandler:
         conn.commit()
         conn.close()    
         
-    def _reindex_assemblies(self):
+    def _reindex_assemblies(self) -> None:
         self._enable_indices()
         conn = sqlite3.connect(self.db)
         cursor = conn.cursor()
@@ -79,7 +82,7 @@ class AssembliesDBHandler:
         self._disable_indices()
         conn = sqlite3.connect(self.db)
         cursor = conn.cursor()
-        cursor.executemany('INSERT OR REPLACE INTO mappings (ncbi_code, assembly_accession, sequence_db) VALUES (?, ?, ?)', mappings)
+        cursor.executemany('INSERT OR REPLACE INTO mappings (ncbi_code, assembly_accession) VALUES (?, ?)', mappings)
         conn.commit()
         conn.close()
             

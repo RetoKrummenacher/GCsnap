@@ -6,18 +6,10 @@ class SequenceDBHandler:
     def __init__(self, db_path: str ,db_name: str):
         self.db = os.path.join(db_path, db_name)
         self.db_name = db_name
-        self._check_and_create()
         
-    def _check_and_create(self) -> None:
-        conn = sqlite3.connect(self.db)
-        cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sequences'")
-        result = cursor.fetchone()
-        conn.close()
-        
-        if result is None:
-            self.create_sequence_table()
-            self._disable_indices()
+    def create_table(self) -> None:
+        self.create_sequence_table()
+        self._disable_indices()
     
     def create_sequence_table(self) -> None:
         conn = sqlite3.connect(self.db)
@@ -32,7 +24,7 @@ class SequenceDBHandler:
         conn.commit()
         conn.close()    
         
-    def _disable_indices(self):
+    def _disable_indices(self) -> None:
         conn = sqlite3.connect(self.db)
         # Disabling indices and other performance-related settings
         conn.execute('PRAGMA synchronous = OFF')
@@ -42,7 +34,7 @@ class SequenceDBHandler:
         conn.commit()
         conn.close()
         
-    def _enable_indices(self):
+    def _enable_indices(self) -> None:
         conn = sqlite3.connect(self.db)
         # Re-enabling indices and other settings
         conn.execute('PRAGMA synchronous = NORMAL')
@@ -52,7 +44,10 @@ class SequenceDBHandler:
         conn.commit()
         conn.close()      
         
-    def reindex_sequences(self):
+    def reindex(self) -> None:
+        self._reindex_sequences()        
+        
+    def _reindex_sequences(self) -> None:
         self._enable_indices()
         conn = sqlite3.connect(self.db)
         cursor = conn.cursor()
@@ -79,7 +74,7 @@ class SequenceDBHandler:
             lines = file.readlines()
         return lines
             
-    def _parse_and_insert_sequences(self, file_paths: list[str]) -> list[tuple[str,str]]:
+    def _parse_sequences(self, file_paths: list[str]) -> tuple[list[tuple[str,str]],list[tuple[str,str]]]:
         sequence_list = []  
         mapping_list = []
         for file_path in file_paths:
@@ -111,18 +106,19 @@ class SequenceDBHandler:
                 ncbi_code = info_split[0].split(' ')[0]
                 
                 sequence_list.append((ncbi_code, sequence))
-                mapping_list.append((ncbi_code, assembly_accession))
-        
-        # insert all as batch
-        self._batch_insert_sequences(sequence_list)     
+                mapping_list.append((ncbi_code, assembly_accession))   
         
         # return what is needed from the .faa file
-        return mapping_list      
+        return (sequence_list, mapping_list)      
+    
+    def insert_sequences(self, sequence_list: list) -> None:
+        # insert all as batch
+        self._batch_insert_sequences(sequence_list)  
 
-    def insert_sequences_from_faa_files(self, file_paths: list[str]) -> list[tuple[str,str]]:
+    def parse_sequences_from_faa_files(self, file_paths: list[str]) -> list[tuple[str,str]]:
         # new use to do this in parallel, as the database writing is the bottleneck
         # SQLite does not support parallel write, so just batches to reduce write calls          
-        return self._parse_and_insert_sequences(file_paths) 
+        return self._parse_sequences(file_paths) 
                     
     def select(self, ncbi_codes: list[str], return_fields: list[str] = None) -> list[tuple]:
         # combine query
@@ -154,6 +150,17 @@ class SequenceDBHandler:
         conn.close()   
         
         return result
+    
+    def select_number_of_entries(self) -> int:
+        conn = sqlite3.connect(self.db)
+        cursor = conn.cursor()
+        cursor.execute('SELECT COUNT(*) FROM sequences')
+        result = cursor.fetchone()  # fetchall() gets all, fetchone() just the next in the result list
+        conn.close()   
+        
+        # extract the count from the tuple
+        return result[0]
+        
     
     def get_db_size(self) -> int:
         return os.path.getsize(self.db)

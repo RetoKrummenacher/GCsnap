@@ -10,9 +10,6 @@ from gcsnap.db_handler_sequences import SequenceDBHandler
 
 from gcsnap.utils import processpool_wrapper
 
-# database limit
-SEQ_DB_LIMIT = 15 * (2**30) # 15 GB
-
 
 def split_into_batches(lst: list, batch_size: int = 1000):
     for i in range(0, len(lst), batch_size):
@@ -25,62 +22,31 @@ def split_into_parts(lst: list, n: int) -> list[list]:
     q, r = divmod(len(lst), n)
     return [lst[i * q + min(i, r):(i + 1) * q + min(i + 1, r)] for i in range(n)]
     
-    
-def create_db_handlers(db_name_prefix: str, db_dir: str, db_counter: list[int], parallel_db: int) -> list:
-    handlers = []
-    for i in range(parallel_db):
-        seq_db_name = db_name_prefix + '{:03d}'.format(db_counter + i) + '.db'
-        # open sequence db handler
-        seq_db_handler = SequenceDBHandler(db_dir, seq_db_name)
-        handlers.append(seq_db_handler)
-        
-    return handlers
-
-
-def create_db_handlers_last(db_name_prefix: str, db_dir: str, db_counter: list[int], parallel_db: int) -> list:
-    handlers = []    
-    for i in range(parallel_db):
-        seq_db_name = db_name_prefix + '{:03d}'.format(db_counter + i) + '.db'
-        # open sequence db handler
-        seq_db_handler = SequenceDBHandler(db_dir, seq_db_name)
-        handlers.append(seq_db_handler)
-        
-    return handlers
-
 
 def execute_handler(args: tuple):
     handler, batch = args
     # each handler returns a list of tuples
-    mapping = handler.insert_sequences_from_faa_files(batch)
-    # add database name to result
-    return [(item[0], item[1], handler.db_name) for item in mapping]
+    sequences, mapping = handler.parse_sequences_from_faa_files(batch)
+    return sequences, mapping
 
 
-def execute_handlers(handlers: list[SequenceDBHandler], batch: list) -> list[tuple[str,str,str]]:
+def execute_handlers(handler: SequenceDBHandler, batch: list, n_processes: int) -> tuple[list[tuple[str,str]], list[tuple[str,str]]]:
     # split the batch in equal sized parts
-    batches = split_into_parts(batch, len(handlers)) 
-    parallel_args = zip(handlers, batches)
+    batches = split_into_parts(batch, n_processes) 
+    parallel_args = [(handler, subbatch) for subbatch in batches]
     
-    # retrurns a list of lists with tuples
-    mapping_list = processpool_wrapper(len(handlers), parallel_args, execute_handler)
+    # retrurns a list of tuples containing lists of tuples
+    result = processpool_wrapper(n_processes, parallel_args, execute_handler)
     
-    # flatten the list of lists
-    return [item for sublist in mapping_list for item in sublist]
-       
-
-def check_db_size(handlers: list[SequenceDBHandler], db_counter: int) -> list[int]:
-    for i in range(len(handlers)):
-             if handlers[i].get_db_size() > SEQ_DB_LIMIT:
-                 db_counter += 1
-        
-    return db_counter
+    # flatten the list of tuples containing lists of tuples
+    mappings = [item for sublist in result for item in sublist[1]]
+    sequences = [item for sublist in result for item in sublist[0]]
+    
+    return (sequences, mappings)
 
 
-def parallel_reindex(args: tuple[str,str]) -> None:
-    db_dir, seq_db_name = args
-    handler = SequenceDBHandler(db_dir, seq_db_name)
-    handler.reindex_sequences()
-    return 1
+def reindex(handler) -> None:
+    handler.reindex()
 
 
 def print_assemblies(assemblies: list[str]) -> None:
@@ -89,7 +55,7 @@ def print_assemblies(assemblies: list[str]) -> None:
         print('Assembly {} done'.format(assembly_accession))
   
 
-def create_dbs(path: str, parallel_db: int) -> None:    
+def create_dbs(path: str, n_processes: int) -> None:    
     # where to create the databases
     db_dir = os.path.join(path, 'ncbi_db')        
     if not os.path.isdir(db_dir):
@@ -98,16 +64,18 @@ def create_dbs(path: str, parallel_db: int) -> None:
     # open assembly database handler and create tables
     asse_db_handler = AssembliesDBHandler(db_dir, 'assemblies.db')
     asse_db_handler.create_tables()
+    seq_db_handler = SequenceDBHandler(db_dir, 'sequences.db')    
+    seq_db_handler.create_table()
     
     # number of databases to write to in parallel
-    batch_size = parallel_db * 1000
+    batch_size = n_processes * 500
     # keep track of sequences and assemblies
     n_assemblies = 0 
     n_sequences = 0
         
-    for loop_var in [('genbank','GCA_'),('refseq','GCF_')]:    
+    for loop_var in ['genbank','refseq']:    
                  
-        db_type, db_name_prefix = loop_var
+        db_type = loop_var
                 
         # 1. fill assemblies table from assembly_summary_{db_type}.txt
         # (assembly_accession, url, taxid, species)
@@ -125,35 +93,25 @@ def create_dbs(path: str, parallel_db: int) -> None:
         # file_paths = [os.path.join(faa_data_dir, file_name) for file_name 
         #               in os.listdir(faa_data_dir)]        
         file_paths = glob.glob(os.path.join(faa_data_dir,'*_protein.faa.gz'))
-        
-        # counter to keep track of databases
-        db_counter = 1
-        db_counter_old = 1
-        
+        # file_paths = glob.glob(os.path.join(faa_data_dir,'*_protein.faa'))
+                
         # we loop over all those files in batches, each database takes 
         # indexing is switched off to speed up
         for batch in split_into_batches(file_paths, batch_size):
-                        
-            # for the last, just distributed evenly among the existing handlers
-            if len(batch) < batch_size:   
-                db_counter = db_counter_old                     
-
-            # create 4 db handlers. Name of the database: e.g., GCA_001.db
-            handlers = create_db_handlers(db_name_prefix, db_dir, db_counter, parallel_db)
             
             # start the parsing for each handler, in parallel 
-            mapping_list = execute_handlers(handlers, batch)
+            sequence_list, mapping_list = execute_handlers(seq_db_handler, batch, n_processes)
             
+            # keep track of done things
             n_sequences += len(mapping_list)
             n_assemblies += len(batch)
+                    
+            # add sequences
+            seq_db_handler.insert_sequences(sequence_list)
             
             # add mappings to assembly db
             asse_db_handler.insert_mappings(mapping_list)           
-            
-            # increase db counter if size limit is reached
-            db_counter_old = db_counter
-            db_counter = check_db_size(handlers, db_counter)
-            
+                        
             # Format numbers with thousand separators
             formatted_assemblies = "{:,}".format(n_assemblies)
             formatted_sequences = "{:,}".format(n_sequences)
@@ -163,26 +121,22 @@ def create_dbs(path: str, parallel_db: int) -> None:
             
     print('All writing done')
 
-    # reindex assembly database
-    asse_db_handler.reindex_mappings()
+    parallel_args = [asse_db_handler, seq_db_handler]
+    processpool_wrapper(2, parallel_args, reindex)
     
-    print('Assembly indexings done')
+    print('Assembly indexings done')        
+    print('Sequence indexings done')
+    
+    # get number of unique sequences
+    n_unique = seq_db_handler.select_number_of_entries()
 
-    # reindex all sequence databases   
-    parallel_args = [(db_dir, db_name) for db_name in os.listdir(db_dir)
-                     if db_name.startswith('G')]
-    result = processpool_wrapper(parallel_db, parallel_args, parallel_reindex)
-        
-    print('{} sequence indexings done'.format(sum(result)))
-
-    return n_assemblies, n_sequences                   
+    return n_assemblies, n_sequences, n_unique                   
 
 # Example usage
-if __name__ == "__main__":
-    
+if __name__ == "__main__":    
    
     n_processes = int(sys.argv[1])
-    # n_processes = 4
+    # n_processes = 10
     
     # set out path
     if os.name == 'nt':  # Windows
@@ -191,7 +145,7 @@ if __name__ == "__main__":
         path = '/scicore/home/schwede/GROUP/gcsnap_db'
             
     st = time.time()
-    n_assemblies, n_sequences = create_dbs(path, n_processes)
+    n_assemblies, n_sequences, n_unique = create_dbs(path, n_processes)
     
     elapsed_time = time.time() - st
     formatted_time = str(datetime.timedelta(seconds=round(elapsed_time)))
@@ -199,10 +153,12 @@ if __name__ == "__main__":
     # Format numbers with thousand separators
     formatted_assemblies = "{:,}".format(n_assemblies)
     formatted_sequences = "{:,}".format(n_sequences)
+    formatted_unique = "{:,}".format(n_unique)
     
-    print('{} assemblies with {} sequences done in {} seconds'.
-          format(formatted_assemblies, formatted_sequences, formatted_time))
-    
+    print('{} assemblies with {} sequences ({} unique sequences found) done in {}'.
+          format(formatted_assemblies, formatted_sequences, formatted_unique, formatted_time))
+ 
+
         
     # some selecting
     # ncbi_codes = ['AAK02085.1','AAK02086.1','AAC70070.1','AAC70069.1']
