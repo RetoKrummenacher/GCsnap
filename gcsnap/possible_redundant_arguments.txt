@@ -1,0 +1,45 @@
+questionable
+ - optionalNamed.add_argument('-out_label_suffix', dest='out_label_suffix', default = '',type=str, help='A suffix to add to the out_label (default: "").')
+    out_label_suffix: used to define the outfolder as {out_label}_{out_label_suffix} if specified.
+
+
+optional inputs
+ - optionalNamed.add_argument('-user_email', dest='user_email', type=str, default = None, help='Email address of the user. May be required to access NCBI databases and is not used for anything else (default: None)')
+ - optionalNamed.add_argument('-ncbi_api_key', dest='ncbi_api_key', default = None,type=str, help='The key for NCBI API, which allows for up to 10 queries per second to NCBI databases. Shall be obtained after obtaining an NCBI account (default: None)')
+ - optionalNamed.add_argument('-get_taxonomy', dest='get_taxonomy', default = 'True',type=str, help='Boolean statement to get and map taxonomy information (default: True)')
+
+ - optionalNamed.add_argument('-tmp_folder', dest='tmp_folder', default = '/tmp',type=str, help='The temporary folder (default: /tmp). May be changed so that intermediary files (e.g., assembly files) are saved somewhere else.')
+ - optionalNamed.add_argument('-collect_only', dest='collect_only', default = False,type=bool, help='Boolean statement to make GCsnap collect genomic contexts only, without comparing them (default: False).')
+operon clustering
+ - optionalNamed.add_argument('-n_max_operons', dest='n_max', default = 30,type=int, help='Maximum number of top most populated operon/genomic_context block types (default: 30)')
+ - optionalNamed.add_argument('-operon_cluster_advanced', dest='operon_cluster_advanced', default = False,type=bool, help='Boolean statement to use the operon clustering advanced mode (using PacMAP) (default: False)')
+ - optionalNamed.add_argument('-max_family_freq', dest='max_family_freq', default = 20,type=int, help='Maximum frequency of a family in the set of genomic cotexts found to be considered for advanced operon clustering (default: 20)')
+ - optionalNamed.add_argument('-min_family_freq', dest='min_family_freq', default = 2,type=int, help='Minimum frequency of a family in the set of genomic cotexts found to be considered for advanced operon clustering (default: 20)')
+protein family identification
+ - optionalNamed.add_argument('-n_iterations', dest='num_iterations', default = 1,type=int, help='Number of iterations for all-against-all searches (default: 1). Required to define protein families.')
+ - optionalNamed.add_argument('-evalue', dest='max_evalue', default = 1e-3,type=float, help='Max e-value at which two sequences are considered to be homologous (default: 1e-3). Required to define protein families.')
+ - optionalNamed.add_argument('-coverage', dest='min_coverage', default = 70,type=float, help='Minimum coverage of target and subject a match needs to be so that two sequences are considered to be homologous (default: 70). Required to define protein families.')
+ - optionalNamed.add_argument('-base', dest='default_base', default = 10,type=int, help='Artificial distance value for two sequences that do not match with an E-value better than -evalue (default: 10).')
+ - optionalNamed.add_argument('-all-against-all_method', dest='clustering_method', default = 'psiblast',type=str, choices=['mmseqs', 'psiblast'], help='Method for clustering (default: psiblast)')
+ - optionalNamed.add_argument('-psiblast_location', dest='blast', default = 'psiblast',type=str, help='Location of psiBLAST (if not in path) (default: psiblast)')
+ - optionalNamed.add_argument('-mmseqs_location', dest='mmseqs', default = 'mmseqs',type=str, help='Location of MMseqs (if not in path) (default: mmseqs)')
+ figure making optional inputs
+ - optionalNamed.add_argument('-genomic_context_cmap', dest='genomic_context_cmap', default = 'Spectral',type=str, help='Color map (as of matplotlib) to assign colors to and plot the syntenic blocks (default: Spectral)')
+ - optionalNamed.add_argument('-out_format', dest='out_format', default = 'png',type=str, help='Output format of the core figures (default: png)')
+ - optionalNamed.add_argument('-print_color_summary', dest='print_color_summary', default = False, type=bool, help='Boolean statement to print the RGBA codes of the colors defined (default: False)')
+annotation optional inputs
+ - optionalNamed.add_argument('-get_pdb', dest='get_pdbs', default = 'True', type=str, help='Boolean statement to get PDB information for representatives of the families found (default: True)\nTurn off to make it faster.')
+ - optionalNamed.add_argument('-get_functional_annotations', dest='get_functional_annotations', default = 'True' ,type=str, help='Boolean statement to find functional annotations for representatives of the families found (default: True)\nTurn off to make it faster.')
+ - optionalNamed.add_argument('-annotate_TM', dest='annotate_TM', default = False, type=bool, help='Boolean statement to find sequence features in the flanking genes (default: False)')
+ - optionalNamed.add_argument('-annotation_TM_mode', dest='annotation_TM_mode', default = 'uniprot', type=str, choices=['phobius', 'tmhmm', 'uniprot'], help='Method to use to find transmembrane segments (default: uniprot)')
+ - optionalNamed.add_argument('-annotation_TM_file', dest='annotation_TM_file', default = None, type=str, help='File with pre-computed transmembrane features. Only use when the targets correspond to a single project (no multiple fasta or text files) (default: None)')
+interactive optional inputs
+ - optionalNamed.add_argument('-interactive', dest='interactive', default = 'True',type=str, help='Boolean statement to make the interactive html output (default: True). WARNING: It requires the Bokeh python package. It will check if it is installed')
+ - optionalNamed.add_argument('-gc_legend_mode', dest='gc_legend_mode', default = 'species',type=str, choices=['species', 'ncbi_code'], help='Mode of the genomic context legend (default: species)')
+ - optionalNamed.add_argument('-min_coocc', dest='min_coocc', default = 0.30,type=float,help='Minimum maximum co-occurrence of two genes to be connected in the graphs (default: 0.30)')
+ - optionalNamed.add_argument('-min_freq_accross_contexts', dest='min_family_freq_accross_contexts', default = 30,type=float,help='Minimum frequency of a family in a conserved genomic context type to be considered as a member (default: 30)')
+ - optionalNamed.add_argument('-sort_mode', dest='sort_mode', default = 'taxonomy',type=str, choices=['taxonomy', 'as_input', 'tree', 'operon'], help='Mode to sort the genomic contexts (default: taxonomy)')
+ - optionalNamed.add_argument('-in_tree', dest='in_tree', default = None, type=str, help='Input phylogenetic tree. Only use when the targets correspond to a single project (no multiple fasta or text files) (default: None)')
+ - optionalNamed.add_argument('-in_tree_format', dest='in_tree_format', default = "newick", type=str, help='Format of the input phylogenetic tree (default: newick)')
+
+ 
