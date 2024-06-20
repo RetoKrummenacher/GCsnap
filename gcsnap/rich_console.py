@@ -2,10 +2,12 @@ import argparse
 # pip install rich
 from rich.console import Console
 from rich.text import Text
+from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
+from contextlib import contextmanager
 
+# ❌
 
-class RichConsole():
-    
+class RichConsole():    
     def __init__(self):
         self.console = Console()
 
@@ -16,13 +18,28 @@ class RichConsole():
         self.color_red = 'indian_red1'
         self.color_green = 'pale_green1'
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['console']  # Remove the console as it's not picklable
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.console = Console()  # Recreate the Console object        
+
     def print_title(self) -> None:
         self.print_line(self.color_gold)
         self.console.print(Text('GCsnap', style=f'bold {self.color_gold}'))
         self.console.print(Text('GCsnap is a python-based, local tool that generates ' + 
                         'interactive snapshots of conserved protein-coding genomic contexts.',
                         style=self.color_gold))
-        self.print_line(self.color_gold)                        
+        self.console.print(Text('Thanks for using it! 💛', style=self.color_gold))        
+        self.print_line(self.color_gold)  
+
+    def print_final(self) -> None:
+        self.print_line(self.color_gold)
+        self.console.print(Text('🏁  GCsnap finished successfully! 🥳🎆💫', style=self.color_gold))
+        self.print_line(self.color_gold)                      
 
     def print_line(self, color: str) -> None:
         self.console.print(Text('---------------------------------------------', style=color))
@@ -32,6 +49,31 @@ class RichConsole():
 
     def print_step(self, message: str) -> None:
         self.console.print(Text(message, style=self.color_green))
+
+    @contextmanager
+    def status(self, message: str):
+        with self.console.status(Text('{} ...'.format(message), style=self.color_green)):
+            yield  
+        # print done message, make first character of message lowercase
+        self.console.print(Text('  ✅ \tDone {}'.format(message[0].lower() + 
+                                                      message[1:]), style=self.color_green))
+        
+    @contextmanager
+    def progress(self, message: str, total: int):
+        with Progress(
+            TextColumn("{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TimeRemainingColumn(),
+            console=self.console
+        ) as progress:
+            task_id = progress.add_task('[{}]{}'.format(self.color_green,message), total=total)
+            yield progress, task_id
+            progress.update(task_id, advance=total - progress.tasks[task_id].completed)
+        # print done message, make first character of message lowercase            
+        self.console.print(Text('  ✅ \tDone {}'.format(message[0].lower() + 
+                                                      message[1:]), style=self.color_green))            
+
 
     def print_help(self, parser) -> None:
         usage = 'GCsnap --targets <targets> [Optional arguments]'
