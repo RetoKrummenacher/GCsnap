@@ -3,12 +3,12 @@
 class UniprotDict:
     
     def __init__(self) -> None:
-        pass
-
-    def assign_target_to_type(self, target_list: list) -> None:
         # create empty dictionary with mapping information
         self.get_empty_uniprot_dbs_dict()
-        
+        # get list of supported databases
+        self.supported = self.get_supported_databases()
+
+    def assign_target_to_type(self, target_list: list) -> None:        
         # add each target to the corresponding dictionary entry
         for target in target_list:           
             if 'UniRef' in target:
@@ -103,7 +103,7 @@ class UniprotDict:
                                     'from_dbs' : None, 
                                     'to_dbs' : None, 
                                     'dtype' : str,
-                                    'supported': True},
+                                    'supported': False},
                     'MIM': {'targets' : [],
                             'from_dbs' : 'MIM', 
                             'to_dbs' : 'MIM', 
@@ -149,3 +149,6 @@ class UniprotDict:
                                             'to_dbs' : None, 
                                             'dtype' : str,
                                             'supported': False}} 
+        
+    def get_supported_databases(self) -> list:
+        return [key for key in self.uniprot_dbs if self.uniprot_dbs[key]['supported'] == True]
