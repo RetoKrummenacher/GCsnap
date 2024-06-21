@@ -188,17 +188,16 @@ def wrapper_download_request(args_list: list[tuple[str,str,str]]) -> None:
         
 
 
-# Styling
-# -------
-# pip intall rich
-from rich.console import Console
-from rich.logging import RichHandler
-import logging
+# Styling & logging
+# -----------------
+import logging # already sets the loggin process
 
-FORMAT = '%(message)s'
 logging.basicConfig(
-    level=logging.INFO, format=FORMAT, datefmt='[%X]', handlers=[RichHandler()]
+    filename='gcsnap.log',
+    filemode='w',
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-log = logging.getLogger('rich')
-console = Console()
+logger = logging.getLogger('gcsnap')
+
 

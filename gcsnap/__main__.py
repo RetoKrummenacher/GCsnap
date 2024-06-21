@@ -4,6 +4,8 @@ from gcsnap.rich_console import RichConsole
 from gcsnap.configuration import Configuration 
 from gcsnap.targets import Target 
 from gcsnap.sequence_mapping_online import SequenceMappingOnline
+from gcsnap.assembly_links import AssemblyLinks
+
 
 def main():
 
@@ -33,19 +35,26 @@ def main():
 
         targets_list = targets.targets_lists[out_label]
 
+        # B. Map sequences to UniProtKB-AC and NCBI EMBL-CDS
         with console.status('Mapping sequences'):
-            # B. Map all targets to UniProtKB-AC
+            # a). Map all targets to UniProtKB-AC
             mappingB = SequenceMappingOnline(config, targets_list, 'UniProtKB-AC')
             mappingB.run()
 
-            # C. Map all targets to NCBI EMBL-CDS
-            mappingC = SequenceMappingOnline(config, mappingB.result_list, 'EMBL-CDS')
+            # b). Map all targets to NCBI EMBL-CDS
+            mappingC = SequenceMappingOnline(config, mappingB.get_codes(), 'EMBL-CDS')
             mappingC.run()
-            # merge the two mapping results
+            # merge the two mapping results dataframes
             mappingB.merge_mapping_dfs(mappingC.mapping_df)
 
-        # D. Determin and extract assemblies
-        
+            ncbi_codes = mappingB.get_codes('EMBL-CDS')
+            #print(ncbi_codes)
+
+
+        # C. Download assembly summaries     
+        # assembly_links = AssemblyLinks(config)
+        # assembly_links.run()
+
 
 
         # with console.progress('Count',10000000) as (progress, task_id):

@@ -5,6 +5,9 @@ from rich.text import Text
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
 from contextlib import contextmanager
 
+import logging
+logger = logging.getLogger(__name__) # inherits configuration from main logger
+
 # ❌
 
 class RichConsole():    
@@ -35,31 +38,45 @@ class RichConsole():
                         style=self.color_gold))
         self.console.print(Text('Thanks for using it! 💛', style=self.color_gold))        
         self.print_line(self.color_gold)  
+        logger.info('GCsnap started')
 
     def print_final(self) -> None:
         self.print_line(self.color_gold)
         self.console.print(Text('🏁  GCsnap finished successfully! 🥳🎆💫', style=self.color_gold))
-        self.print_line(self.color_gold)                      
+        self.print_line(self.color_gold)  
+        logger.info('GCsnap finished successfully')                            
 
     def print_line(self, color: str) -> None:
         self.console.print(Text('---------------------------------------------', style=color))
 
     def print_error(self, message: str) -> None:
         self.console.print(Text(message, style=self.color_red))   
+        logger.error(f'{message}')
 
     def print_step(self, message: str) -> None:
         self.console.print(Text(message, style=self.color_green))
+        logger.info(f'{message}')
+
+    def print_info(self, message: str) -> None:
+        self.console.print(Text('\t{}'.format(message), style=self.color_grey))  
+        logger.info(f'{message}')        
+
+    def print_done(self, message: str) -> None:
+        # print done message, make first character of message lowercase            
+        self.console.print(Text('✅  Done {}'.format(message[0].lower() + 
+                                                      message[1:]), style=self.color_green))     
+        logger.info(f'Done {message}')        
 
     @contextmanager
-    def status(self, message: str):
-        with self.console.status(Text('{} ...'.format(message), style=self.color_green)):
+    def status(self, message: str) -> None:
+        logger.info(f'{message}')  
+        with self.console.status(Text('{} ...'.format(message), style=self.color_grey)):
             yield  
-        # print done message, make first character of message lowercase
-        self.console.print(Text('  ✅ \tDone {}'.format(message[0].lower() + 
-                                                      message[1:]), style=self.color_green))
+        self.print_done(message)
         
     @contextmanager
-    def progress(self, message: str, total: int):
+    def progress(self, message: str, total: int) -> None:
+        logger.info(f'{message}')  
         with Progress(
             TextColumn("{task.description}"),
             BarColumn(),
@@ -67,13 +84,9 @@ class RichConsole():
             TimeRemainingColumn(),
             console=self.console
         ) as progress:
-            task_id = progress.add_task('[{}]{}'.format(self.color_green,message), total=total)
-            yield progress, task_id
-            progress.update(task_id, advance=total - progress.tasks[task_id].completed)
-        # print done message, make first character of message lowercase            
-        self.console.print(Text('  ✅ \tDone {}'.format(message[0].lower() + 
-                                                      message[1:]), style=self.color_green))            
-
+            task_id = progress.add_task('[{}]\t{}'.format(self.color_grey, message), total=total)
+            yield progress, task_id        
+        self.print_done(message)
 
     def print_help(self, parser) -> None:
         usage = 'GCsnap --targets <targets> [Optional arguments]'
