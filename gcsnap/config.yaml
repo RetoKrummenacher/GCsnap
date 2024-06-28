@@ -8,6 +8,15 @@ out_label:
     type: str
     help: Name of output directory. If default, name of the input file.
 
+user_email:
+    value: None
+    type: str
+    help: Email address of the user. May be required to access NCBI databases and is not used for anything else.
+ncbi_api_key:
+    value: None
+    type: str
+    help: The key for NCBI API, which allows for up to 10 queries per second to NCBI databases. Shall be obtained after obtaining an NCBI account.
+
 n_cpu: 
     value: 1
     type: int

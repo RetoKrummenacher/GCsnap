@@ -188,16 +188,35 @@ def wrapper_download_request(args_list: list[tuple[str,str,str]]) -> None:
         
 
 
-# Styling & logging
-# -----------------
+# Logging
+# -------
 import logging # already sets the loggin process
+
+# loggin never done in parallel:
+# The reason is that logging from several processes is not that easy
+# https://docs.python.org/3/howto/logging-cookbook.html#logging-to-a-single-file-from-multiple-processes
+
+class CustomFormatter(logging.Formatter):
+    def format(self, record):
+        record.name = record.name.split('.')[-1]
+        return super().format(record)
 
 logging.basicConfig(
     filename='gcsnap.log',
     filemode='w',
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger('gcsnap')
+
+# Create a custom formatter
+formatter = CustomFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Set a higher logging level for specific loggers
+logging.getLogger('asyncio').setLevel(logging.WARNING)
+logger = logging.getLogger()
+
+# Update handlers to use the custom formatter
+for handler in logger.handlers:
+    handler.setFormatter(formatter)
 
 

@@ -4,7 +4,7 @@ from gcsnap.rich_console import RichConsole
 from gcsnap.configuration import Configuration 
 from gcsnap.targets import Target 
 from gcsnap.sequence_mapping_online import SequenceMappingOnline
-from gcsnap.assembly_links import AssemblyLinks
+from gcsnap.assemblies import Assemblies
 
 
 def main():
@@ -36,32 +36,32 @@ def main():
         targets_list = targets.targets_lists[out_label]
 
         # B. Map sequences to UniProtKB-AC and NCBI EMBL-CDS
-        with console.status('Mapping sequences'):
-            # a). Map all targets to UniProtKB-AC
-            mappingB = SequenceMappingOnline(config, targets_list, 'UniProtKB-AC')
-            mappingB.run()
+        # TODO: Change to whatever input from Joana regardin the mapping.
+        # a). Map all targets to UniProtKB-AC
+        mappingA = SequenceMappingOnline(config, targets_list, 'UniProtKB-AC')
+        mappingA.run()
 
-            # b). Map all targets to NCBI EMBL-CDS
-            mappingC = SequenceMappingOnline(config, mappingB.get_codes(), 'EMBL-CDS')
-            mappingC.run()
-            # merge the two mapping results dataframes
-            mappingB.merge_mapping_dfs(mappingC.mapping_df)
+        # b) Map all to RefSeq
+        mappingB = SequenceMappingOnline(config, mappingA.get_codes(), 'RefSeq')
+        mappingB.run()
+        # merge them to A (only if A is not nan)
+        mappingA.merge_mapping_dfs(mappingB.mapping_df)
 
-            ncbi_codes = mappingB.get_codes('EMBL-CDS')
-            #print(ncbi_codes)
+        # c). Map all targets to NCBI EMBL-CDS
+        mappingC = SequenceMappingOnline(config, mappingA.get_codes(), 'EMBL-CDS')
+        mappingC.run()
+        # merge the two mapping results dataframes
+        mappingA.merge_mapping_dfs(mappingC.mapping_df)
+
+        # create targets and ncbi_columns and log not found targets
+        mappingA.finalize()
+        mapping = mappingA.get_targets_and_ncbi_codes()       
+   
+        # C. Download and parse assemblies
+        #assemblies = Assemblies(config)
 
 
-        # C. Download assembly summaries     
-        # assembly_links = AssemblyLinks(config)
-        # assembly_links.run()
 
-
-
-        # with console.progress('Count',10000000) as (progress, task_id):
-        #     i = 0
-        #     while i < 10000000:
-        #         i += 1
-        #         progress.update(task_id, advance=1)
 
 
     # 4. 

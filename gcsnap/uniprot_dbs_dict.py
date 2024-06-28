@@ -10,7 +10,8 @@ class UniprotDict:
 
     def assign_target_to_type(self, target_list: list) -> None:        
         # add each target to the corresponding dictionary entry
-        for target in target_list:           
+        for target in target_list:       
+            target = target.strip()    
             if 'UniRef' in target:
                 # UniRef are clusters, just split the ending which is the UniProtKB-AC
                 self.uniprot_dbs['UniProtKB-AC']['targets'].append(target.split('_')[1])
@@ -25,7 +26,10 @@ class UniprotDict:
             elif len(target.split('_')) == 2:
                 self.uniprot_dbs['UniProtKB-ID']['targets'].append(target)
             else:
-                self.uniprot_dbs['UniProtKB-AC']['targets'].append(target)               
+                self.uniprot_dbs['UniProtKB-AC']['targets'].append(target)  
+
+        # get list of target types
+        self.get_target_types()                             
 
     def get_empty_uniprot_dbs_dict(self) -> None:
         # columns according to: https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/README
@@ -152,3 +156,6 @@ class UniprotDict:
         
     def get_supported_databases(self) -> list:
         return [key for key in self.uniprot_dbs if self.uniprot_dbs[key]['supported'] == True]
+    
+    def get_target_types(self) -> list:
+        self.target_types = [key for key in self.uniprot_dbs if len(self.uniprot_dbs[key]['targets']) > 0]

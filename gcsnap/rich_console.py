@@ -17,7 +17,8 @@ class RichConsole():
         # colors to use
         self.color_grey = 'gray78'
         self.color_blue = 'deep_sky_blue1'
-        self.color_gold = 'gold1'
+        self.color_purple = 'plum1'
+        self.color_gold = 'light_goldenrod2'
         self.color_red = 'indian_red1'
         self.color_green = 'pale_green1'
 
@@ -31,19 +32,21 @@ class RichConsole():
         self.console = Console()  # Recreate the Console object        
 
     def print_title(self) -> None:
-        self.print_line(self.color_gold)
-        self.console.print(Text('GCsnap', style=f'bold {self.color_gold}'))
+        color = self.color_blue
+        self.print_line(color)
+        self.console.print(Text('GCsnap', style=f'bold {color}'))
         self.console.print(Text('GCsnap is a python-based, local tool that generates ' + 
                         'interactive snapshots of conserved protein-coding genomic contexts.',
-                        style=self.color_gold))
-        self.console.print(Text('Thanks for using it! 💛', style=self.color_gold))        
-        self.print_line(self.color_gold)  
+                        style=color))
+        self.console.print(Text('Thanks for using it!  💙', style=color))        
+        self.print_line(color)  
         logger.info('GCsnap started')
 
     def print_final(self) -> None:
-        self.print_line(self.color_gold)
-        self.console.print(Text('🏁  GCsnap finished successfully! 🥳🎆💫', style=self.color_gold))
-        self.print_line(self.color_gold)  
+        color = self.color_blue
+        self.print_line(color)
+        self.console.print(Text('🏁  GCsnap finished successfully! 🥳🎆💫', style=color))
+        self.print_line(color)  
         logger.info('GCsnap finished successfully')                            
 
     def print_line(self, color: str) -> None:
@@ -52,6 +55,10 @@ class RichConsole():
     def print_error(self, message: str) -> None:
         self.console.print(Text(message, style=self.color_red))   
         logger.error(f'{message}')
+
+    def print_warning(self, message: str) -> None:
+        self.console.print(Text('⚠️  {} Check gcsnap.log'.format(message), style=self.color_gold))   
+        logger.warning(f'{message}')        
 
     def print_step(self, message: str) -> None:
         self.console.print(Text(message, style=self.color_green))
@@ -68,14 +75,14 @@ class RichConsole():
         logger.info(f'Done {message}')        
 
     @contextmanager
-    def status(self, message: str) -> None:
+    def status(self, message: str):
         logger.info(f'{message}')  
         with self.console.status(Text('{} ...'.format(message), style=self.color_grey)):
             yield  
         self.print_done(message)
         
     @contextmanager
-    def progress(self, message: str, total: int) -> None:
+    def progress(self, message: str, total: int):
         logger.info(f'{message}')  
         with Progress(
             TextColumn("{task.description}"),
