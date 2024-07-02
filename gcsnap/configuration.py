@@ -19,13 +19,19 @@ class CustomArgumentParser(argparse.ArgumentParser):
         for key, details in config.items():
             value_type = eval(details['type'])
             help_text = details['help']
-            default_value = details['value']
+            default_value = self.str_to_none(details['value'])
             
             if value_type == bool:
                 # argparse does not support bool type in config, so we need to convert it
                 self.add_argument(f'--{key}', type=self.str_to_bool, default=default_value, help=help_text)
             else:
                 self.add_argument(f'--{key}', type=value_type, default=default_value, help=help_text)
+
+    """ 
+    @staticmethod: Used when you need a method inside a class but don't need to access or modify the instance (self) or class (cls) state.
+    Avoids unnecessary self or cls parameters, leading to cleaner and more readable code.
+    Ideal for utility functions related to the class's purpose but not dependent on instance or class data.    
+    """
 
     @staticmethod
     def str_to_bool(value):
@@ -49,7 +55,13 @@ class CustomArgumentParser(argparse.ArgumentParser):
         elif type_str == 'str':
             return str
         else:
-            raise ValueError(f"Unsupported type: {type_str}")                
+            raise ValueError(f"Unsupported type: {type_str}")   
+
+    @staticmethod
+    def str_to_none(value):
+        if value == 'None':
+            return None
+        return value                     
 
 
 class Configuration:    
