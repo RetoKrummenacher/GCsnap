@@ -76,4 +76,4 @@ class Sequences:
     def write_syntenies(self) -> None:
         with open('genomic_context_information.json', 'w') as file:
             json.dump(self.genomic_context, file, indent = 4)   
-        self.config.print_done('Genomic context information written to genomic_context_information.json')     
+        self.console.print_done('Genomic context information written to genomic_context_information.json')     
