@@ -15,6 +15,16 @@ from dask.distributed import Client
 from dask import config
 
 
+# Exception classes
+# ------------------------------------------------------
+class WarningToLog(Exception):
+    """Exception raised when something goes wrong and needs to be logged."""
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(self.message)       
+# ------------------------------------------------------        
+
+
 # Parallel wrappers for any function:
 # ------------------------------------------------------
 def sequential_wrapper(cores: int, parallel_args: list, func: Callable) -> list:
@@ -142,6 +152,7 @@ def daskprocess_wrapper(n_processes: int, parallel_args: list, func: Callable) -
     
     return result_list
 # ------------------------------------------------------
+
 
 
 
