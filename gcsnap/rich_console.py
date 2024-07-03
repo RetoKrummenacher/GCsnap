@@ -8,15 +8,13 @@ from contextlib import contextmanager
 import logging
 logger = logging.getLogger(__name__) # inherits configuration from main logger
 
-# ❌
-
 class RichConsole():    
     def __init__(self):
         self.console = Console()
 
         # colors to use
         self.color_grey = 'gray78'
-        self.color_blue = 'deep_sky_blue1'
+        self.color_blue = 'steel_blue1'
         self.color_purple = 'plum1'
         self.color_gold = 'light_goldenrod2'
         self.color_red = 'indian_red1'
@@ -53,11 +51,11 @@ class RichConsole():
         self.console.print(Text('---------------------------------------------', style=color))
 
     def print_error(self, message: str) -> None:
-        self.console.print(Text(message, style=self.color_red))   
+        self.console.print(Text('❌  Error {}.'.format(message), style=self.color_red))   
         logger.error(f'{message}')
 
     def print_warning(self, message: str) -> None:
-        self.console.print(Text('⚠️  {} Check gcsnap.log'.format(message), style=self.color_gold))   
+        self.console.print(Text('  ⚠️  {} Check gcsnap.log'.format(message), style=self.color_gold))   
         logger.warning(f'{message}')        
 
     def print_step(self, message: str) -> None:
