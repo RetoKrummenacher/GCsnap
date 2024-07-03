@@ -38,6 +38,7 @@ class SequenceMappingOnline:
 
         # write dataframe to csv file
         self.mapping_df.to_csv('mapping.csv', index=False) 
+        self.console.print_done('All mapping done. Table saved to mapping.csv')
     
     def get_codes(self, id_type: str = None) -> list:
         if id_type is None:
@@ -256,33 +257,4 @@ class SequenceMappingOnline:
             merged_df[col] = merged_df[col].fillna(merged_df[f'{col}_y'])
             # Drop the additional '_y' column
             merged_df.drop(columns=[f'{col}_y'], inplace=True)
-        self.mapping_df = merged_df.copy()                    
-
-
-
-# import pickle
-# from gcsnap.targets import Target 
-# import os
-# import sys
-
-# # Add the directory containing gcsnap to the system path
-# current_dir = os.path.dirname(os.path.abspath(__file__))
-# parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
-# sys.path.append(parent_dir)
-
-# def test_picklability(instance):
-#     for attr, value in instance.__dict__.items():
-#         try:
-#             pickle.dumps(value)
-#             print(f"{attr} is picklable")
-#         except Exception as e:
-#             print(f"{attr} is not picklable: {e}")
-
-# config = Configuration()
-# config.parse_arguments()
-# targets = Target(config)
-# targets.run()
-# for out_label in targets.targets_lists:
-#     targets_list = targets.targets_lists[out_label]
-#     seq_mapping_online = SequenceMappingOnline(config, targets_list, 'UniProtKB-AC')
-#     test_picklability(seq_mapping_online)
+        self.mapping_df = merged_df.copy()
