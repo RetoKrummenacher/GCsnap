@@ -65,6 +65,10 @@ class RichConsole():
     def print_info(self, message: str) -> None:
         self.console.print(Text('\t{}'.format(message), style=self.color_grey))  
         logger.info(f'{message}')        
+         
+    def print_hint(self, message: str) -> None:
+        self.console.print(Text('  💡  {}'.format(message), style=self.color_gold))   
+        logger.warning(f'{message}')          
 
     def print_done(self, message: str) -> None:
         # print done message, make first character of message lowercase            
@@ -104,7 +108,7 @@ class RichConsole():
         self.console.print(usage)
         # print config.yaml message
         self.console.print(Text('If CLI arguments not sepcified, default value from config.yaml', style=self.color_green))
-        self.console.print(Text('--overwrite_config to replace values with CLI Arguments', style=self.color_green))
+        self.console.print(Text('--overwrite-config to replace values with CLI Arguments', style=self.color_green))
         self.console.print(Text('Or change them manually in config.yaml\n', style=self.color_green))
 
         # Print --targets separately

@@ -32,15 +32,15 @@ class EntrezQuery:
 
         # set correct function depending on rettype
         if rettype == 'ipg':
-            self.msg = 'Find identical protein groups.'
+            self.msg = 'Find identical protein groups'
             self.function = self.run_accession
             self.chunk_size = 50
         elif rettype == 'fasta':
-            self.msg = 'Download sequences.'
+            self.msg = 'Download sequences'
             self.function = self.run_sequence
             self.chunk_size = 100
         else:
-            self.msg = 'Download taxonomy.'
+            self.msg = 'Download taxonomy'
             self.function = self.run_taxonomy
 
     def run(self) -> dict:
