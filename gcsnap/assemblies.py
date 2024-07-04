@@ -6,6 +6,7 @@ from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole
 from gcsnap.assembly_links import AssemblyLinks
 from gcsnap.entrez_query import EntrezQuery
+from gcsnap.syntenies import Syntenies
 
 from gcsnap.utils import processpool_wrapper
 from gcsnap.utils import WarningToLog
@@ -65,10 +66,7 @@ class Assemblies:
             lines = self.read_gz_file(assembly_file)
             flanking_genes = self.parse_assembly(ncbi_code, lines)
             return {target: {'flanking_genes': flanking_genes,
-                             'assembly_id':  [ncbi_code, accession, assembly_url],
-                             'species': None,
-                             'target_family': None,
-                             'operon_type': None}}   
+                             'assembly_id':  [ncbi_code, accession, assembly_url]}}   
         except WarningToLog as e:
             # return None for flanking genes and message, logged later
             return {target: {'flanking_genes': None,
@@ -184,18 +182,7 @@ class Assemblies:
 
     def parse_genomic_context_block(self, target_ncbi_code: str, genomic_context_block: list) -> dict:
         # result dictionary
-        flanking_genes = {'relative_starts' : [],
-                          'relative_ends' : [],
-                          'ncbi_codes': [],
-                          'starts': [],
-                          'ends': [],
-                          'directions': [],
-                          'names': [],
-                          'sequences': [],
-                          'species': None,
-                          'taxID': None,
-                          'families': [],
-                          'TM_annotations': []}
+        flanking_genes = Syntenies.get_empty_flanking_genes()
 
         # parse the genomic context
         for line in genomic_context_block:   

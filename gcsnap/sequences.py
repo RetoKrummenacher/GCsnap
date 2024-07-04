@@ -4,36 +4,35 @@ import json
 from gcsnap.rich_console import RichConsole
 from gcsnap.configuration import Configuration
 from gcsnap.entrez_query import EntrezQuery
+from gcsnap.syntenies import Syntenies
 
 from gcsnap.utils import processpool_wrapper
 
 class Sequences:
-    def __init__(self, config: Configuration, flanking_genes: dict[str, dict]):
+    def __init__(self, config: Configuration, syntenies: Syntenies):
         self.config = config
         # get necessary configuration arguments        
         self.cores = config.arguments['n_cpu']['value'] 
 
         # set arguments
-        self.flanking_genes = flanking_genes
+        self.syntenies = syntenies
 
         self.console = RichConsole()
 
+    def get_genomic_context(self) -> dict:
+        return self.genomic_context        
+
     def run(self) -> None:
-        # Extract all ncbi_codes lists from flanking_genes
-        all_ncbi_codes = [code for target in self.flanking_genes.values() 
-                          for code in target['flanking_genes'].get('ncbi_codes', [])]
-        self.find_sequences(all_ncbi_codes)
+        # Find sequnces for all ncbi codes
+        self.find_sequences(self.syntenies.get_all_ncbi_codes())
 
         # Prepare a list of tuples (target, dict_for_target)
-        parallel_args = [(target, target_dict) for target, target_dict in self.flanking_genes.items()]
+        parallel_args = self.syntenies.get_key_value_list()
 
         with self.console.status('Add sequences, tax id and species name to flanking genes'):
             dict_list = processpool_wrapper(self.cores, parallel_args, self.run_each)
             # combine results
             self.genomic_context = {k: v for d in dict_list for k, v in d.items()}
-
-        # dump information to file
-        self.write_syntenies()
 
     def run_each(self, args: tuple[str,dict]) -> dict:
         target, content_dict = args
@@ -70,10 +69,3 @@ class Sequences:
         entry = self.sequences.get(ncbi_code, {})        
         return entry.get('species','')    
     
-    def get_genomic_context(self) -> dict:
-        return self.genomic_context
-    
-    def write_syntenies(self) -> None:
-        with open('genomic_context_information.json', 'w') as file:
-            json.dump(self.genomic_context, file, indent = 4)   
-        self.console.print_done('Genomic context information written to genomic_context_information.json')     
