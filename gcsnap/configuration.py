@@ -12,10 +12,32 @@ from gcsnap.rich_console import RichConsole
 
 
 class CustomArgumentParser(argparse.ArgumentParser):
+    """
+    Description of CustomArgumentParser
+
+    Attributes:
+        console (type):
+
+    Inheritance:
+        argparse.ArgumentParser:
+
+    Args:
+        usage=None (undefined):
+        epilog=None (undefined):
+
+    """
+    
     def __init__(self, usage=None, epilog=None):
         super().__init__(usage=usage, epilog=epilog, add_help=False)
+        self.console = RichConsole()
 
-    def add_argument_from_config(self, config):
+    def add_argument_from_config(self, config: dict) -> None:
+        """
+        Add arguments to the parser from a configuration dictionary.
+
+        Args:
+            config (dict): Dictionary with arguments and their details.
+        """        
         for key, details in config.items():
             value_type = eval(details['type'])
             help_text = details['help']
@@ -27,6 +49,17 @@ class CustomArgumentParser(argparse.ArgumentParser):
             else:
                 self.add_argument(f'--{key}', type=value_type, default=default_value, help=help_text)
 
+    def error(self, message: str) -> None:
+        """
+        Overwrite error method from argparse.ArgumentParser to print error message and hint.
+
+        Args:
+            message (str): Error message from argparse.
+        """        
+        self.console.print_error(f'{message}')
+        self.console.print_hint('Use --help to see all supported arguments.')
+        exit(1)
+
     """ 
     @staticmethod: Used when you need a method inside a class but don't need to access or modify the instance (self) or class (cls) state.
     Avoids unnecessary self or cls parameters, leading to cleaner and more readable code.
@@ -34,7 +67,7 @@ class CustomArgumentParser(argparse.ArgumentParser):
     """
 
     @staticmethod
-    def str_to_bool(value):
+    def str_to_bool(value: str) -> bool:
         if isinstance(value, bool):
             return value
         if value.lower() in ('yes', 'true', 'True' , 't', 'y', '1'):
@@ -45,7 +78,7 @@ class CustomArgumentParser(argparse.ArgumentParser):
             raise argparse.ArgumentTypeError('Boolean value expected.')
 
     @staticmethod
-    def str_to_type(type_str):
+    def str_to_type(type_str: str) -> type:
         if type_str == 'bool':
             return bool
         elif type_str == 'int':
@@ -55,10 +88,10 @@ class CustomArgumentParser(argparse.ArgumentParser):
         elif type_str == 'str':
             return str
         else:
-            raise ValueError(f"Unsupported type: {type_str}")   
+            raise ValueError(f'Unsupported type: {type_str}')   
 
     @staticmethod
-    def str_to_none(value):
+    def str_to_none(value: str) -> any:
         if value == 'None':
             return None
         return value                     
@@ -80,13 +113,19 @@ class Configuration:
     def __setstate__(self, state):
         self.__dict__.update(state)
         self.create_argument_parser()
+
+    def hyphen_to_underscore(self, argument: str) -> str:
+        return argument.replace('-', '_')
+
+    def underscore_to_hyphen(self, argument: str) -> str:
+        return argument.replace('_', '-')        
         
     def read_configuration_yaml(self) -> None:   
         with open(os.path.join(self.path,'config.yaml'), 'r') as file:
-            self.arguments = yaml.load(file, Loader=yaml.FullLoader)
+            self.arguments_hyphen = yaml.load(file, Loader=yaml.FullLoader)
             
     def write_configuration_yaml(self) -> None:
-        out = self.arguments
+        out = {self.underscore_to_hyphen(key): value for key, value in self.arguments.items()}
         header_comment = (
             'Configuration file to set arguments for GCsnap.\n'
             'To change argument, change: value: entry.\n'
@@ -96,23 +135,27 @@ class Configuration:
         with open(os.path.join(self.path,'config.yaml'), 'w') as file:
             file.write('# ' + header_comment.replace('\n', '\n# ') + '\n')
             # 4 is the indentation space
-            yaml_dump(self.arguments, default_flow_style=False, indent=4, block_seq_indent=4)
+            yaml_dump(out, default_flow_style=False, indent=4, block_seq_indent=4)
         
     def parse_arguments(self) -> None:
         args = self.parser.parse_args()
+
+        # show help message (--help) and exit
         if hasattr(args, 'help') and args.help:
             self.console.print_help(self.parser)
             exit(0)
 
-        # Ensure 'targets' argument is present
+        # Ensure --targets argument is present
         if args.targets is None:
             self.console.print_error('The following argument is required: --targets')
-            exit(0) 
+            exit(1) 
 
         # Update self.arguments dictionary with parsed values
         for arg in vars(args):
-            if arg in self.arguments:
-                self.arguments[arg]['value'] = getattr(args, arg)
+            # in arguments, we use underscores, in parser hyphens
+            config_key = self.hyphen_to_underscore(arg)           
+            if config_key in self.arguments:
+                self.arguments[config_key]['value'] = getattr(args, arg)
             else:
                 self.targets = getattr(args, 'targets')
 
@@ -141,7 +184,11 @@ class Configuration:
                                  'a list of protein sequence identifiers, or a mix of them')
         
         # Add arguments from YAML
-        self.parser.add_argument_from_config(self.arguments)
+        self.parser.add_argument_from_config(self.arguments_hyphen)
+
+        # Convert hyphen arguments to underscore
+        self.arguments = {self.hyphen_to_underscore(key): value for key, value
+                          in self.arguments_hyphen.items()}
 
     def handle_special_arguments(self) -> None:
         # handle special arguments that require additional processing

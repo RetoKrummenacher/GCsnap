@@ -3,48 +3,65 @@
 # E.g. value: 1 to value: 2
 # ---------------------------------------
 
-out_label:
+out-label:
     value: default
     type: str
     help: Name of output directory. If default, name of the input file.
 
-ncbi_api_key:
+ncbi-api-key:
     value: None
     type: str
     help: The key for NCBI API, which allows for up to 10 queries per second to NCBI databases. Shall be obtained after obtaining an NCBI account.
 
-n_cpu: 
+n-cpu: 
     value: 4
     type: int
     help: Number of cores to use.
 
-n_flanking:
-    value: 4
-    type: int
-    help: Number of flanking sequences to take on each side.
-n_flanking5:
+n-flanking5:
     value: 4
     type: int
     help: Number of flanking sequences to take on 5' end.
-n_flanking3:
+n-flanking3:
     value: 4
     type: int
     help: Number of flanking sequences to take on 3' end.
-exclude_partial:
+exclude-partial:
     value: true
     type: bool
     help: Exclude partial operon/genomic_context blocks. If turned off, partial cases will still be ignored to get the most common genomic features.
 
-clans_patterns:
+max-evalue:
+    value: 0.001
+    type: float
+    help: Max e-value at which two sequences are considered to be homologous. Required to define protein families.
+default-base:
+    value: 10
+    type: int
+    help: Artificial distance value for two sequences that do not match with an E-value better than --max-evalue.
+min-coverage:
+    value: 0.7
+    type: float
+    help: Minimum coverage of target and subject a match needs to be so that two sequences are considered to be homologous. Required to define protein families.
+num-iterations:
+    value: 1
+    type: int
+    help: Number of iterations for all-against-all searches. Required to define protein families.
+mmseqs-executable-path:
+    value: None
+    type: str
+    help: Path of MMseqs executable (i.e., mmseqs.bat) if not installed in Conda environment.
+
+clans-patterns:
     value: None
     type: str
     help: Patterns to identify the clusters to analyse. They will be used to select the individual clusters in the clans map to analyse.
-clans_file:
+clans-file:
     value: None
     type: str
     help: Used only for advanced interactive output representation (Clans file if the input is a clans file and -operon_cluster_advanced is set to True).
 
-overwrite_config:
+overwrite-config:
     value: false
     type: bool
     help: Overwrite the argument value in config file with CLI value.
