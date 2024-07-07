@@ -58,8 +58,8 @@ class RichConsole():
         self.console.print(Text('  ⚠️  {} Check gcsnap.log'.format(message), style=self.color_gold))   
         logger.warning(f'{message}')        
 
-    def print_step(self, message: str) -> None:
-        self.console.print(Text(message, style=self.color_green))
+    def print_skipped_step(self, message: str) -> None:
+        self.console.print(Text(message, style=self.color_grey))
         logger.info(f'{message}')
 
     def print_info(self, message: str) -> None:
@@ -136,9 +136,13 @@ class RichConsole():
         if action.help:
             argument_help.append(f"\n    {action.help}", style=self.color_grey)
 
-            if action.default != argparse.SUPPRESS:
-                default_value = f"\n    [config.yaml value: {action.default}]"
-                argument_help.append(default_value, style=self.color_green)
+        if action.choices:
+            choices_str = ', '.join(map(str, action.choices))
+            argument_help.append(f'\n    Supported values: [{choices_str}]', style=self.color_grey)        
+
+        if action.default != argparse.SUPPRESS:
+            default_value = f"\n    [config.yaml value: {action.default}]"
+            argument_help.append(default_value, style=self.color_green)
 
         self.console.print(argument_help)
 
