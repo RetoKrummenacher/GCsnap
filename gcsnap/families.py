@@ -47,7 +47,7 @@ class Families:
                              for sub_dict in split_dict_chunks(self.families, self.cores)  ] 
             dict_list = processpool_wrapper(self.cores, parallel_args, self.adapt_families)
             # combine results
-            self.families_adapted = {k: v for dict_ in dict_list for k, v in dict_.items()}  
+            self.families_adapted = {k: v for sub_dict in dict_list for k, v in sub_dict.items()}  
 
     def find_cluster(self) -> list:
         # call MMseqsCluster
