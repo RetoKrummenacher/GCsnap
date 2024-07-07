@@ -41,13 +41,16 @@ class CustomArgumentParser(argparse.ArgumentParser):
         for key, details in config.items():
             value_type = eval(details['type'])
             help_text = details['help']
+            help_choices = details.get('choices')            
             default_value = self.str_to_none(details['value'])
             
             if value_type == bool:
                 # argparse does not support bool type in config, so we need to convert it
-                self.add_argument(f'--{key}', type=self.str_to_bool, default=default_value, help=help_text)
+                self.add_argument(f'--{key}', type=self.str_to_bool, default=default_value, 
+                                  help=help_text)
             else:
-                self.add_argument(f'--{key}', type=value_type, default=default_value, help=help_text)
+                self.add_argument(f'--{key}', type=value_type, default=default_value, 
+                                  help=help_text, choices=help_choices)
 
     def error(self, message: str) -> None:
         """
