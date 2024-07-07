@@ -4,30 +4,32 @@ import json
 from gcsnap.rich_console import RichConsole
 from gcsnap.configuration import Configuration
 from gcsnap.entrez_query import EntrezQuery
-from gcsnap.syntenies import Syntenies
+from gcsnap.genomic_context import GenomicContext
 
 from gcsnap.utils import processpool_wrapper
 
 class Sequences:
-    def __init__(self, config: Configuration, syntenies: Syntenies):
+    def __init__(self, config: Configuration, gc: GenomicContext):
         self.config = config
         # get necessary configuration arguments        
         self.cores = config.arguments['n_cpu']['value'] 
 
         # set arguments
-        self.syntenies = syntenies
+        self.gc = gc
 
         self.console = RichConsole()
 
-    def get_genomic_context(self) -> dict:
+    def get_sequences(self) -> dict:
         return self.genomic_context        
 
     def run(self) -> None:
         # Find sequnces for all ncbi codes
-        self.find_sequences(self.syntenies.get_all_ncbi_codes())
+        self.find_sequences(self.gc.get_all_ncbi_codes())
 
         # Prepare a list of tuples (target, dict_for_target)
-        parallel_args = self.syntenies.get_key_value_list()
+        # here each process gets one target: {} combination
+        # henve we have many different processes
+        parallel_args = self.gc.get_syntenies_key_value_list()
 
         with self.console.status('Add sequences, tax id and species name to flanking genes'):
             dict_list = processpool_wrapper(self.cores, parallel_args, self.run_each)

@@ -6,7 +6,7 @@ from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole
 from gcsnap.assembly_links import AssemblyLinks
 from gcsnap.entrez_query import EntrezQuery
-from gcsnap.syntenies import Syntenies
+from gcsnap.genomic_context import GenomicContext
 
 from gcsnap.utils import processpool_wrapper
 from gcsnap.utils import WarningToLog
@@ -182,7 +182,7 @@ class Assemblies:
 
     def parse_genomic_context_block(self, target_ncbi_code: str, genomic_context_block: list) -> dict:
         # result dictionary
-        flanking_genes = Syntenies.get_empty_flanking_genes()
+        flanking_genes = GenomicContext.get_empty_flanking_genes()
 
         # parse the genomic context
         for line in genomic_context_block:   
