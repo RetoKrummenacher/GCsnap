@@ -81,21 +81,42 @@ class GenomicContext:
         # print and log message
         self.console.print_done('Taxonomy information written to {}'.format(file_name))        
     
-    def write_syntenies_to_json(self, file_name: str, file_path: str = None, msg: str = None) -> None:
+    def write_syntenies_to_json(self, file_name: str, file_path: str = None) -> None:
         # using os.getcwd() as default path does not work, as its evaluated when the function is defined
         if file_path is None:
             file_path = os.getcwd()         
         with open(os.path.join(file_path, file_name), 'w') as file:
             json.dump(self.syntenies, file, indent = 4)
         # print and log message
-        if msg is not None:
-            self.console.print_done(msg)               
+        self.console.print_done('Syntenies information written to {}'.format(file_name))      
+
+    def write_families_to_json(self, file_name: str, file_path: str = None) -> None:
+        if file_path is None:
+            file_path = os.getcwd()   
+        with open(os.path.join(file_path, file_name), 'w') as file:
+            json.dump(self.families, file, indent = 4)   
+        # print and log message
+        self.console.print_done('Families information written to {}'.format(file_name))     
+
+    def write_selected_operons_to_json(self, file_name: str, file_path: str = None) -> None:
+        if file_path is None:
+            file_path = os.getcwd()   
+        with open(os.path.join(file_path, file_name), 'w') as file:
+            json.dump(self.selected_operons, file, indent = 4)   
+        # print and log message
+        self.console.print_done('Selected operon written to {}'.format(file_name))                                      
 
     def read_syntenies_from_json(self, file_name: str, file_path: str = None) -> None:
         if file_path is None:
             file_path = os.getcwd()        
         with open(os.path.join(file_path, file_name), 'r') as file:
             self.syntenies = json.load(file)  
+
+    def read_families_from_json(self, file_name: str, file_path: str = None) -> None:
+        if file_path is None:
+            file_path = os.getcwd()        
+        with open(os.path.join(file_path, file_name), 'r') as file:
+            self.families = json.load(file)              
 
     def get_fasta_order(self, exclude_pseudogenes: bool = False) -> list:
         # the same order as in the fasta file
@@ -173,11 +194,11 @@ class GenomicContext:
                 n_nonconserved = 0
 
             # make it sorted
-            self.families = dict(sorted(self.families.keys()))
+            self.families = dict(sorted(self.families.items()))
 
         msg = 'Found {} conserved protein families, {} pseudogenes and {} non-conserved protein coding regions'.format(
             len([i for i in self.families if i != 0 and i != 10000]), n_pseudogenes, n_nonconserved)
-        self.console.print_done(msg)
+        self.console.print_info(msg)
 
     def write_families_summary_to_txt(self) -> None:
         out_file = '{}_protein_families_summary.txt'.format(self.out_label)
@@ -188,42 +209,39 @@ class GenomicContext:
                     for i, member in enumerate(self.families[family]['members']):
                         file.write('	 {}\t{}\n'.format(member, self.families[family]['all_names'][i]))
 
-    def write_families_summary_to_json(self) -> None:
-        with open('protein_families_summary.json', 'w') as file:
-            json.dump(self.families, file, indent = 4)
-
     def create_operon_types_summary(self) -> None:
-        advanced = False
-        if 'operon_PaCMAP' in self.syntenies[list(self.syntenies.keys())[0]]:
-            advanced = True
+        with self.console.status('Create operons summary'):
+            advanced = False
+            if 'operon_PaCMAP' in self.syntenies[list(self.syntenies.keys())[0]]:
+                advanced = True
 
-        for target in self.syntenies:
-            curr_operon_type = self.syntenies[target]['operon_type']
-            if curr_operon_type not in self.operon_types_summary:
-                self.operon_types_summary[curr_operon_type] = {'target_members': [], 'operon_protein_families_structure': []}
+            for target in self.syntenies:
+                curr_operon_type = self.syntenies[target]['operon_type']
+                if curr_operon_type not in self.operon_types_summary:
+                    self.operon_types_summary[curr_operon_type] = {'target_members': [], 'operon_protein_families_structure': []}
+                    if advanced:
+                        self.operon_types_summary[curr_operon_type]['operon_PaCMAP'] = []
+                        self.operon_types_summary[curr_operon_type]['operon_filtered_PaCMAP'] = []
+
+
+                self.operon_types_summary[curr_operon_type]['target_members'].append(target)
+                self.operon_types_summary[curr_operon_type]['operon_protein_families_structure'].append(
+                    self.syntenies[target]['flanking_genes']['families'])
                 if advanced:
-                    self.operon_types_summary[curr_operon_type]['operon_PaCMAP'] = []
-                    self.operon_types_summary[curr_operon_type]['operon_filtered_PaCMAP'] = []
+                    self.operon_types_summary[curr_operon_type]['operon_PaCMAP'].append(
+                        self.syntenies[target]['operon_PaCMAP'])
+                    self.operon_types_summary[curr_operon_type]['operon_filtered_PaCMAP'].append(
+                        self.syntenies[target]['operon_filtered_PaCMAP'])
 
-
-            self.operon_types_summary[curr_operon_type]['target_members'].append(target)
-            self.operon_types_summary[curr_operon_type]['operon_protein_families_structure'].append(
-                self.syntenies[target]['flanking_genes']['families'])
             if advanced:
-                self.operon_types_summary[curr_operon_type]['operon_PaCMAP'].append(
-                    self.syntenies[target]['operon_PaCMAP'])
-                self.operon_types_summary[curr_operon_type]['operon_filtered_PaCMAP'].append(
-                    self.syntenies[target]['operon_filtered_PaCMAP'])
-
-        if advanced:
-            for curr_operon_type in self.operon_types_summary:
-                centroid_coords = np.mean(self.operon_types_summary[curr_operon_type]
-                                          ['operon_filtered_PaCMAP'], axis=0)
-                self.operon_types_summary[curr_operon_type]['operon_centroid_PaCMAP'] = list(centroid_coords) 
+                for curr_operon_type in self.operon_types_summary:
+                    centroid_coords = np.mean(self.operon_types_summary[curr_operon_type]
+                                            ['operon_filtered_PaCMAP'], axis=0)
+                    self.operon_types_summary[curr_operon_type]['operon_centroid_PaCMAP'] = list(centroid_coords) 
 
         msg = 'Found {} operon types (out of a total of {} input targets)'.format(
             len(self.operon_types_summary), len(self.syntenies))    
-        self.console.print_done(msg)             
+        self.console.print_info(msg)             
 
     def write_operon_types_summary_to_txt(self) -> None:
         out_file = '{}_operon_types_summary.txt'.format(self.out_label)
@@ -235,28 +253,32 @@ class GenomicContext:
                                 self.operon_types_summary[operon_type]['operon_protein_families_structure'][i])) 
 
     def find_most_populated_operon_types(self) -> None:
-        operons_count_matrix = []
-        for operon in self.operon_types_summary:
-            operons_count_matrix.append([operon, len(
-                self.operon_types_summary[operon]['target_members'])])
+        with self.console.status('Find most populated operon types'):        
+            operons_count_matrix = []
+            for operon in self.operon_types_summary:
+                operons_count_matrix.append([operon, len(
+                    self.operon_types_summary[operon]['target_members'])])
 
-        operons_count_matrix = pd.DataFrame(operons_count_matrix)
-        operons_count_matrix = operons_count_matrix.sort_values(by = [1, 0], ascending = [False, True])	
-        operons_count_matrix = np.array(operons_count_matrix)
-        
-        if len(operons_count_matrix) > self.n_max_operons:
-            operons_count_matrix = operons_count_matrix[:self.n_max_operons+1]
-
-        for i, line in enumerate(operons_count_matrix):
-            label = 'GC Type {:05d}'.format(line[0])
-            if i == 0:
-                self.most_populated_operon = label
+            operons_count_matrix = pd.DataFrame(operons_count_matrix)
+            operons_count_matrix = operons_count_matrix.sort_values(by = [1, 0], ascending = [False, True])	
+            operons_count_matrix = np.array(operons_count_matrix)
             
-            self.selected_operons[label] = self.operon_types_summary[line[0]]
+            if len(operons_count_matrix) > self.n_max_operons:
+                operons_count_matrix = operons_count_matrix[:self.n_max_operons+1]
+
+            for i, line in enumerate(operons_count_matrix):
+                label = 'GC Type {:05d}'.format(line[0])
+                if i == 0:
+                    self.most_populated_operon = label
+                
+                self.selected_operons[label] = self.operon_types_summary[line[0]]
 
         msg = 'Selected {} operon/genomic_context types, with most populated corresponding to {}'.format(
             len(self.selected_operons), self.most_populated_operon)   
-        self.console.print_done(msg)    
+        self.console.print_info(msg)    
+
+        # write selected operons to json
+        self.write_selected_operons_to_json('selected_operons.json')
                     
     @staticmethod
     def get_empty_flanking_genes() -> dict:
