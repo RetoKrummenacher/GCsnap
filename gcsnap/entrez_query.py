@@ -4,6 +4,7 @@ import datetime
 import random
 import numpy as np
 import xml.etree.ElementTree as ET
+import copy
 
 from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole 
@@ -20,6 +21,9 @@ class EntrezQuery:
         # get necessary configuration arguments        
         self.cores = config.arguments['n_cpu']['value']
         self.api_key = config.arguments['ncbi_api_key']['value']
+        # Information for the user regarding api keys: 
+        # https://www.ncbi.nlm.nih.gov/books/NBK25497/#chapter2.chapter2_table1
+        # Pargaraph: API Keys
 
         self.console = RichConsole()
 
@@ -31,17 +35,18 @@ class EntrezQuery:
         self.logging = logging
 
         # set correct function depending on rettype
-        if rettype == 'ipg':
+        if db == 'protein' and rettype == 'ipg':
             self.msg = 'Find identical protein groups'
             self.function = self.run_accession
             self.chunk_size = 50
-        elif rettype == 'fasta':
+        elif db == 'protein' and rettype == 'fasta':
             self.msg = 'Download sequences'
             self.function = self.run_sequence
             self.chunk_size = 100
-        else:
-            self.msg = 'Download taxonomy'
+        elif db == 'taxonomy':
+            self.msg = 'Download taxonomies'
             self.function = self.run_taxonomy
+            self.chunk_size = 100            
 
     def run(self) -> dict:
         with self.console.status(self.msg):
@@ -81,6 +86,13 @@ class EntrezQuery:
             return (self.extract_sequences(root), None)
         except WarningToLog as e:
             return ({}, (e, chunk))
+        
+    def run_taxonomy(self, chunk: list) -> tuple[dict,tuple]:
+        try:
+            root = self.query_chunk(chunk)
+            return (self.extract_taxonomy(root), None)
+        except WarningToLog as e:
+            return ({}, (e, chunk))
 
     def create_chunks(self, chunk_size: int = 50) -> list:
         return [self.search_codes[i:i + chunk_size] for i in range(0, len(self.search_codes), chunk_size)]
@@ -89,7 +101,7 @@ class EntrezQuery:
         return 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db='+self.db
 
     def query_chunk(self, chunk: list) -> ET.Element:
-        ids = '&id=' + ','.join(chunk)
+        ids = '&id=' + ','.join(chunk) # works for single ids as well
         rt = '&rettype=' + self.rettype
         rm = '&retmode=' + self.retmode
 
@@ -106,7 +118,7 @@ class EntrezQuery:
         url = self.get_ncbi_base_url() + ids + rt + rm + api_key
 
         # Entrez has an API limit of 3 request per second without an API key
-        # and 10 request per second with an API key. If no API key is specified
+        # and 10 request per second with an API key.
         # we need to handle '429 Too Many Requests error'
         initial_wait_time = 1  # Initial wait time in seconds
         max_wait_time = 10  # Maximum wait time in seconds
@@ -178,6 +190,28 @@ class EntrezQuery:
                                 'species': report.find('TSeq_orgname').text} 
                     for report in root.findall('TSeq')}        
         return sequences
+    
+    def extract_taxonomy(self, root: ET.Element) -> dict:
+        taxonomy_template = {'superkingdom' :  None,
+                    'clade': None,
+                    'phylum': None,
+                    'class': None,
+                    'order': None,
+                    'family': None,
+                    'genus': None}  
+
+        # copy.deepcopy(taxonomy_template) ensures a new independent copy of the 
+        # taxonomy_template for each taxon
+        # {**copy.deepcopy(taxonomy_template), **updated_ranks} combines the 
+        # copied taxonomy_template with the ranks dictionary using dictionary unpacking (**)      
+        return {
+            taxon.find('TaxId').text: {
+                **copy.deepcopy(taxonomy_template),
+                **{rank.find('Rank').text: rank.find('ScientificName').text 
+                for rank in taxon.find('LineageEx') if rank.find('Rank').text != 'no rank'}
+            }
+            for taxon in root.findall('Taxon')
+        }
     
     def log_not_found(self, not_found: list) -> None:
         message = '{} entrez queries returned no results for db "{}" with rettype "{}"'.format(len(not_found), self.db, self.rettype)
