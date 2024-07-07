@@ -15,26 +15,33 @@ import logging
 logger = logging.getLogger(__name__) # inherits configuration from main logger
 
 class SequenceMappingOnline:
-    def __init__(self, config: Configuration, target_list: list, to_type: str):
+    def __init__(self, config: Configuration, target_list: list, to_type: str, msg: str = None):
         self.target_list = target_list
         self.to_type = to_type
+        if msg is not None:
+            self.msg = 'Mapping {} to {}'.format(msg, to_type)
+        else:
+            self.msg = 'Mapping target sequences to {}'.format(to_type)
 
         # extract needed values from config
         self.cores = config.arguments['n_cpu']['value']
         self.console = RichConsole()
 
     def run(self):
-        with self.console.status('Mapping sequences to {}'.format(self.to_type)):
+        with self.console.status(self.msg):
             self.create_uniprot_dbs_with_targets()
             parallel_args = self.create_parallel_input()
             mapping_df_list = processpool_wrapper(self.cores, parallel_args, self.do_mapping)
             # concatenate all mapping dfs to one
             self.mapping_df = pd.concat(mapping_df_list, ignore_index=True)
+            # add target column
+            self.add_target_column()
 
     def finalize(self): 
+        # possible existing target column is overwritten
         self.add_target_column()
         self.add_ncbi_column()
-        self.log_failed()
+        self.log_failed_finalize()
 
         # write dataframe to csv file
         self.mapping_df.to_csv('mapping.csv', index=False) 
@@ -45,6 +52,11 @@ class SequenceMappingOnline:
             id_type = self.to_type
         
         return self.mapping_df[id_type].dropna().tolist()
+    
+    def get_target_to_result_dict(self) -> dict:
+        df = self.mapping_df[(self.mapping_df['target'].notna()) &
+                              (self.mapping_df[self.to_type].notna())] 
+        return df.set_index('target')[self.to_type].to_dict()
     
     def get_targets_and_ncbi_codes(self) -> list[tuple]:
         # return list of tuples with target and ncbi_code
@@ -206,8 +218,8 @@ class SequenceMappingOnline:
         return filtered_unique_df
     
     def add_target_column(self) -> None:
+        # add target column with NA or fill it with NA if present
         self.mapping_df['target'] = pd.NA
-
         for key in self.target_types:
             targets = self.uniprot_dict[key]['targets']
             # Update the 'target' column with the value from 'key' column where 'key' is in targets
@@ -221,7 +233,7 @@ class SequenceMappingOnline:
         self.mapping_df['ncbi_code'] = np.where(self.mapping_df['RefSeq'].notna(), 
                                                 self.mapping_df['RefSeq'], self.mapping_df['EMBL-CDS'])
 
-    def log_failed(self) -> None:
+    def log_failed_finalize(self) -> None:
         df = self.mapping_df.copy()
 
         # RefSeqs where no UniProtKB-AC was found
@@ -245,7 +257,15 @@ class SequenceMappingOnline:
         message = '{} ids mapped to UniProtKB-AC but not to NCBI-Code.'.format(len(no_ncbi))
         self.console.print_warning(message)
         for id in no_ncbi:
-            logger.warning(f'Target sequence {id}')                    
+            logger.warning(f'Target sequence {id}')          
+
+    def log_failed(self) -> None:
+        df = self.mapping_df.copy()
+        no_hits = df.loc[df[self.to_type].isna(), 'target'].to_list()
+        message = '{} ids not mapped to {}.'.format(len(no_hits),self.to_type)
+        self.console.print_warning(message)
+        for id in no_hits:
+            logger.warning(f'Target sequence {id}')            
 
     def merge_mapping_dfs(self, mapping_df: pd.DataFrame, key_column: str = 'UniProtKB-AC',
                           columns_to_merge: list = ['EMBL-CDS']) -> pd.DataFrame:

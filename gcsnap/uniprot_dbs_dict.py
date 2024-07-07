@@ -23,6 +23,8 @@ class UniprotDict:
                 self.uniprot_dbs['GeneID']['targets'].append(target)
             elif len(target.split('_')[0]) == 2:
                 self.uniprot_dbs['RefSeq']['targets'].append(target)
+            elif len(target.split('.')) == 2:
+                self.uniprot_dbs['EMBL-CDS']['targets'].append(target)                
             elif len(target.split('_')) == 2:
                 self.uniprot_dbs['UniProtKB-ID']['targets'].append(target)
             else:
