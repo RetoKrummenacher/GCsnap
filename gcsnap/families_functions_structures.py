@@ -2,7 +2,7 @@ from gcsnap.sequence_mapping import SequenceMapping
 from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole
 from gcsnap.genomic_context import GenomicContext
-from gcsnap.apis import SwissProtAPI, AlphaFoldAPI, EbiAPI
+from gcsnap.apis import SwissProtAPI, AlphaFoldAPI, UniProtAPI
 
 from gcsnap.utils import processpool_wrapper
 from gcsnap.utils import split_dict_chunks
@@ -105,7 +105,7 @@ class FamiliesFunctionsStructures:
                         if (get_annotations and (family_function == '' 
                                                  or family_function['Function_description'] == '')):        
                             # get functional annotations
-                            curr_uniprot_annotations = EbiAPI.get_uniprot_annotations(uniprot_code, 
+                            curr_uniprot_annotations = UniProtAPI.get_uniprot_annotations(uniprot_code, 
                                                                     previous_annotations = family_function)
                             if curr_uniprot_annotations != 'nan':
                                 family_function = curr_uniprot_annotations

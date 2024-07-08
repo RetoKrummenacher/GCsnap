@@ -42,7 +42,7 @@ class AlphaFoldAPI:
         return link
     
     
-class EbiAPI:
+class UniProtAPI:
     @staticmethod
     def get_uniprot_annotations(uniprot_code: str, previous_annotations: str = '') -> str:
 
@@ -55,7 +55,7 @@ class EbiAPI:
                 if uniprot_req.ok:
                     uniprot_data = uniprot_req.text
                     uniprot_data = json.loads(uniprot_data)
-                    uniprot_annotations = EbiAPI.parse_uniprot_data(uniprot_data, 
+                    uniprot_annotations = UniProtAPI.parse_uniprot_data(uniprot_data, 
                                                         previous_annotations = previous_annotations)
             except:
                 uniprot_annotations = 'nan'        
