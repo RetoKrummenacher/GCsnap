@@ -5,7 +5,7 @@ import pickle
 from gcsnap.rich_console import RichConsole 
 from gcsnap.configuration import Configuration 
 from gcsnap.targets import Target 
-from gcsnap.sequence_mapping_online import SequenceMappingOnline
+from gcsnap.sequence_mapping import SequenceMapping
 from gcsnap.assemblies import Assemblies
 from gcsnap.genomic_context import GenomicContext
 from gcsnap.sequences import Sequences
@@ -53,18 +53,18 @@ def main():
 
         # # B. Map sequences to UniProtKB-AC and NCBI EMBL-CDS
         # # a). Map all targets to UniProtKB-AC
-        # mappingA = SequenceMappingOnline(config, targets_list, 'UniProtKB-AC')
+        # mappingA = SequenceMapping(config, targets_list, 'UniProtKB-AC')
         # mappingA.run()
 
         # # b) Map all to RefSeq
-        # mappingB = SequenceMappingOnline(config, mappingA.get_codes(), 'RefSeq')
+        # mappingB = SequenceMapping(config, mappingA.get_codes(), 'RefSeq')
         # mappingB.run()
         # # merge them to A (only if A is not nan)
         # mappingA.merge_mapping_dfs(mappingB.mapping_df)
 
 
         # # c). Map all targets to NCBI EMBL-CDS
-        # mappingC = SequenceMappingOnline(config, mappingA.get_codes(), 'EMBL-CDS')
+        # mappingC = SequenceMapping(config, mappingA.get_codes(), 'EMBL-CDS')
         # mappingC.run()
         # # merge the two mapping results dataframes
         # mappingA.merge_mapping_dfs(mappingC.mapping_df)
@@ -108,17 +108,24 @@ def main():
         # operons.run()
         # gc.update_syntenies(operons.get_operons())
         # gc.create_and_write_operon_types_summary()
-        # gc.find_most_populated_operon_types()        
+        # gc.find_most_populated_operon_types()   
+
+
+        # # G. Get taxonomy information
+        # taxonomy = Taxonomy(config, gc)
+        # taxonomy.run()
+        # gc.update_taxonomy(taxonomy.get_taxonomy())
+        # gc.write_taxonomy_to_json('taxonomy.json')
+
+
 
         # TODO: For debugging
         with open('gc.pkl', 'rb') as file:
             gc = pickle.load(file)  
 
-        # G. Get taxonomy information
-        taxonomy = Taxonomy(config, gc)
-        taxonomy.run()
-        gc.update_taxonomy(taxonomy.get_taxonomy())
-        gc.write_taxonomy_to_json('taxonomy.json')
+        # H. Annotate TM 
+        tm = TMsegments(config, gc, out_label)
+        tm.run()
  
 
         with open('gc.pkl', 'wb') as file:

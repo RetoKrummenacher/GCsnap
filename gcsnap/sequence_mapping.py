@@ -14,7 +14,7 @@ from gcsnap.uniprot_api import get_id_mapping_results_search
 import logging
 logger = logging.getLogger(__name__) # inherits configuration from main logger
 
-class SequenceMappingOnline:
+class SequenceMapping:
     def __init__(self, config: Configuration, target_list: list, to_type: str, msg: str = None):
         self.target_list = target_list
         self.to_type = to_type

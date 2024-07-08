@@ -1,4 +1,4 @@
-from gcsnap.sequence_mapping_online import SequenceMappingOnline
+from gcsnap.sequence_mapping import SequenceMapping
 from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole
 from gcsnap.genomic_context import GenomicContext
@@ -31,7 +31,7 @@ class FamiliesFunctionsStructures:
                            if 0 < family < 10000]
             
             # map all members to UniProtKB-AC
-            mapping = SequenceMappingOnline(self.config, all_members, 
+            mapping = SequenceMapping(self.config, all_members, 
                                             'UniProtKB-AC', 'family members')
             mapping.run()
             mapping_dict = mapping.get_target_to_result_dict()
