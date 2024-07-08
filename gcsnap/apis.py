@@ -55,7 +55,8 @@ class EbiAPI:
                 if uniprot_req.ok:
                     uniprot_data = uniprot_req.text
                     uniprot_data = json.loads(uniprot_data)
-                    uniprot_annotations = EbiAPI.parse_uniprot_data(uniprot_data, previous_annotations = previous_annotations)
+                    uniprot_annotations = EbiAPI.parse_uniprot_data(uniprot_data, 
+                                                        previous_annotations = previous_annotations)
             except:
                 uniprot_annotations = 'nan'        
         return uniprot_annotations
@@ -63,7 +64,8 @@ class EbiAPI:
     @staticmethod
     def parse_uniprot_data(uniprot_data, previous_annotations = ''):
         if previous_annotations == '':
-            uniprot_annotations = {'TM_topology': '', 'GO_terms': [], 'Keywords': [], 'Function_description': ''}
+            uniprot_annotations = {'TM_topology': '', 'GO_terms': [], 'Keywords': [],
+                                   'Function_description': ''}
         else:
             uniprot_annotations = previous_annotations
 
@@ -91,7 +93,8 @@ class EbiAPI:
         if 'keywords' in uniprot_data:
             for keyword in uniprot_data['keywords']:
                 keyword_term = keyword['value']
-                if keyword_term not in uniprot_annotations['Keywords'] and keyword_term != 'Reference proteome':
+                if (keyword_term not in uniprot_annotations['Keywords'] 
+                    and keyword_term != 'Reference proteome'):
                     uniprot_annotations['Keywords'].append(keyword_term)
 
         if 'comments' in uniprot_data:
