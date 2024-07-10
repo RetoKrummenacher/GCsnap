@@ -32,7 +32,7 @@ class MMseqsCluster:
         with self.console.status('Prepare data for MMseqs'):
             self.fasta_file = self.gc.write_to_fasta('flanking_sequences.fasta', 
                                             self.out_dir, exclude_pseudogenes = False)  
-            self.cluster_order = self.gc.get_fasta_order(False) 
+            self.cluster_order = self.gc.get_fasta_order(exclude_pseudogenes = False) 
         with self.console.status('Running MMseqs'):            
             self.run_mmseqs()
         with self.console.status('Extracting distance matrix'):
