@@ -53,6 +53,15 @@ class GenomicContext:
     
     def get_operon_types(self) -> dict:
         return self.operon_types_summary
+    
+    def get_selected_operons(self) -> dict:
+        return self.selected_operons
+    
+    def get_taxonomy(self) -> dict:
+        return self.taxonomy
+    
+    def get_most_populated_operon(self) -> str:
+        return self.most_populated_operon
 
     def get_all_ncbi_codes(self) -> list:
         return [code for sub_dict in self.syntenies.values() 
