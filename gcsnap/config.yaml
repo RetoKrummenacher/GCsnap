@@ -27,7 +27,7 @@ n-flanking3:
     type: int
     help: Number of flanking sequences to take on 3' end.
 exclude-partial:
-    value: true
+    value: True
     type: bool
     help: Exclude partial operon/genomic_context blocks. If turned off, partial cases will still be ignored to get the most common genomic features.
 
@@ -52,6 +52,89 @@ mmseqs-executable-path:
     type: str
     help: Path of MMseqs executable (i.e., mmseqs.bat) if not installed in Conda environment.
 
+get-pdb:
+    value: True
+    type: bool
+    help: Get PDB information for representatives of the families found.
+get-functional-annotations:
+    value: True
+    type: bool
+    help: Find functional annotations for representatives of the families found.
+
+operon-cluster-advanced:
+    value: False
+    type: bool
+    help: Boolean statement to use the operon clustering advanced mode using PacMAP.
+max-family-freq:
+    value: 20
+    type: int
+    help: Maximum frequency of a family in the set of genomic cotexts found to be considered for advanced operon clustering.
+min-family-freq:
+    value: 2
+    type: int
+    help: Minimum frequency of a family in the set of genomic cotexts found to be considered for advanced operon clustering.
+min-family-freq-accross-contexts:
+    value: 30
+    type: int
+    help: Minimum frequency of a family in a conserved genomic context type to be considered as a member.
+
+n-max-operons:
+    value: 30
+    type: int
+    help: Maximum number of top most populated operon/genomic_context block types.
+
+get-taxonomy:
+    value: True
+    type: bool
+    help: Boolean statement to get and map taxonomy information.
+
+annotate-TM:
+    value: False
+    type: bool
+    help: Boolean statement to find sequence features in the flanking genes.
+annotation-TM-mode:
+    value: uniprot
+    type: str
+    help: Method to use to find transmembrane segments.
+    choices: [phobius, tmhmm, uniprot]
+annotation-TM-file:
+    value: None
+    type: str
+    help: File with pre-computed transmembrane features. Only use when the targets correspond to a single project (no multiple fasta or text files).
+
+genomic-context-cmap:
+    value: Spectral
+    type: str
+    help: Color map (as of matplotlib) to assign colors to and plot the syntenic blocks.
+gc-legend-mode:
+    value: species
+    type: str
+    help: Mode of the genomic context legend.
+    choices: [species, ncbi_code]
+out-format:
+    value: png
+    type: str
+    help: Output format of the core figures.
+    choices: [png, svg, pdf]
+min-coocc:
+    value: 0.30
+    type: float
+    help: Minimum maximum co-occurrence of two genes to be connected in the graphs.
+in-tree:
+    value: None
+    type: str
+    help: Input phylogenetic tree. Only use when the targets correspond to a single project (no multiple fasta or text files).
+in-tree-format:
+    value: newick
+    type: str
+    help: Format of the input phylogenetic tree.
+    choices: [newick, nexus, phyloxml, phyloxml-strict, phyloxml-extended, phyloxml-complete, phyloxml-complete-strict, phyloxml-complete-extended, phyloxml-complete-extended-strict, phyloxml-complete-extended-strict-strict, phyloxml-complete-extended-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended
+sort-mode:
+    value: taxonomy
+    type: str
+    help: Mode to sort the genomic contexts.
+    choices: [taxonomy, as_input, tree, operon, operon cluster]
+
 clans-patterns:
     value: None
     type: str
@@ -62,6 +145,6 @@ clans-file:
     help: Used only for advanced interactive output representation (Clans file if the input is a clans file and -operon_cluster_advanced is set to True).
 
 overwrite-config:
-    value: false
+    value: False
     type: bool
     help: Overwrite the argument value in config file with CLI value.
