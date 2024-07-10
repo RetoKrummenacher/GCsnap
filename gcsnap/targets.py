@@ -14,21 +14,24 @@ class Target():
         self.targets_lists = {}
 
     def run(self) -> None:
-        self.parse_targets()
+        with self.console.status('Parsing targets'):
+            self.parse_targets()
 
     def parse_targets(self, targets: Union[str, list] = None) -> dict:
         if targets is None:
             targets = self.targets
 
         for target in targets:
+            # target is a file
             if os.path.isfile(target):
                 if target.endswith('.clans'):
-                    tmp = self.get_clusters_from_clans(target)
-                    # TODO: Not clear if there can be muliple .clans files, doesn't seem in gcsnap1 as tmp would be returned
+                    # TODO: the cluster is a dictionary, the rest are lists??
+                    self.get_clusters_from_clans(target)
                 else:
                     self.get_targets_from_file(target)
             else:
-                # TODO: The default value for label if not from file name is 'default'??
+                # target is a list of ids
+                # the name of this list (the label) by default is the 'default' 
                 label = self.arguments['out_label']['value']
                 if label not in self.targets_lists:
                     self.targets_lists[label] = []
@@ -60,6 +63,7 @@ class Target():
         ncbis_ordered = self.get_ncbicodes_order_in_clans(clans_file)
         cluster_codes = self.arguments['cluster_patterns']['value']
 
+        # TODO: This what bothers me, but I assume its the target list
         clusters = {}
         
         if cluster_codes != None:
@@ -82,15 +86,13 @@ class Target():
                             numbers = line.split('=')[-1].split(';')[:-1]
                             numbers = [int(i) for i in numbers]
                             numbers = [ncbis_ordered[i] for i in numbers]
-                            clusters[current_cluster] = numbers
+                            self.targets_lists[current_cluster] = numbers
 
                             found_allowed_cluster = False
 
         else:
             label = clans_file.split('/')[-1].split('.')[0]
-            clusters[label] = ncbis_ordered
-
-        return clusters
+            self.targets_lists[label] = ncbis_ordered
     
     def get_ncbicodes_order_in_clans(self, clans_file: str) -> list:   
         ncbids_ordered = []
