@@ -22,7 +22,58 @@ class WarningToLog(Exception):
     def __init__(self, message: str):
         self.message = message
         super().__init__(self.message)       
-# ------------------------------------------------------        
+# ------------------------------------------------------      
+
+# Split dictionary into list of dictoonary chunks
+# ------------------------------------------------------
+def split_dict_chunks(input_dict: dict, n_chunks: int) -> list[dict]:
+    # list of all key-value pairs, a list of tuples
+    key_values = list(input_dict.items())  
+    sub_lists = split_list_chunks(key_values, n_chunks)
+
+    # back to dictionary
+    return [dict(sub_list) for sub_list in sub_lists]
+# ------------------------------------------------------
+
+# Split list into list of chunks
+# ------------------------------------------------------
+def split_list_chunks(input_list: list, n_chunks: int) -> list[list]:
+    n_values = len(input_list)
+    # needs some addition take care as the last part might be empty
+    # like for 100 targets with 16 chunks, the step is 100//16+1=7 and 15*7>100
+    # in such a case we use 100//16=6 and we make last batch larger than the previous ones        
+    incrementation = 1 if (n_values // n_chunks) * (n_chunks-1) >= n_values else 0 
+    n_each_list = (n_values // n_chunks) + incrementation
+    # create cores-1 sub lists equally sized
+    sub_lists = [input_list[((i-1)*n_each_list):(i*n_each_list)]
+                    for i in range(1, n_chunks)]
+    # the last will just have all the remaining values
+    sub_lists = sub_lists + [input_list[((n_chunks-1)*n_each_list):]] 
+
+    return sub_lists
+# ------------------------------------------------------
+
+
+    def create_adapt_chunks(self, curr_numbers: list) -> list[tuple[dict,list]]:
+        # all entries in sysntenies
+        key_values = list(self.families.items())
+        # create sub lists
+        sub_lists = self.split_list(key_values, len(key_values), self.cores)
+        return [(dict(sub_list), curr_numbers, self.cluster_list) for sub_list in sub_lists]
+
+    def split_list(self, lst: list, n_values: int, cores: int) -> list:
+        # use as many sub lists as there are cores
+        # needs some addition take care if the last part is empty
+        # like for 100 targets with 16 cores, the step is 7 and 15*7>100
+        # in such a case we make last batch larger than the previous ones        
+        incrementation = 1 if (n_values // cores) * (cores-1) >= n_values else 0 
+        n_each_list = (n_values // cores) + incrementation
+        # create cores-1 sub lists equally sized
+        sub_lists = [lst[((i-1)*n_each_list):(i*n_each_list)]
+                        for i in range(1, cores)]
+        # the last will just have all the remaining values
+        sub_lists = sub_lists + [lst[((cores-1)*n_each_list):]] 
+        return sub_lists      
 
 
 # Parallel wrappers for any function:
