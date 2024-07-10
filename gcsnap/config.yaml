@@ -2,22 +2,30 @@
 # To change argument, change: value: entry.
 # E.g. value: 1 to value: 2
 # ---------------------------------------
-
 out-label:
     value: default
     type: str
     help: Name of output directory. If default, name of the input file.
-
-ncbi-api-key:
-    value: None
-    type: str
-    help: The key for NCBI API, which allows for up to 10 queries per second to NCBI databases. Shall be obtained after obtaining an NCBI account.
-
+collect-only:
+    value: False
+    type: bool
+    help: Boolean statement to make GCsnap collect genomic contexts only, without comparing them.
 n-cpu: 
     value: 4
     type: int
     help: Number of cores to use.
-
+clans-patterns:
+    value: None
+    type: str
+    help: Patterns to identify the clusters to analyse. They will be used to select the individual clusters in the clans map to analyse.
+clans-file:
+    value: None
+    type: str
+    help: Used only for advanced interactive output representation (Clans file if the input is a clans file and -operon_cluster_advanced is set to True).
+ncbi-api-key:
+    value: None
+    type: str
+    help: The key for NCBI API, which allows for up to 10 queries per second to NCBI databases. Shall be obtained after obtaining an NCBI account.
 n-flanking5:
     value: 4
     type: int
@@ -30,7 +38,6 @@ exclude-partial:
     value: True
     type: bool
     help: Exclude partial operon/genomic_context blocks. If turned off, partial cases will still be ignored to get the most common genomic features.
-
 max-evalue:
     value: 0.001
     type: float
@@ -51,7 +58,6 @@ mmseqs-executable-path:
     value: None
     type: str
     help: Path of MMseqs executable (i.e., mmseqs.bat) if not installed in Conda environment.
-
 get-pdb:
     value: True
     type: bool
@@ -60,7 +66,6 @@ get-functional-annotations:
     value: True
     type: bool
     help: Find functional annotations for representatives of the families found.
-
 operon-cluster-advanced:
     value: False
     type: bool
@@ -77,17 +82,14 @@ min-family-freq-accross-contexts:
     value: 30
     type: int
     help: Minimum frequency of a family in a conserved genomic context type to be considered as a member.
-
 n-max-operons:
     value: 30
     type: int
     help: Maximum number of top most populated operon/genomic_context block types.
-
 get-taxonomy:
     value: True
     type: bool
     help: Boolean statement to get and map taxonomy information.
-
 annotate-TM:
     value: False
     type: bool
@@ -101,7 +103,10 @@ annotation-TM-file:
     value: None
     type: str
     help: File with pre-computed transmembrane features. Only use when the targets correspond to a single project (no multiple fasta or text files).
-
+interactive:
+    value: True
+    type: bool
+    help: Boolean statement to make the interactive html output.
 genomic-context-cmap:
     value: Spectral
     type: str
@@ -134,16 +139,6 @@ sort-mode:
     type: str
     help: Mode to sort the genomic contexts.
     choices: [taxonomy, as_input, tree, operon, operon cluster]
-
-clans-patterns:
-    value: None
-    type: str
-    help: Patterns to identify the clusters to analyse. They will be used to select the individual clusters in the clans map to analyse.
-clans-file:
-    value: None
-    type: str
-    help: Used only for advanced interactive output representation (Clans file if the input is a clans file and -operon_cluster_advanced is set to True).
-
 overwrite-config:
     value: False
     type: bool

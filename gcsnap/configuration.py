@@ -106,7 +106,8 @@ class Configuration:
         self.console = RichConsole()
 
         self.read_configuration_yaml()
-        self.create_argument_parser()
+        with self.console.status('Parsing CLI arguments and config.yaml'):
+            self.create_argument_parser()
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -124,8 +125,15 @@ class Configuration:
         return argument.replace('_', '-')        
         
     def read_configuration_yaml(self) -> None:   
+        if not os.path.isfile(os.path.join(self.path,'config.yaml')):
+            self.console.print_warning('Configuration file config.yaml not found')
+            self.arguments_hyphen = self.get_default_configuration()
+            self.write_configuration_yaml()
+            self.console.print_done('Default config.yaml created')
+            return
         with open(os.path.join(self.path,'config.yaml'), 'r') as file:
             self.arguments_hyphen = yaml.load(file, Loader=yaml.FullLoader)
+        self.console.print_done('Configuration file config.yaml loaded')
             
     def write_configuration_yaml(self) -> None:
         out = {self.underscore_to_hyphen(key): value for key, value in self.arguments.items()}
@@ -139,6 +147,16 @@ class Configuration:
             file.write('# ' + header_comment.replace('\n', '\n# ') + '\n')
             # 4 is the indentation space
             yaml_dump(out, default_flow_style=False, indent=4, block_seq_indent=4)
+
+    def write_configuration_yaml_log(self, file_name: str, file_path: str = None) -> None:
+        if file_path is None:
+            file_path = os.getcwd()
+
+        lines_to_write = ['{}:\t{}\n'.format(self.underscore_to_hyphen(key), value['value']) 
+                          for key, value in self.arguments.items()]
+
+        with open(os.path.join(file_path, file_name), 'w') as file:
+            file.writelines(lines_to_write)
         
     def parse_arguments(self) -> None:
         args = self.parser.parse_args()
@@ -195,8 +213,6 @@ class Configuration:
 
     def handle_special_arguments(self) -> None:
         # handle special arguments that require additional processing
-
-        # TODO: Check how this with clans file works, seems to be a special case
         
         # clanse file
         targets = self.targets
@@ -207,3 +223,182 @@ class Configuration:
             clans_file = os.path.abspath(clans_file)
 
         self.arguments['clans_file']['value'] = clans_file
+
+    def get_default_configuration(self) -> None:
+        return {
+            "out-label": {
+                "value": "default",
+                "type": "str",
+                "help": "Name of output directory. If default, name of the input file."
+            },
+            "collect-only": {
+                "value": False,
+                "type": "bool",
+                "help": "Boolean statement to make GCsnap collect genomic contexts only, without comparing them."
+            },
+            "n-cpu": {
+                "value": 4,
+                "type": "int",
+                "help": "Number of cores to use."
+            },
+            "clans-patterns": {
+                "value": None,
+                "type": "str",
+                "help": "Patterns to identify the clusters to analyse. They will be used to select the individual clusters in the clans map to analyse."
+            },
+            "clans-file": {
+                "value": None,
+                "type": "str",
+                "help": "Used only for advanced interactive output representation (Clans file if the input is a clans file and -operon_cluster_advanced is set to True)."
+            },
+            "ncbi-api-key": {
+                "value": None,
+                "type": "str",
+                "help": "The key for NCBI API, which allows for up to 10 queries per second to NCBI databases. Shall be obtained after obtaining an NCBI account."
+            },
+            "n-flanking5": {
+                "value": 4,
+                "type": "int",
+                "help": "Number of flanking sequences to take on 5' end."
+            },
+            "n-flanking3": {
+                "value": 4,
+                "type": "int",
+                "help": "Number of flanking sequences to take on 3' end."
+            },
+            "exclude-partial": {
+                "value": True,
+                "type": "bool",
+                "help": "Exclude partial operon/genomic_context blocks. If turned off, partial cases will still be ignored to get the most common genomic features."
+            },
+            "max-evalue": {
+                "value": 0.001,
+                "type": "float",
+                "help": "Max e-value at which two sequences are considered to be homologous. Required to define protein families."
+            },
+            "default-base": {
+                "value": 10,
+                "type": "int",
+                "help": "Artificial distance value for two sequences that do not match with an E-value better than --max-evalue."
+            },
+            "min-coverage": {
+                "value": 0.7,
+                "type": "float",
+                "help": "Minimum coverage of target and subject a match needs to be so that two sequences are considered to be homologous. Required to define protein families."
+            },
+            "num-iterations": {
+                "value": 1,
+                "type": "int",
+                "help": "Number of iterations for all-against-all searches. Required to define protein families."
+            },
+            "mmseqs-executable-path": {
+                "value": None,
+                "type": "str",
+                "help": "Path of MMseqs executable (i.e., mmseqs.bat) if not installed in Conda environment."
+            },
+            "get-pdb": {
+                "value": True,
+                "type": "bool",
+                "help": "Get PDB information for representatives of the families found."
+            },
+            "get-functional-annotations": {
+                "value": True,
+                "type": "bool",
+                "help": "Find functional annotations for representatives of the families found."
+            },
+            "operon-cluster-advanced": {
+                "value": False,
+                "type": "bool",
+                "help": "Boolean statement to use the operon clustering advanced mode using PacMAP."
+            },
+            "max-family-freq": {
+                "value": 20,
+                "type": "int",
+                "help": "Maximum frequency of a family in the set of genomic contexts found to be considered for advanced operon clustering."
+            },
+            "min-family-freq": {
+                "value": 2,
+                "type": "int",
+                "help": "Minimum frequency of a family in the set of genomic contexts found to be considered for advanced operon clustering."
+            },
+            "min-family-freq-accross-contexts": {
+                "value": 30,
+                "type": "int",
+                "help": "Minimum frequency of a family in a conserved genomic context type to be considered as a member."
+            },
+            "n-max-operons": {
+                "value": 30,
+                "type": "int",
+                "help": "Maximum number of top most populated operon/genomic_context block types."
+            },
+            "get-taxonomy": {
+                "value": True,
+                "type": "bool",
+                "help": "Boolean statement to get and map taxonomy information."
+            },
+            "annotate-TM": {
+                "value": False,
+                "type": "bool",
+                "help": "Boolean statement to find sequence features in the flanking genes."
+            },
+            "annotation-TM-mode": {
+                "value": "uniprot",
+                "type": "str",
+                "help": "Method to use to find transmembrane segments.",
+                "choices": ["phobius", "tmhmm", "uniprot"]
+            },
+            "annotation-TM-file": {
+                "value": None,
+                "type": "str",
+                "help": "File with pre-computed transmembrane features. Only use when the targets correspond to a single project (no multiple fasta or text files)."
+            },
+            "interactive": {
+                "value": True,
+                "type": "bool",
+                "help": "Boolean statement to make the interactive html output."
+            },
+            "genomic-context-cmap": {
+                "value": "Spectral",
+                "type": "str",
+                "help": "Color map (as of matplotlib) to assign colors to and plot the syntenic blocks."
+            },
+            "gc-legend-mode": {
+                "value": "species",
+                "type": "str",
+                "help": "Mode of the genomic context legend.",
+                "choices": ["species", "ncbi_code"]
+            },
+            "out-format": {
+                "value": "png",
+                "type": "str",
+                "help": "Output format of the core figures.",
+                "choices": ["png", "svg", "pdf"]
+            },
+            "min-coocc": {
+                "value": 0.30,
+                "type": "float",
+                "help": "Minimum maximum co-occurrence of two genes to be connected in the graphs."
+            },
+            "in-tree": {
+                "value": None,
+                "type": "str",
+                "help": "Input phylogenetic tree. Only use when the targets correspond to a single project (no multiple fasta or text files)."
+            },
+            "in-tree-format": {
+                "value": "newick",
+                "type": "str",
+                "help": "Format of the input phylogenetic tree.",
+                "choices": ["newick", "nexus", "phyloxml", "phyloxml-strict", "phyloxml-extended", "phyloxml-complete"]
+            },
+            "sort-mode": {
+                "value": "taxonomy",
+                "type": "str",
+                "help": "Mode to sort the genomic contexts.",
+                "choices": ["taxonomy", "as_input", "tree", "operon", "operon cluster"]
+            },
+            "overwrite-config": {
+                "value": False,
+                "type": "bool",
+                "help": "Overwrite the argument value in config file with CLI value."
+            }
+        }
