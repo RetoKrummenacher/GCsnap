@@ -25,6 +25,11 @@ class GenomicContext:
         self.console = RichConsole()
 
     def update_syntenies(self, input_dict: dict) -> None:
+        """AI is creating summary for update_syntenies
+
+        Args:
+            input_dict (dict): [description]
+        """
         for k,v in input_dict.items():
             current = self.syntenies.get(k, {})
             # merge dictionaries (|= in python 3.9+ in place merge)
@@ -46,6 +51,7 @@ class GenomicContext:
             self.taxonomy[k] = current                  
 
     def get_families(self) -> dict:
+
         return self.families
     
     def get_syntenies(self) -> dict:
@@ -113,7 +119,34 @@ class GenomicContext:
         with open(os.path.join(file_path, file_name), 'w') as file:
             json.dump(self.selected_operons, file, indent = 4)   
         # print and log message
-        self.console.print_done('Selected operon written to {}'.format(file_name))                                      
+        self.console.print_done('Selected operon written to {}'.format(file_name))     
+
+    def write_to_fasta(self, file_name: str, file_path: str = None, exclude_pseudogenes: bool = False) -> str:
+        # extract needed information from syntenies
+        # There should be no performance difference between using dict.get() and dict[key]
+        # at least when no default value is provided        
+        lines_to_write = ['>{}|{}\n{}\n'.format(ncbi_code, 
+                                self.syntenies[target]['flanking_genes']['names'][i], 
+                                self.syntenies[target]['flanking_genes']['sequences'][i])
+            for target in self.syntenies.keys()
+            for i, ncbi_code in enumerate(self.syntenies[target]['flanking_genes']['ncbi_codes'])
+            if self.syntenies[target]['flanking_genes']['names'][i] != 'pseudogene' 
+            or not exclude_pseudogenes]
+        
+        # write to fasta file
+        if file_path is None:
+            file_path = os.getcwd() 
+        fasta_file = os.path.join(file_path, file_name)
+        with open(fasta_file, 'w') as file:
+            file.writelines(lines_to_write)
+
+        return fasta_file
+    # TODO: Seqeuence length is only needed for BLAST, but not for MMseqs
+    # As we dropped BLAST support, this is redundant
+    # def get_sequence_length(self) -> dict:
+    #     return {ncbi_code : len(self.syntenies[target]['flanking_genes']['sequences'][i])
+    #             for target in self.syntenies.keys()
+    #             for i, ncbi_code in enumerate(self.syntenies[target]['flanking_genes']['ncbi_codes'])}   
 
     def read_syntenies_from_json(self, file_name: str, file_path: str = None) -> None:
         if file_path is None:
@@ -133,33 +166,6 @@ class GenomicContext:
             for i, ncbi_code in enumerate(self.syntenies[target]['flanking_genes']['ncbi_codes'])
             if self.syntenies[target]['flanking_genes']['names'][i] != 'pseudogene' 
             or not exclude_pseudogenes]  
-
-    def write_to_fasta(self, file_name: str, file_path: str = None, exclude_pseudogenes: bool = False) -> str:
-        # extract needed information from syntenies
-        # There should be no performance difference between using dict.get() and dict[key]
-        # at least when no default value is provided        
-        lines_to_write = ['>{}|{}\n{}'.format(ncbi_code, 
-                                self.syntenies[target]['flanking_genes']['names'][i], 
-                                self.syntenies[target]['flanking_genes']['sequences'][i])
-            for target in self.syntenies.keys()
-            for i, ncbi_code in enumerate(self.syntenies[target]['flanking_genes']['ncbi_codes'])
-            if self.syntenies[target]['flanking_genes']['names'][i] != 'pseudogene' 
-            or not exclude_pseudogenes]
-        
-        # write to fasta file
-        if file_path is None:
-            file_path = os.getcwd() 
-        fasta_file = os.path.join(file_path, file_name)
-        with open(fasta_file, 'w') as file:
-            file.write('\n'.join(lines_to_write))
-
-        return fasta_file
-    # TODO: Seqeuence length is only needed for BLAST, but not for MMseqs
-    # As we dropped BLAST support, this is redundant
-    # def get_sequence_length(self) -> dict:
-    #     return {ncbi_code : len(self.syntenies[target]['flanking_genes']['sequences'][i])
-    #             for target in self.syntenies.keys()
-    #             for i, ncbi_code in enumerate(self.syntenies[target]['flanking_genes']['ncbi_codes'])}   
 
     def create_families_summary(self) -> None:   
         with self.console.status('Create families summary'):
@@ -288,9 +294,114 @@ class GenomicContext:
 
         # write selected operons to json
         self.write_selected_operons_to_json('selected_operons.json')
+
+    def write_summary_table(self, file_name: str, file_path: str = None) -> None:
+        if file_path is None:
+            file_path = os.getcwd()    
+
+        lines_to_write = []
+        # header
+        if 'TM_annotations' in self.syntenies[list(self.syntenies.keys())[0]]['flanking_genes']:
+            header_line = '\t'.join(['Operon type', 
+                                     'Target', 
+                                     'AssemblyId', 
+                                     'Gene direction', 
+                                     'Gene start', 
+                                     'Gene end',
+                                     'Relative gene start',
+                                     'Relative gene end',
+                                     'Protein family code',
+                                     'EntrzID',
+                                     'Protein name',
+                                     'Transmembrane/Signal peptide prediction',
+                                     'Superkingdom',
+                                     'Phylum',
+                                     'Class',
+                                     'Order',
+                                     'Genus',
+                                     'Species'])
+        else:
+            # same without TM annotations
+            header_line = '\t'.join(['Operon type',
+                                     'Target',
+                                     'AssemblyId',
+                                     'Gene direction',
+                                     'Gene start',
+                                     'Gene end',
+                                     'Relative gene start',
+                                     'Relative gene end',
+                                     'Protein family code',
+                                     'EntrzID',
+                                     'Protein name',
+                                     'Superkingdom',
+                                     'Phylum',
+                                     'Class',
+                                     'Order',
+                                     'Genus',
+                                     'Species'])
+        # additional new line after header
+        lines_to_write.append(header_line + '\n')
+            
+        # all paths from taxonomy
+        tax_search_dict = self.flatten_taxonomy(self.taxonomy)        
+        # all targets and the corresponding operon type
+        targets_operon_list = [(target, operon.split()[-2]) for operon in self.operon_types_summary 
+                        for target in self.operon_types_summary[operon]['target_members']]
+        
+        for target, operon_type in targets_operon_list:
+            # line space between the targets
+            lines_to_write.append('\n')
+            for i, prot_name in enumerate(self.syntenies[target]['flanking_genes']['names']):
+                line_to_write = '\t'.join([operon_type, 
+                                        target, 
+                                        self.syntenies[target]['assembly_id'][1], 
+                                        self.syntenies[target]['flanking_genes']['directions'][i], 
+                                        self.syntenies[target]['flanking_genes']['starts'][i], 
+                                        self.syntenies[target]['flanking_genes']['ends'][i],
+                                        self.syntenies[target]['flanking_genes']['relative_starts'][i], 
+                                        self.syntenies[target]['flanking_genes']['relative_ends'][i], 
+                                        self.syntenies[target]['flanking_genes']['families'][i], 
+                                        self.syntenies[target]['flanking_genes']['ncbi_codes'][i], 
+                                        self.syntenies[target]['flanking_genes']['names'][i]])
+                if 'TM_annotations' in self.syntenies[target]['flanking_genes']:
+                    line_to_write += '\t' + self.syntenies[target]['flanking_genes']['TM_annotations'][i]
+                # add taxonomy information by searching the dictionary
+                line_to_write += '\t' + '\t'.join(tax_search_dict.get(target)) + '\n'
+                lines_to_write.append(line_to_write)
+
+        summary_file = os.path.join(file_path, file_name)
+        with open(summary_file, 'w') as file:
+            file.writelines(lines_to_write)
+
+    def create_taxonomy_search_dict(self) -> dict:
+        flat_taxonomy = self.flatten_taxonomy(self.taxonomy)
+        # create dictionary
+        return {member : tax_list[:-1] for tax_list in flat_taxonomy 
+                for member in tax_list[-1]['target_members']}
+
+    def flatten_taxonomy(self, taxonomy: dict, parent_keys: list = []) -> list[list,dict]:
+        """ 
+        Recursvie method to flatten a nested dictionary. 
+
+        Args:
+            taxonomy (dict): The taxonomy dictionary to flatten.
+            parent_keys (list, optional): List of parents. Defaults to [].
+
+        Returns:
+            list[list,dict]: List of lists representing a path from the root of the taxonomy 
+            to a leaf node, including all the keys along the way. The last element of each list
+            is a dictionary with the key 'target_members'.
+        """        
+        flat_list = []
+        for key, value in taxonomy.items():
+            if isinstance(value, dict):
+                flat_list.extend(self.flatten_taxonomy(value, parent_keys + [key]))
+            else:
+                flat_list.append(parent_keys + [key, value])
+        return flat_list            
                     
     @staticmethod
-    def get_empty_flanking_genes() -> dict:
+    def get_empty_flanking_genes() -> dict:  
         return {'relative_starts' : [],
                 'relative_ends' : [],
                 'ncbi_codes': [],
