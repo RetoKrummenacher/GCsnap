@@ -62,7 +62,7 @@ class UniProtAPI:
         return uniprot_annotations
     
     @staticmethod
-    def parse_uniprot_data(uniprot_data, previous_annotations = ''):
+    def parse_uniprot_data(uniprot_data: dict, previous_annotations: str = '') -> dict:
         if previous_annotations == '':
             uniprot_annotations = {'TM_topology': '', 'GO_terms': [], 'Keywords': [],
                                    'Function_description': ''}
