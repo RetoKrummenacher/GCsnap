@@ -14,6 +14,7 @@ from gcsnap.families_functions_structures import FamiliesFunctionsStructures
 from gcsnap.operons import Operons
 from gcsnap.taxonomy import Taxonomy
 from gcsnap.tm_segments import TMsegments
+from gcsnap.figures import Figures
 
 def main():
 
@@ -126,11 +127,14 @@ def main():
         # H. Annotate TM 
         tm = TMsegments(config, gc, out_label)
         tm.run()
+        gc.update_syntenies(tm.get_annotations())
  
-
         with open('gc.pkl', 'wb') as file:
-            pickle.dump(gc, file)             
+            pickle.dump(gc, file)    
 
+        # Ia). Produce genomic context figures
+        figures = Figures(config, gc, out_label, starting_directory, targets_list)      
+        figures.run()
 
     # 4. 
 
