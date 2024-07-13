@@ -133,7 +133,7 @@ in-tree-format:
     value: newick
     type: str
     help: Format of the input phylogenetic tree.
-    choices: [newick, nexus, phyloxml, phyloxml-strict, phyloxml-extended, phyloxml-complete, phyloxml-complete-strict, phyloxml-complete-extended, phyloxml-complete-extended-strict, phyloxml-complete-extended-strict-strict, phyloxml-complete-extended-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict-strict, phyloxml-complete-extended
+    choices: [newick, nexus, phyloxml, phyloxml-strict, phyloxml-extended, phyloxml-complete, phyloxml-complete-strict, phyloxml-complete-extended, phyloxml-complete-extended]
 sort-mode:
     value: taxonomy
     type: str
