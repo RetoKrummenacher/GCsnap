@@ -61,7 +61,7 @@ class Families:
         # loop over all targets in the chunk
         curr_numbers = []
         for k in syntenies.keys():
-            syntenies[k]['flanking_genes']['family'] = []
+            syntenies[k]['flanking_genes']['families'] = []
             for i, ncbi_code in enumerate(syntenies[k]['flanking_genes']['ncbi_codes']):
                 protein_name = syntenies[k]['flanking_genes']['names'][i]
                 try:
