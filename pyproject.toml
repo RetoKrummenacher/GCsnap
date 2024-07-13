@@ -7,20 +7,19 @@ authors = [
     {name = "Joana Pereira", email = "pereira.joanam@gmail.com"},
 ]
 dependencies = [
-    "urllib3 == 1.26.14",
-    "pandas == 1.4.4",
-    "biopython",
+    "urllib3 == 2.2.1",
+    "pandas == 2.2.2",
+    "biopython == 1.83",
     "bokeh == 1.3.4",
-    "matplotlib",
-    "networkx==2.8.8",
-    "numpy == 1.20",
-    "pacmap",
-    "requests_cache",
-    "scikit-learn",
+    "matplotlib == 3.9",
+    "networkx==3,3",
+    "numpy == 1.26.4",
+    "pacmap == 0.7.3",
+    "scikit-learn == 1.5.1",
     "jinja2==3.0",
     "numba==0.56.4"
 ]
-requires-python = "<3.9"
+requires-python = ">=3.11,<3.12"
 readme = "README.md"
 license = {text = "MIT"}
 keywords = ["genomic contexts homology"]
