@@ -19,24 +19,16 @@ class TMsegments:
         self.config = config
         self.cores = config.arguments['n_cpu']['value']
         self.annotate_TM = config.arguments['annotate_TM']['value']
-        self.annotate_mode = config.arguments['annotate_TM_mode']['value']
-        self.annotate_file = config.arguments['annotate_TM_file']['value']
+        self.annotate_mode = config.arguments['annotation_TM_mode']['value']
+        self.annotate_file = config.arguments['annotation_TM_file']['value']
 
         # set parameters
         self.gc = gc
-        self.synthenies = gc.get_synthenies()
+        self.syntenies = gc.get_syntenies()
         self.out_label = out_label  
-        self.out_dir = os.path.join(os.getcwd(), f'{out_label}_TM_annotations') 
-
-        # outfile if not specified in config.yaml
-        if self.annotate_file is None:
-            # name of fasta file without extension
-            self.annotation_out_file = os.path.join(self.out_dir, '{}_{}.out'.format(
-                    os.path.basename(self.fasta_file)[:-6], self.annotate_mode)) 
-        else:
-            # the name of the input file
-            self.annotation_out_file = os.path.join(self.out_dir, '{}'.format(
-                    os.path.basename(self.annotation_out_file)))                
+        self.out_dir = os.path.join(os.getcwd(), f'{out_label}_TM_annotations')   
+        if not os.path.isdir(self.out_dir):
+            os.mkdir(self.out_dir)                  
 
         self.console = RichConsole()
 
@@ -46,19 +38,26 @@ class TMsegments:
     def run(self) -> None:
         # abort if no annotation requested
         if not self.annotate_TM:
-            self.console.print_skipped_step('TM annotation set to False. \
-                                            Transmembrane segments and signal peptides will not be searched')
+            msg = 'TM annotation set to False. Transmembrane segments and signal peptides will not be searched'
+            self.console.print_skipped_step(msg)
             self.annotations = {}
             return
         
         # create fasta file and get order if sequences in fasta file
-        self.fasta_file = self.gc.write_to_fasta('flanking_sequences.fasta', 
+        self.fasta_file = self.gc.write_to_fasta('{}_flanking_sequences.fasta'.format(self.out_label), 
                                                 self.out_dir, exclude_pseudogenes = True)  
-        self.ncbi_code_order = self.gc.get_fasta_order(False) 
+        self.ncbi_code_order = self.gc.get_fasta_order(False)      
 
+        # outfile if not specified in config.yaml
         if self.annotate_file is None:
+            # name of fasta file without extension            
+            self.annotation_out_file = os.path.join(self.out_dir, '{}_{}.out'.format(
+                    os.path.basename(self.fasta_file)[:-6], self.annotate_mode))             
             self.single_annotation()
         else:
+            # the name of the input file            
+            self.annotation_out_file = os.path.join(self.out_dir, '{}'.format(
+                    os.path.basename(self.annotate_file)))              
             # copy the specified file to the output directory
             try:
                 shutil.copy(self.annotate_file, self.annotation_out_file)
@@ -78,17 +77,19 @@ class TMsegments:
 
     def single_annotation(self) -> None:
         # do single tm annotation depending on mode
-        with self.console.status('Annotating TM segments with {}'.format(self.annotate_mode)):
-            if self.annotate_mode == 'phobius' or self.annotate_mode == 'tmhmm':
+        if self.annotate_mode == 'phobius' or self.annotate_mode == 'tmhmm':
+            with self.console.status('Annotating TM segments with {}'.format(self.annotate_mode)):                
                 self.tool_annotation()
-            else:
-                # map all members to UniProtKB-AC
-                mapping = SequenceMapping(self.config, self.ncbi_code_order, 
-                                            to_type = 'UniProtKB-AC', msg = 'TM segments')
-                mapping.run()
-                mapping_dict = mapping.get_target_to_result_dict()
-                mapping.log_failed()
+        else:
+            self.console.print_step('TM annotation with "uniprot" mode needs mapping first')
+            # map all members to UniProtKB-AC
+            mapping = SequenceMapping(self.config, self.ncbi_code_order, 
+                                        to_type = 'UniProtKB-AC', msg = 'TM segments')
+            mapping.run()
+            mapping_dict = mapping.get_target_to_result_dict()
+            mapping.log_failed()
 
+            with self.console.status('Annotating TM segments with {}'.format(self.annotate_mode)):
                 # create parallel arguments
                 parallel_args = [(sub_list, mapping_dict) 
                                 for sub_list in split_list_chunks(self.ncbi_code_order, self.cores)]
@@ -99,7 +100,7 @@ class TMsegments:
 
                 # create writing list
                 write_list = ['{}\t{}'.format(ncbi_code, tm_annotation) 
-                              for ncbi_code, tm_annotation in result_list]   
+                                for ncbi_code, tm_annotation in result_list]   
                 self.write_to_file('\n'.join(write_list)) 
 
     def tool_annotation(self) -> None:
@@ -108,7 +109,6 @@ class TMsegments:
         elif self.annotate_mode == 'tmhmm':
             tool = 'tmhmm'
 
-        # TODO: Why checking if file exists first?
         if not os.path.isfile(self.annotation_out_file):
             try:
                 stdout, stderr = self.run_command(tool)
@@ -224,12 +224,12 @@ class TMsegments:
             flanking_genes['TM_annotations'] = []
 
             for ncbi_code in flanking_genes['ncbi_codes']:
-                if ncbi_code in self.protein_annotation:
+                if ncbi_code in self.protein_annotations:
                     flanking_genes['TM_annotations'].append(self.protein_annotations[ncbi_code])
                 else:
                     flanking_genes['TM_annotations'].append('')
 
-            self.annotations[curr_target]['flanking_genes'] = flanking_genes        
+            self.syntenies[curr_target]['flanking_genes'] = flanking_genes        
 
     def write_to_file(self, data: str) -> None:
         with open(self.annotation_out_file, 'w') as file:
