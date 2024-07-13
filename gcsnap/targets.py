@@ -15,12 +15,9 @@ class Target():
 
     def run(self) -> None:
         with self.console.status('Parsing targets'):
-            self.parse_targets()
+            self.parse_targets(self.targets)
 
-    def parse_targets(self, targets: Union[str, list] = None) -> dict:
-        if targets is None:
-            targets = self.targets
-
+    def parse_targets(self, targets: Union[str, list]) -> dict:
         for target in targets:
             # target is a file
             if os.path.isfile(target):
