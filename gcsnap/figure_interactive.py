@@ -1,6 +1,6 @@
 import os
 import matplotlib.pyplot as plt
-import matplotlib
+import matplotlib.colors as mcolors
 import numpy as np
 import statistics
 from scipy import stats
@@ -12,24 +12,25 @@ from collections import Counter
 import networkx as nx
 from Bio import Phylo
 
+# pip install bokeh
 from bokeh.plotting import figure, output_file, gridplot, save
 from bokeh.colors import RGB
 from bokeh.models import HoverTool, TapTool, LassoSelectTool, Range1d, LinearAxis, WheelZoomTool, Circle, MultiLine, Panel, Tabs
 from bokeh.models import ColumnDataSource, DataTable, DateFormatter, TableColumn, Legend, HTMLTemplateFormatter
 from bokeh.models.callbacks import OpenURL
-from bokeh.models.graphs import from_networkx, NodesAndLinkedEdges
 from bokeh.models.widgets import Div
+from bokeh.models.graphs import from_networkx
 from bokeh.layouts import row, column
 
 from gcsnap.configuration import Configuration
 from gcsnap.genomic_context import GenomicContext
-from gcsnap.figures import Figures
+from gcsnap.figure import Figure
 from gcsnap.rich_console import RichConsole
 
 class InteractiveFigure:
     def __init__(self, config: Configuration, gc: GenomicContext, out_label: str, ref_family: str, 
-                 family_colors: dict, input_targets: list):
-
+                 family_colors: dict, starting_directory: str):
+        
         # Extract parameters from config and gc
         kwargs = {k: v['value'] for k, v in config.arguments.items()}
         kwargs.update({
@@ -38,12 +39,13 @@ class InteractiveFigure:
             'gc': gc,
             'operons': gc.get_selected_operons(),
             'most_populated_operon': gc.get_most_populated_operon(),
-            'synthenise': gc.get_synthenise(),
+            'syntenies': gc.get_syntenies(),
             'families_summary': gc.get_families(),
             'taxonomy': gc.get_taxonomy(),
+            'input_targets': gc.get_curr_targets(),            
             'reference_family': ref_family,
             'family_colors': family_colors,
-            'input_targets': input_targets,
+            'starting_directory': starting_directory            
         })
         # change sort_mode and input targets if needed
         if kwargs['in_tree'] is not None:
@@ -67,30 +69,33 @@ class InteractiveFigure:
         with self.console.status('Creating interactive genomic context figures'):
             # Make a copy of the current object's attributes (all contained in instance __dict__)
             kwargs = self.__dict__.copy()
-            # output to static HTML file
-            output_file(os.path.join(os.getcwd,'{}_interactive_output.html'.format(self.out_label)))
+
             # Work on most conserved genomic context figure        
-            most_common_gc_figure = self.create_most_common_genomic_features_figure(**kwargs) 
+            most_common_gc_figure = Figure.create_most_common_genomic_features_figure(**kwargs) 
             # Work on gene co-occurence figure        
-            coocurrence_figure, graph_coord = self.create_graph_figure(mgc = most_common_gc_figure, 
-                                                                    graph_coord = {},
-                                                                    mode = 'coocurrence',
-                                                                    previous_net = '',
-                                                                    **kwargs) 
+            coocurrence_figure, graph_coord = self.create_graph_figure(
+                                                    most_common_gc_figure = most_common_gc_figure, 
+                                                    graph_coord = {},
+                                                    mode = 'coocurrence',
+                                                    previous_net = '',
+                                                    **kwargs) 
             adjacency_figure, graph_coord = self.create_graph_figure(mode = 'adjacency', 
                                                             graph_coord=graph_coord, 
                                                             previous_net=coocurrence_figure, **kwargs)
             # Work on dendogram for the genomic context block
-            syn_dendogram, syn_den_data = Figures.make_dendogram_figure(show_leafs = False,                                                                        
+            syn_dendogram, syn_den_data = Figure.make_dendogram_figure(show_leafs = False,                                                                        
                                                                 height_factor = 25*1.2, 
                                                                 distance_matrix = None, 
                                                                 labels = None, 
                                                                 colors = None,
                                                                 **kwargs)
             
-            genomic_context_figure = self.create_genomic_context_figure(syn_dendogram = syn_dendogram,
-                                                                    syn_den_data = syn_den_data,
-                                                                    **kwargs)
+            # height_factor already present in kwargs as added in previous method
+            # same true for most_common_gc_figure
+            genomic_context_figure = Figure.create_genomic_context_figure(syn_dendogram = syn_dendogram,
+                                                                most_common_gc_figure = most_common_gc_figure,      
+                                                                syn_den_data = syn_den_data,
+                                                                **kwargs)
 
             legend_figure = self.create_legend_figure(grid = genomic_context_figure,
                                                     rescale_height = False,
@@ -106,274 +111,20 @@ class InteractiveFigure:
             grid = gridplot([[None, tabs, None], 
                                 [syn_dendogram, genomic_context_figure, legend_figure]], merge_tools = True)
 
+            # output to static HTML file
+            f_name = '{}_interactive_output.html'.format(self.out_label)
+            output_file(os.path.join(os.getcwd(),f_name))
             save(grid)
-
-    def create_most_common_genomic_features_figure(self, **kwargs) -> figure:
-        # set attributes from kwargs, it updates any keywords that are passed to method
-        self._set_attributes(**kwargs)
-
-        most_common_context = self.find_most_common_genomic_context(**kwargs)
-        gc_tooltips, gc_data = self.create_most_common_genomic_context_features(most_common_context, **kwargs)
-
-        gc = figure(plot_width=2000, plot_height=200, y_range = [0, 4], 
-                    title = 'Most conserved gene per position', toolbar_location="left")
-
-        for i, xs in enumerate(gc_data['xs']):
-            gc.patch(xs, gc_data['ys'][i], 
-                     fill_color = gc_data['facecolor'][i], 
-                     line_color = gc_data['edgecolor'][i], 
-                     fill_alpha = gc_data['transparency'][i], 
-                     line_alpha = gc_data['transparency'][i], line_width = 1)	
-        
-        gc.patches('xs', 'ys', fill_color = None, line_color = None, line_width = 0, source = gc_data, 
-                hover_fill_color = 'white', hover_line_color = 'edgecolor', hover_fill_alpha = 0.5, 
-                selection_fill_color='facecolor', selection_line_color='edgecolor',
-                nonselection_fill_color='facecolor', nonselection_line_color='edgecolor', 
-                nonselection_fill_alpha=0.2)
-
-        gc.text('text_x', 'text_y', text = 'family', text_baseline="bottom", 
-                text_align="center", text_font_size = {'value': '6pt'}, source = gc_data)
-        gc.text('tm_text_x', 'tm_text_y', text = 'tm_text', text_color = "white", 
-                text_baseline="middle", text_align="center", text_font_size = {'value': '6pt'}, 
-                source = gc_data)
-        
-        gc.yaxis.ticker = [1]
-        gc.yaxis.major_label_overrides = {1: max([self.syntenies[target]['species'] 
-                                                  for target in self.syntenies], key=len)}
-        # gc.yaxis.major_label_text_font_size = {'value': '8pt'}
-        
-        gc.yaxis.major_tick_line_color = None  # turn off y-axis major ticks
-        gc.yaxis.minor_tick_line_color = None  # turn off y-axis minor ticks
-        gc.yaxis.major_label_text_color = None  # turn off y-axis tick labels leaving space 
-        gc.yaxis.axis_line_width = 0
-
-        # define general features
-        gc.grid.visible = False
-        gc.outline_line_width = 0
-        
-        # define xticks
-        gc.xaxis.axis_label = "Position relative to target (bp)"
-        
-        gc.add_tools(HoverTool(tooltips=gc_tooltips))
-        gc.add_tools(TapTool(callback = OpenURL(url='@model_links')))
-        
-        return gc
-        
-    def find_most_common_genomic_context(self, **kwargs) -> dict:
-        # set attributes from kwargs, it updates any keywords that are passed to method
-        self._set_attributes(**kwargs)        
-
-        # will use only the complete genomic contexts and ignore the partial ones	
-        operon_matrix = []
-        for operon in self.operons:
-            for curr_context in self.operons[operon]['operon_protein_families_structure']:
-                if len(curr_context) == self.n_flanking5 + self.n_flanking3 + 1:
-                    operon_matrix.append(curr_context)
-        
-        operon_matrix = np.array(operon_matrix).T
-        
-        most_common_context = {'selected_context': [],
-                            'families_frequency': [],
-                            'average_starts': [],
-                            'average_ends': [],
-                            'average_size': [],
-                            'stdev_size': [],
-                            'directions': [],
-                            'tm_annotations': []}
-
-        for i, column in enumerate(operon_matrix):
-            occurence_count = Counter(column) 
-            most_common_family = occurence_count.most_common(1)[0][0]
-
-            most_common_context['selected_context'].append(most_common_family)
-            most_common_context['families_frequency'].append(round(
-                occurence_count.most_common(1)[0][1]*100/len(column), 1))
-
-            all_starts_of_most_common = []
-            all_ends_of_most_common = []
-            all_orientations = []
-            all_sizes = []
-            all_tm_annotations = []
-
-            for operon in self.operons:
-                for j, curr_context in enumerate(self.operons[operon]['operon_protein_families_structure']):
-                    curr_target = self.operons[operon]['target_members'][j]
-                
-                    if len(curr_context) == self.n_flanking5 + self.n_flanking3 + 1:			
-                        if self.operons[operon]['operon_protein_families_structure'][j][i] == most_common_family:
-                            all_starts_of_most_common.append(self.syntenies[curr_target]['flanking_genes']
-                                                             ['relative_starts'][i])
-                            all_ends_of_most_common.append(self.syntenies[curr_target]['flanking_genes']
-                                                           ['relative_ends'][i])
-                            all_sizes.append((self.syntenies[curr_target]['flanking_genes']
-                                              ['relative_ends'][i] - self.syntenies[curr_target]
-                                              ['flanking_genes']['relative_starts'][i])/3)
-                            all_orientations.append(self.syntenies[curr_target]['flanking_genes']['directions'][i])
-                            
-                            if 'TM_annotations' in self.syntenies[curr_target]['flanking_genes']:
-                                all_tm_annotations.append(self.syntenies[curr_target]['flanking_genes']
-                                                          ['TM_annotations'][i])
-            
-            most_common_context['average_starts'].append(int(statistics.median(all_starts_of_most_common)))
-            most_common_context['average_ends'].append(int(statistics.median(all_ends_of_most_common)))
-            most_common_context['average_size'].append(int(statistics.median(all_sizes)))
-            most_common_context['stdev_size'].append(int(stats.median_abs_deviation(all_sizes)))
-            
-            try:
-                most_common_context['directions'].append(statistics.mode(all_orientations))
-            except:
-                most_common_context['directions'].append('+')
-            
-            try:
-                most_common_context['tm_annotations'].append(statistics.mode(all_tm_annotations))
-            except:
-                most_common_context['tm_annotations'].append('')
-            
-        return most_common_context
-            
-    def create_most_common_genomic_context_features(self, **kwargs) -> tuple:
-        # set attributes from kwargs, it updates any keywords that are passed to method
-        self._set_attributes(**kwargs)
-        data = {'xs': [],
-                    'ys': [],
-                    'edgecolor': [],
-                    'facecolor': [],
-                    'text_x': [],
-                    'text_y': [],
-                    'family': [],
-                    'tm_text_x': [],
-                    'tm_text_y': [],
-                    'tm_text': [],
-                    'tm_pred_text': [],
-                    'protein_name': [],
-                    'protein_size': [],
-                    'family_frequency': [],
-                    'transparency': [],
-                    'relative_start': [],
-                    'relative_end': [],
-                    'found_models': [],
-                    'model_links': []}
-            
-        for i, family in enumerate(self.most_common_context['selected_context']):
-            gene_dx = self.most_common_context['average_ends'][i] - \
-                        self.most_common_context['average_starts'][i]+1
-            gene_direction = self.most_common_context['directions'][i]
-
-            if gene_direction == '-':
-                gene_x_tail = self.most_common_context['average_ends'][i]
-                gene_dx = gene_dx*(-1)
-                gene_x_head = gene_x_tail + gene_dx
-                gene_x_head_start = gene_x_head+100
-                text_x = gene_x_tail - (gene_x_tail-gene_x_head_start)/2
-            else:
-                gene_x_tail = self.most_common_context['average_starts'][i]
-                gene_x_head = gene_x_tail + gene_dx
-                gene_x_head_start = gene_x_head-100
-                text_x = gene_x_tail + (gene_x_head_start-gene_x_tail)/2
-
-            if family == 0:
-                facecolor = self.family_colors[family]['Color (RGBA)']
-                edgecolor = self.family_colors[family]['Line color']
-                linestyle = self.family_colors[family]['Line style']
-            else:
-                facecolor = self.family_colors[family]['Color (RGBA)']
-                edgecolor = self.family_colors[family]['Line color']
-                linestyle = self.family_colors[family]['Line style'] 
-            
-            if family == 0:
-                relative_start = 'n.a.'
-                relative_end = 'n.a.'
-                family_frequency = 'n.a.'
-                protein_size = 'n.a.' 
-                protein_name = 'n.a.'
-                transparency = 0.2
-                tm_annotation = ''
-                tm_pred_text = 'n.a.'
-            else:
-                relative_start = format(gene_x_tail, ',d')
-                relative_end = format(gene_x_head, ',d')
-                family_frequency = '{}%'.format(self.most_common_context['families_frequency'][i])
-                protein_size = r'{} ({})'.format(self.most_common_context['average_size'][i], 
-                                                 self.most_common_context['stdev_size'][i])
-                protein_name = self.families_summary[family]['name']
-                transparency = self.most_common_context['families_frequency'][i]/100  
-                
-                if 'tm_annotations' in self.most_common_context:
-                    tm_annotation = self.most_common_context['tm_annotations'][i]
-                    if tm_annotation == 'TM':
-                        tm_pred_text = 'Yes'
-                    elif tm_annotation == 'SP':
-                        tm_pred_text = 'Contains signal peptide'
-                    else:
-                        tm_pred_text = 'No'
-                else:
-                    tm_annotation = ''
-                    tm_pred_text = 'n.a.' 
-                    
-            data['relative_start'].append(relative_start)
-            data['relative_end'].append(relative_end)
-            data['facecolor'].append(facecolor)
-            data['edgecolor'].append(edgecolor)
-            data['family_frequency'].append(family_frequency)
-            data['protein_size'].append(protein_size)
-            data['protein_name'].append(protein_name)
-            data['xs'].append([gene_x_tail, gene_x_tail, gene_x_head_start, gene_x_head, gene_x_head_start])
-            data['ys'].append([1-0.25, 1+0.25, 1+0.25, 1, 1-0.25])
-            data['text_x'].append(text_x)
-            data['text_y'].append(1+0.25)
-            data['transparency'].append(transparency)
-            
-            data['tm_text'].append(tm_annotation)
-            data['tm_text_x'].append(text_x)
-            data['tm_text_y'].append(1)
-            data['tm_pred_text'].append(tm_pred_text)
-
-            if family != 0 and family != self.reference_family and family < 10000:
-                data['family'].append(family)
-            else:
-                data['family'].append(str(''))
-            
-            if 'model_state' in self.families_summary[family]:
-                model_state = self.families_summary[family]['model_state']
-
-                if model_state == 'Model exists':
-                    model_state = 'Yes (click to view in Swiss-Model repository)'
-                elif model_state == 'Model does not exist':
-                    model_state = 'No (click to model with Swiss-Model)'
-                else:
-                    if family > 0 and family < 10000:
-                        model_state = 'Not possible to find'
-                    else:
-                        model_state = ''
-                
-                structure = self.families_summary[family]['structure']
-                if structure == '':
-                    uniprot_code = self.families_summary[family]['uniprot_code']
-                    structure = 'https://swissmodel.expasy.org/repository/uniprot/{}'.format(uniprot_code)
-                
-            else:
-                model_state = 'n.a.'
-                structure = 'n.a.'
-            
-            data['found_models'].append(model_state)
-            data['model_links'].append(structure)
-            
-        tooltips = [('Protein name', "@protein_name"),
-                    ("Predicted membrane protein", "@tm_pred_text"),
-                    ('Structural model found', '@found_models'),
-                    ('Frequency in position', '@family_frequency'),
-                    ('Median protein size', '@protein_size'),
-                    ('Median starting position', '@relative_start'),
-                    ('Median end position', '@relative_end')] 
-        
-        return tooltips, data     
+        self.console.print_info('Genomic context visualization created in {}'.format(f_name))
 
     def create_graph_figure(self, **kwargs) -> tuple[nx.Graph, dict]:
         # set attributes from kwargs, it updates any keywords that are passed to method
         self._set_attributes(**kwargs)
 
         matrix, selected_families_summary = self.get_coocurrence_matrix(**kwargs)
-        graph = self.get_graph_from_matrix(matrix, selected_families_summary, **kwargs)
+        graph = self.get_graph_from_matrix(matrix = matrix, 
+                                           selected_families_summary = selected_families_summary, 
+                                           **kwargs)
         
         if self.mode == 'coocurrence':
             title = 'Gene co-occurrence network'
@@ -383,31 +134,36 @@ class InteractiveFigure:
                                     **kwargs)
             title = 'Gene adjcency network'
         
-        if len(graph_coord) == 0:
-            graph_coord = nx.spring_layout(graph)
+        if len(self.graph_coord) == 0:
+            self.graph_coord = nx.spring_layout(graph)
         
-        node_data, node_tooltips = self.create_node_features(node_graph_coord=graph_coord, graph=graph, **kwargs)
+        node_data, node_tooltips = self.create_node_features(node_graph_coords=self.graph_coord, 
+                                                             graph=graph, **kwargs)
             
         if self.previous_net != '':
             x_range = self.previous_net.x_range
             y_range = self.previous_net.y_range
             
         else:
-            x_range = (min([graph_coord[node][0] for node in graph_coord])-0.5, 
-                       max([graph_coord[node][0] for node in graph_coord])+0.5)
-            y_range = (min([graph_coord[node][1] for node in graph_coord])-0.5, 
-                       max([graph_coord[node][1] for node in graph_coord])+0.5)
+            x_range = (min([self.graph_coord[node][0] for node in self.graph_coord])-0.5, 
+                       max([self.graph_coord[node][0] for node in self.graph_coord])+0.5)
+            y_range = (min([self.graph_coord[node][1] for node in self.graph_coord])-0.5, 
+                       max([self.graph_coord[node][1] for node in self.graph_coord])+0.5)
 
-        g = figure(width = self.mgc.plot_width, height = self.mgc.plot_height, x_range=x_range, y_range=y_range, title = title)
+        g = figure(plot_width = self.most_common_gc_figure.plot_width, 
+                   plot_height = self.most_common_gc_figure.plot_height, 
+                   x_range = x_range, y_range = y_range, title = title)
 
-        graph_renderer = from_networkx(graph, graph_coord, scale=1, center=(0, 0))
+        graph_renderer = from_networkx(graph, self.graph_coord, scale=1, center=(0, 0))
         graph_renderer.edge_renderer.glyph = MultiLine(line_width="line_width", line_color = "edge_color")
         graph_renderer.node_renderer.glyph = Circle(size=22, fill_color = "node_color")
         
         g.renderers.append(graph_renderer)
         
-        g.text('text_x', 'text_y', text = 'family', text_baseline="bottom", text_align="center", text_font_size = {'value': '6pt'}, source = node_data)
-        g.text('tm_text_x', 'tm_text_y', text = 'tm_text', text_color = "white", text_baseline="middle", text_align="center", text_font_size = {'value': '6pt'}, source = node_data)
+        g.text('text_x', 'text_y', text = 'family', text_baseline="bottom", text_align="center", 
+               text_font_size = {'value': '6pt'}, source = node_data)
+        g.text('tm_text_x', 'tm_text_y', text = 'tm_text', text_color = "white", text_baseline="middle", 
+               text_align="center", text_font_size = {'value': '6pt'}, source = node_data)
         g.circle('tm_text_x', 'tm_text_y', color = None, size = 22, source = node_data)
         
         g.add_tools(HoverTool(tooltips=node_tooltips))
@@ -425,7 +181,7 @@ class InteractiveFigure:
         g.grid.visible = False
         g.outline_line_width = 0
         
-        return g, graph_coord        
+        return g, self.graph_coord        
     
     def get_coocurrence_matrix(self, **kwargs) -> tuple[np.ndarray, dict]:
         # set attributes from kwargs, it updates any keywords that are passed to method
@@ -469,12 +225,12 @@ class InteractiveFigure:
         # set attributes from kwargs, it updates any keywords that are passed to method
         self._set_attributes(**kwargs)
 
-        G=nx.from_numpy_array(self.matrix)
+        G = nx.from_numpy_array(self.matrix)
 
         # take care of the edges
         edge_params = {'color': {}, 'weight': {}, 'line_width': {}}
-        edge_cmap = matplotlib.cm.get_cmap('Greys')
-        edge_norm = matplotlib.colors.Normalize(vmin = 0, vmax = 4)
+        edge_cmap = plt.get_cmap('Greys')
+        edge_norm = mcolors.Normalize(vmin = 0, vmax = 4)
 
         for start_node, end_node, params in G.edges(data=True):
             edge_color = edge_cmap(edge_norm(round(params['weight'])))
@@ -556,9 +312,8 @@ class InteractiveFigure:
                 'found_models': [],
                 'model_links': []}
         
-        for node in self.node_graph_coords:
-            
-            family = self.G.nodes[node]['node_label']
+        for node in self.node_graph_coords:            
+            family = self.graph.nodes[node]['node_label']
             coords = self.node_graph_coords[node]
             protein_name = self.families_summary[family]['name']
             
@@ -633,203 +388,7 @@ class InteractiveFigure:
                     ('Structural model found', '@found_models')] 
         
         return data, tooltips    
-    
-    def create_genomic_context_figure(self, **kwargs) -> figure:
-        # set attributes from kwargs, it updates any keywords that are passed to method
-        self._set_attributes(**kwargs)
-
-        p_tooltips, p_data, p_yyticklabels = self.create_genomic_context_features(**kwargs)
-
-        # the genomic_context figure
-        p = figure(plot_width=self.most_common_gc_figure.plot_width, 
-                   plot_height=self.syn_dendogram.height, 
-                   x_range = self.most_common_gc_figure.x_range, 
-                   y_range = self.syn_dendogram.y_range, 
-                   toolbar_location="left", 
-                   title = 'Representative genomic contexts (hover to get more information)')  
-
-        for i, xs in enumerate(p_data['xs']):
-            p.patch(xs, p_data['ys'][i], fill_color = p_data['facecolor'][i], 
-                    line_color = p_data['edgecolor'][i], line_width = 1)
-
-        p.patches('xs', 'ys', fill_color = None, line_color = None, line_width = 0, source = p_data, 
-                    hover_fill_color = 'white', hover_line_color = 'edgecolor', hover_fill_alpha = 0.5, 
-                    selection_fill_color='facecolor', selection_line_color='edgecolor',
-                    nonselection_fill_color='facecolor', nonselection_line_color='edgecolor', 
-                    nonselection_fill_alpha=0.2)
-
-        p.text('text_x', 'text_y', text = 'family', text_baseline="bottom", text_align="center", 
-               text_font_size = {'value': '6pt'}, source = p_data)
-        p.text('tm_text_x', 'tm_text_y', text = 'tm_text', text_color = "white", text_baseline="middle", 
-               text_align="center", text_font_size = {'value': '6pt'}, source = p_data)
-
-        # define yticks on the left
-        p.yaxis.ticker = [int(n) for n in list(p_yyticklabels.keys())]
-        p.yaxis.major_tick_line_color = None
-        p.yaxis.major_label_overrides = {int(i): p_yyticklabels[i] for i in [int(n) for n in p_yyticklabels.keys()]}
-        #	 p.yaxis.major_label_text_font_size = {'value': '8pt'}
-        #	 p.yaxis.major_label_text_font_style = 'italic'
-        p.yaxis.axis_line_width = 0
-
-        # define xticks
-        p.xaxis.axis_label = "Position relative to target (bp)"
-
-        # define general features
-        p.grid.visible = False
-        p.outline_line_width = 0
-
-        p.add_tools(HoverTool(tooltips=p_tooltips))
-        p.add_tools(TapTool(callback = OpenURL(url='@ncbi_link')))
-            
-        return p        
-    
-    def create_genomic_context_features(self, **kwargs) -> tuple[list, dict, dict]:
-        # set attributes from kwargs, it updates any keywords that are passed to method
-        self._set_attributes(**kwargs)
         
-        data = {'operon':[],
-                'target_id':[],
-                'ncbi_code':[],
-                'ncbi_link':[],
-                'assembly': [],
-                'name':[],
-                'family': [],
-                'superkingdom': [],
-                'phylum': [],
-                'class': [],
-                'order': [],
-                'genus': [],
-                'species': [],
-                'relative_start': [],
-                'relative_end': [],
-                'facecolor': [],
-                'edgecolor': [],
-                'linestyle': [],
-                'xs':[],
-                'ys':[],
-                'half_heights': [],
-                'text_x': [],
-                'text_y': [],
-                'tm_text_x': [],
-                'tm_text_y': [],
-                'tm_text': [],
-                'tm_pred_text': []}
-        
-        yyticklabels = []
-        yys = []
-        y_step = self.syn_den_data['y'][1] - self.syn_den_data['y'][0]
-        y_half_height = y_step/4
-        
-        for i, current_target in enumerate(self.syn_den_data['leaf_label']):
-            operon = [operon for operon in self.operons if current_target in self.operons[operon]['target_members']][0]
-            current_assembly = self.all_syntenies[current_target]['assembly_id'][1]
-            current_species = self.all_syntenies[current_target]['species']
-            current_genomic_context_block = self.all_syntenies[current_target]['flanking_genes']
-            current_species = self.all_syntenies[current_target]['species']
-            current_reference_family = self.all_syntenies[current_target]['target_family']
-            
-            curr_y = self.syn_den_data['y'][i]
-
-            for j, flanking_gene in enumerate(current_genomic_context_block['ncbi_codes']):
-                family = current_genomic_context_block['families'][j]
-                name = current_genomic_context_block['names'][j]
-                gene_dx = current_genomic_context_block['relative_ends'][j] - \
-                        current_genomic_context_block['relative_starts'][j]+1
-                gene_direction = current_genomic_context_block['directions'][j]
-
-                if gene_direction == '-':
-                    gene_x_tail = current_genomic_context_block['relative_ends'][j]
-                    gene_dx = gene_dx*(-1)
-                    gene_x_head = gene_x_tail + gene_dx
-                    gene_x_head_start = gene_x_head+100
-                    text_x = gene_x_tail - (gene_x_tail-gene_x_head_start)/2
-                else:
-                    gene_x_tail = current_genomic_context_block['relative_starts'][j]
-                    gene_x_head = gene_x_tail + gene_dx
-                    gene_x_head_start = gene_x_head-100
-                    text_x = gene_x_tail + (gene_x_head_start-gene_x_tail)/2
-
-                if family == 0:
-                    facecolor = self.family_colors[family]['Color (RGBA)']
-                    edgecolor = self.family_colors[family]['Line color']
-                    linestyle = self.family_colors[family]['Line style']
-                else:
-                    facecolor = self.family_colors[family]['Color (RGBA)']
-                    edgecolor = self.family_colors[family]['Line color']
-                    linestyle = self.family_colors[family]['Line style'] 
-                    
-                data['operon'].append(operon)
-                data['target_id'].append(current_target)
-                data['ncbi_code'].append(flanking_gene)
-                data['assembly'].append(current_assembly)
-                data['name'].append(name)
-                data['relative_start'].append(format(gene_x_tail, ',d'))
-                data['relative_end'].append(format(gene_x_head, ',d'))
-                data['facecolor'].append(facecolor)
-                data['edgecolor'].append(edgecolor)
-                data['linestyle'].append(linestyle)
-                data['xs'].append([gene_x_tail, gene_x_tail, gene_x_head_start, gene_x_head, gene_x_head_start])
-                data['ys'].append([curr_y-y_half_height, curr_y+y_half_height, curr_y+y_half_height, curr_y, curr_y-y_half_height])
-                data['half_heights'].append(y_half_height)
-                data['text_x'].append(text_x)
-                data['text_y'].append(curr_y+y_half_height)
-                data['ncbi_link'].append('https://www.ncbi.nlm.nih.gov/protein/{}'.format(flanking_gene))
-                data['tm_text_x'].append(text_x)
-                data['tm_text_y'].append(curr_y)
-                
-                if 'TM_annotations' in current_genomic_context_block:
-                    tm_annotation = current_genomic_context_block['TM_annotations'][j]
-                    if tm_annotation == 'TM':
-                        data['tm_pred_text'].append('Yes')
-                    elif tm_annotation == 'SP':
-                        data['tm_pred_text'].append('Contains signal peptide')
-                    else:
-                        data['tm_pred_text'].append('No')
-                else:
-                    tm_annotation = ''
-                    data['tm_pred_text'].append('n.a.')
-                    
-                data['tm_text'].append(tm_annotation)
-                                    
-                if family != 0 and family != self.reference_family and family < 10000:
-                    data['family'].append(family)
-                else:
-                    data['family'].append(str(''))
-                    
-                data['species'].append(current_species)
-                for level in ['superkingdom', 'phylum', 'class', 'order', 'genus']:
-                    data[level].append(self.syn_den_data[level][i])
-            
-            if self.legend_mode in ['superkingdom', 'phylum', 'class', 'order', 'genus', 'species']:
-                label = data[self.legend_mode][-1]
-                if label == []:
-                    label = 'n.a'
-                yyticklabels.append(label)
-            else:
-                yyticklabels.append('{} | {}'.format(current_target, operon))
-                
-            yys.append(curr_y)
-            
-        yyticklabels = {int(yys[i]): yyticklabels[i] for i in range(len(yyticklabels))}
-
-        tooltips = [('GC type', "@operon"),
-                    ('InputID', "@target_id"),
-                    ('EntrezID', '@ncbi_code'),
-                    ('Genome assembly', '@assembly'),
-                    ('Gene relative start', '@relative_start'),
-                    ('Gene relative end', '@relative_end'),
-                    ("Protein name", "@name"),
-                    ("Protein family code", "@family"),
-                    ("Predicted membrane protein", "@tm_pred_text"),
-                    ('Superkingdom', '@superkingdom'),
-                    ('Phylum', '@phylum'),
-                    ('Class', '@class'),
-                    ('Order', '@order'),
-                    ('Genus', '@genus'),
-                    ("Species", "@species")] 
-            
-        return tooltips, data, yyticklabels    
-    
     def create_legend_figure(self, **kwargs) -> figure:
         # set attributes from kwargs, it updates any keywords that are passed to method
         self._set_attributes(**kwargs)        

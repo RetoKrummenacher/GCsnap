@@ -20,18 +20,18 @@ from bokeh.colors import RGB
 from bokeh.models import HoverTool, TapTool, LassoSelectTool, Range1d, LinearAxis, WheelZoomTool, Circle, MultiLine, Panel, Tabs
 from bokeh.models import ColumnDataSource, DataTable, DateFormatter, TableColumn, Legend, HTMLTemplateFormatter
 from bokeh.models.callbacks import OpenURL
-from bokeh.models.graphs import from_networkx, NodesAndLinkedEdges
 from bokeh.models.widgets import Div
 from bokeh.layouts import row, column
 
 from gcsnap.configuration import Configuration
 from gcsnap.genomic_context import GenomicContext
-from gcsnap.figures import Figures
-from gcsnap.mmseqs_cluster import MMseqsClusters
+from gcsnap.figure import Figure
+from gcsnap.mmseqs_cluster import MMseqsCluster
 from gcsnap.rich_console import RichConsole
 
 class AdvancedInteractiveFigure:
-    def __init__(self, config: Configuration, gc: GenomicContext, out_label: str, ref_family: str, family_colors: dict):
+    def __init__(self, config: Configuration, gc: GenomicContext, out_label: str, 
+                 ref_family: str, family_colors: dict, starting_directory: str):
 
         # Extract parameters from config and gc
         kwargs = {k: v['value'] for k, v in config.arguments.items()}
@@ -41,11 +41,13 @@ class AdvancedInteractiveFigure:
             'gc': gc,
             'operons': gc.get_selected_operons(),
             'most_populated_operon': gc.get_most_populated_operon(),
-            'synthenise': gc.get_synthenise(),
+            'syntenies': gc.get_syntenies(),
             'families_summary': gc.get_families(),
             'taxonomy': gc.get_taxonomy(),
+            'input_targets': gc.get_curr_targets(),            
             'reference_family': ref_family,
             'family_colors': family_colors,
+            'starting_directory': starting_directory
         })
         # change sort_mode and targets if needed
         if kwargs['in_tree'] is not None:
@@ -70,104 +72,124 @@ class AdvancedInteractiveFigure:
         kwargs = self.__dict__.copy()
 
         with self.console.status('Making advanced interactive figure summary page.'):        
-            # Create the dataframe with all data used to plot. it allows for cross interativity between plots
-            cluster_colors = self.define_operons_cluster(cluster = self.operons.keys(), 
-                                                        mode = 'bokeh', cmap = 'gist_rainbow')
-            scatter_data = self.create_data_structure(cluster_colors = cluster_colors,
-                                                    **kwargs)
-            
-            # Plot the scatter of the operons PaCMAP coordinates
-            operons_scatter = self.create_operons_clusters_scatter(scatter_data = scatter_data,**kwargs)
-            # Create network of operon types similarities (based on the centroids in PaCMAP space and the minimum distance between cluster members)
-            operons_network, operons_distance_matrix = self.create_avg_operons_clusters_network(
-                                operons_scatter = operons_scatter, scatter_data = scatter_data, 
-                                **kwargs)
-            
-            # Plot the CLANS map of the input target sequences if given
-            clans_scatter = self.create_clans_map_scatter(scatter_data=scatter_data, **kwargs)
-            scatter_row = gridplot([[operons_scatter, operons_network, clans_scatter]], merge_tools = True)
-
-            # Now create two tabs
-            all_tabs = []
-
-            # 1. The tab of species (i.e. a table where each line corresponds to an input target and includes the taxonomy information as well as the cluster type it belongs to)
-            targets_table = self.create_targets_summary_table(**kwargs)
-            all_tabs.append(Panel(child = targets_table, title = 'Input targets summary'))
-
-            # 2. The tab the shows the gene composition of each cluster type, sorted by similarity and connected by a cladogram build from the 
-            # distance matrix used to build the network above
-
-            # Make the dendogram
-            oprn_dendogram, oprn_den_data = Figures.make_dendogram_figure(show_leafs = False, 
-                                                    input_targets = None,                                                                        
-                                                    height_factor = 25*1.2, 
-                                                    sort_mode = 'operon clusters', 
-                                                    distance_matrix=(1-operons_distance_matrix), 
-                                                    labels=sorted([i for i in self.operons if '-' not in i]), 
-                                                    colors=cluster_colors,
-                                                    **kwargs)
-        
-            family_freq_figure = self.create_family_frequency_per_operon_figure(oprn_dendogram = oprn_dendogram, 
-                                                                        oprn_den_data = oprn_den_data, 
-                                                                        height_factor = 25*1.2, 
-                                                                        min_freq = self.min_family_freq_accross_contexts/100
-                                                                        **kwargs)
-            
-            gc_row = gridplot([[oprn_dendogram, family_freq_figure]], merge_tools = True)
-            all_tabs.append(Panel(child = gc_row, title = 'Genomic contexts clusters hierarchy'))
-
-            all_tabs = Tabs(tabs=all_tabs)
-            grid = gridplot([[scatter_row],[all_tabs]], merge_tools = False)
-
-            # output to static HTML file
-            output_file("{}/{}_advanced_operons_output_summary.html".format(os.getcwd(), self.out_label))
-            save(grid)        
+            f_name = self.create_interactive_output_html(**kwargs)
+        self.console.print_info('Summary visualization created in {}'.format(f_name))       
 
         with self.console.status('Making advanced interactive figure per operon type page.'):           
-            for operon_type in sorted(self.operons.keys()):
-                curr_operon = {operon_type: self.operons[operon_type]}
+            self.make_advanced_operon_interactive_output(**kwargs)
+        f_name = '{}_advanced_operons_interactive_output_??.html'.format(self.out_label)                    
+        self.console.print_info('Operon visualization created in {}'.format(f_name))    
 
-                print(' ... ... {}'.format(operon_type))
+    def create_interactive_output_html(self, **kwargs) -> str:
+        self._set_attributes(**kwargs)
 
-                if len(curr_operon[operon_type]['target_members']) > 1:
-                    
-                    all_tabs = []
+        # Create the dataframe with all data used to plot. it allows for cross interativity between plots
+        cluster_colors = self.define_operons_cluster(cluster = self.operons.keys(), 
+                                                    mode = 'bokeh', cmap = 'gist_rainbow')
+        scatter_data = self.create_data_structure(cluster_colors = cluster_colors,
+                                                **kwargs)
+        
+        # Plot the scatter of the operons PaCMAP coordinates
+        operons_scatter = self.create_operons_clusters_scatter(scatter_data = scatter_data,**kwargs)
+        # Create network of operon types similarities (based on the centroids in PaCMAP space and the minimum distance between cluster members)
+        operons_network, operons_distance_matrix = self.create_avg_operons_clusters_network(
+                            operons_scatter = operons_scatter, scatter_data = scatter_data, 
+                            **kwargs)
+        
+        # Plot the CLANS map of the input target sequences if given
+        clans_scatter = self.create_clans_map_scatter(scatter_data=scatter_data, **kwargs)
+        scatter_row = gridplot([[operons_scatter, operons_network, clans_scatter]], merge_tools = True)
 
-                    div = Div(text="""<b>Detailed view of individual genomic context types:</b></br></br>
-                                Below you find multiple <b>tabs</b> coresponding to each individual
-                                cluster you see on the scatter plot above.</br>
-                                <b>Click</b> on the tab to have a detailed view of the different genomic
-                                context clusters, clustered based on the similarity of their family 
-                                composition.</br></br>
-                                The depiction is interactive, <b>hover</b> and <b>click</b> to get more information!</br></br>  """) 
+        # Now create two tabs
+        all_tabs = []
 
-                    # Work on most conserved genomic context figure
-                    most_common_gc_figure = create_most_common_genomic_features_figure(curr_operon, all_syntenies, families_summary, reference_family = reference_family, family_colors = family_colors, n_flanking5=n_flanking5, n_flanking3=n_flanking3)
+        # 1. The tab of species (i.e. a table where each line corresponds 
+        # to an input target and includes the taxonomy information as well as the cluster type it belongs to)
+        targets_table = self.create_targets_summary_table(**kwargs)
+        all_tabs.append(Panel(child = targets_table, title = 'Input targets summary'))
 
-                    # Work on dendogram for the genomic context block
-                    syn_dendogram, syn_den_data = Figures.make_dendogram_figure(show_leafs = False,                                                                        
-                                                                        height_factor = 25*1.2, 
-                                                                        distance_matrix = None, 
-                                                                        labels = None, 
-                                                                        colors = None,
-                                                                        **kwargs)
-                    # Work on the genomic context block
-                    genomic_context_figure = create_genomic_context_figure(curr_operon, all_syntenies, family_colors, syn_den_data, syn_dendogram, most_common_gc_figure, reference_family, legend_mode = 'species', height_factor = 25*1.2)
-                    
-                    # Make the table of family frequencies
-                    family_table, table_div = create_families_frequency_table(curr_operon, families_summary)
+        # 2. The tab the shows the gene composition of each cluster type, 
+        # sorted by similarity and connected by a cladogram build from the 
+        # distance matrix used to build the network above
 
-                    gc_row = row(syn_dendogram, genomic_context_figure)
+        # Make the dendogram
+        oprn_dendogram, oprn_den_data = Figure.make_dendogram_figure(show_leafs = False, 
+                                                input_targets = None,                                                                        
+                                                height_factor = 25*1.2, 
+                                                sort_mode = 'operon clusters', 
+                                                distance_matrix=(1-operons_distance_matrix), 
+                                                labels=sorted([i for i in self.operons if '-' not in i]), 
+                                                colors=cluster_colors,
+                                                **kwargs)
+    
+        family_freq_figure = self.create_family_frequency_per_operon_figure(oprn_dendogram = oprn_dendogram, 
+                                                                    oprn_den_data = oprn_den_data, 
+                                                                    height_factor = 25*1.2, 
+                                                                    min_freq = self.min_family_freq_accross_contexts/100
+                                                                    **kwargs)
+        
+        gc_row = gridplot([[oprn_dendogram, family_freq_figure]], merge_tools = True)
+        all_tabs.append(Panel(child = gc_row, title = 'Genomic contexts clusters hierarchy'))
 
-                    grid = gridplot([[gc_row],[table_div],[family_table]], merge_tools = True)
-                    curr_tab = Panel(child = grid, title = operon_type)
-                    all_tabs.append(curr_tab)
+        all_tabs = Tabs(tabs=all_tabs)
+        grid = gridplot([[scatter_row],[all_tabs]], merge_tools = False)
 
-                    all_tabs = Tabs(tabs=all_tabs)
-                    grid = gridplot([[div], [all_tabs]], merge_tools = True)
+        # output to static HTML file
+        f_name = '{}_advanced_operons_output_summary.html'.format(self.out_label)
+        output_file(os.path.join(os.getcwd(),f_name))
+        save(grid)           
+        return f_name
+    
+    def create_advanced_operon_interactive_output(self, **kwargs) -> None:
+        self._set_attributes(**kwargs)
 
-                    output_file("{}/{}_advanced_operons_interactive_output_{}.html".format(os.getcwd(), label, operon_type))
-                    save(grid)                
+        for operon_type in sorted(self.operons.keys()):
+            curr_operon = {operon_type: self.operons[operon_type]}
+
+            if len(curr_operon[operon_type]['target_members']) > 1:                
+                all_tabs = []
+
+                div = Div(text="""<b>Detailed view of individual genomic context types:</b></br></br>
+                            Below you find multiple <b>tabs</b> coresponding to each individual
+                            cluster you see on the scatter plot above.</br>
+                            <b>Click</b> on the tab to have a detailed view of the different genomic
+                            context clusters, clustered based on the similarity of their family 
+                            composition.</br></br>
+                            The depiction is interactive, <b>hover</b> and <b>click</b> to get more information!</br></br>  """) 
+
+                # Work on most conserved genomic context figure
+                most_common_gc_figure = Figure.create_most_common_genomic_features_figure(
+                                            operons = curr_operon, **kwargs) 
+                # Work on dendogram for the genomic context block
+                syn_dendogram, syn_den_data = Figure.make_dendogram_figure(show_leafs = False,                                                                        
+                                                                    height_factor = 25*1.2, 
+                                                                    distance_matrix = None, 
+                                                                    labels = None, 
+                                                                    colors = None,
+                                                                    **kwargs)
+                # Work on the genomic context block
+                genomic_context_figure = Figure.create_genomic_context_figure(
+                                                most_common_gc_figure = most_common_gc_figure,
+                                                syn_dendogram = syn_dendogram,
+                                                syn_den_data = syn_den_data,
+                                                gc_legend_mode = 'species',
+                                                **kwargs)
+                
+                # Make the table of family frequencies
+                family_table, table_div = self.create_families_frequency_table(**kwargs)
+
+                gc_row = row(syn_dendogram, genomic_context_figure)
+
+                grid = gridplot([[gc_row],[table_div],[family_table]], merge_tools = True)
+                curr_tab = Panel(child = grid, title = operon_type)
+                all_tabs.append(curr_tab)
+
+                all_tabs = Tabs(tabs=all_tabs)
+                grid = gridplot([[div], [all_tabs]], merge_tools = True)
+
+                f_name = '{}_advanced_operons_interactive_output_{}.html'.format(self.out_label, operon_type)
+                output_file(os.path.join(os.getcwd(),f_name))
+                save(grid)
 
     def define_operons_colors(self, **kwargs) -> dict:
         self._set_attributes(**kwargs)
@@ -371,15 +393,20 @@ class AdvancedInteractiveFigure:
                     else:
                         in_syntenies[target]['flanking_genes'][key] = [self.syntenies[target]
                                                                        ['flanking_genes'][key][context_idx]]
-
-        #mmseqs = MMseqsClusters(self.config, self.out_label, self.clans_file)
         # TODO: What is going on here. If done again, keep old results?
-        distance_matrix, ordered_ncbi_codes = compute_all_agains_all_distance_matrix(in_syntenies, out_label = '{}_targets'.format(out_label), num_threads = num_threads, num_alignments = num_alignments, max_evalue = max_evalue, num_iterations = num_iterations, min_coverage = min_coverage, method = method, mmseqs = mmseqs, blast = blast, default_base = default_base, tmp_folder = tmp_folder)	
+        # replace syntenies in gc with the new ones
+        gc_temp = self.gc.copy()
+        gc_temp.syntenise = in_syntenies
+        mmseqs = MMseqsCluster(self.config, gc_temp, self.out_label)
+        mmseqs.run()
+        distance_matrix = mmseqs.get_distance_matrix()
+        ordered_ncbi_codes = mmseqs.get_fasta_order()
 
         paCMAP_embedding = pacmap.PaCMAP(n_components = 2)
         paCMAP_coordinat = paCMAP_embedding.fit_transform(distance_matrix)
 
-        clans_coords = {ordered_ncbi_codes[i]: {'xy': paCMAP_coordinat[i]} for i in range(len(paCMAP_coordinat))}
+        clans_coords = {ordered_ncbi_codes[i]: {'xy': paCMAP_coordinat[i]} 
+                        for i in range(len(paCMAP_coordinat))}
 
         return clans_coords    
     
@@ -388,10 +415,11 @@ class AdvancedInteractiveFigure:
 
         p_tooltips, p_data = self.scatter_data
 
-        p = figure(title = 'Genomic context types/clusters', plot_width=500, plot_height=500)
+        p = figure(title = 'Genomic context types/clusters', width=500, height=500)
         p.add_layout(Legend(orientation="horizontal"), 'above')
 
-        p.circle('x', 'y', size='size', line_color='edgecolor', fill_color='facecolor', alpha=1, source = p_data)
+        p.circle('x', 'y', size='size', line_color='edgecolor', fill_color='facecolor', 
+                 alpha=1, source = p_data)
 
         p.xaxis.major_tick_line_color = None  # turn off x-axis major ticks
         p.xaxis.minor_tick_line_color = None  # turn off x-axis minor ticks
@@ -424,7 +452,8 @@ class AdvancedInteractiveFigure:
         p_tooltips, p_data = self.scatter_data
 
         similarity_matrix, operons_labels = self.get_avgoperons_distance_matrix(**kwargs)
-        similarity_matrix = self.normalize_matrix(similarity_matrix = similarity_matrix, power = 30, **kwargs)
+        similarity_matrix = self.normalize_matrix(similarity_matrix = similarity_matrix, 
+                                                  power = 30, **kwargs)
 
         edge_tooltips, edge_data = self.create_edges_data(scatter_data = p_data, 
                                                           operons_labels = operons_labels,
@@ -432,13 +461,12 @@ class AdvancedInteractiveFigure:
                                                           **kwargs)
 
         p = figure(title = 'Genomic context types/clusters similarity network', 
-                   plot_width=self.operons_scatter.plot_width,
+                   plot_width=self.operons_scatter.width,
                    plot_height=self.operons_scatter.height, 
                    x_range = self.operons_scatter.x_range, 
                    y_range = self.operons_scatter.y_range)
         p.add_layout(Legend(orientation="horizontal"), 'above')
 
-    #	 p.circle('x', 'y', size='size', line_color='edgecolor', fill_color='facecolor', legend_field='type', alpha=1, source = p_data)
         p.multi_line('x', 'y', color='color', alpha='alpha', source=edge_data, name='edges')
         p.circle('avg_x', 'avg_y', size='node_size', line_color='edgecolor', 
                  fill_color='facecolor', alpha=1, source = p_data, name='nodes')
@@ -528,7 +556,7 @@ class AdvancedInteractiveFigure:
 
         p_tooltips, p_data = self.scatter_data
 
-        p = figure(title = 'Sequence similarity cluster (CLANS) map', plot_width=500, plot_height=500)
+        p = figure(title = 'Sequence similarity cluster (CLANS) map', width=500, height=500)
         p.add_layout(Legend(orientation="horizontal"), 'above')
 
         p.circle('clans_x', 'clans_y', size='size', line_color='edgecolor', 
@@ -828,4 +856,113 @@ class AdvancedInteractiveFigure:
                     ('GO terms', '@go_terms'),
                     ('Function', '@function')]
 
-        return tooltips, data, yyticklabels        
+        return tooltips, data, yyticklabels     
+
+    def create_families_frequency_table(self, **kwargs) -> tuple:
+        self._set_attributes(**kwargs)
+        
+        t_data, t_columns = self.create_family_table_data(**kwargs)        
+        t = DataTable(source=ColumnDataSource(t_data), columns=t_columns, width=2250, height=300)
+        div = Div(text="""<b>Represented families:</b>""") 
+        
+        return t, div       
+
+    def create_family_table_data(self, **kwargs) -> tuple:
+        self._set_attributes(**kwargs)
+            
+        data = {'Family': [],
+                'Name': [],
+                'UniprotKB': [],
+                'Frequency': [],
+                'Keywords': [],
+                'GO terms: Molecular function (F)': [],
+                'GO terms: Cellular component (C)': [],
+                'GO terms: Biological process (P)': [],
+                'Function': [],
+                'Predicted membrane protein': [],
+                'Structure': []}
+        
+        families_frequencies, number_of_operons = self.compute_families_frequencies(**kwargs)
+        
+        for family in families_frequencies:  
+            if family > 0 and family < 10000:
+                data['Family'].append(family)
+                data['Frequency'].append(round(families_frequencies[family]*100/number_of_operons, 1))
+                data['Name'].append(self.families_summary[family]['name'])
+                uniprot_code = 'nan'
+                
+                if 'function' in self.families_summary[family]:
+                    uniprot_code = self.families_summary[family]['uniprot_code']
+                    if 'TM_topology' in self.families_summary[family]['function']:
+                        tm_type = self.families_summary[family]['function']["TM_topology"]
+                        keywords = ', '.join(sorted(self.families_summary[family]['function']['Keywords']))
+                        go_terms = sorted(self.families_summary[family]['function']['GO_terms'])
+                        function = self.families_summary[family]['function']['Function_description']
+
+                        if len(tm_type) > 0:
+                            tm_mode = 'Yes'
+                        else:
+                            tm_mode = 'No'
+                            
+                        f_go = '; '.join([go for go in go_terms if go.startswith('F:')])
+                        c_go = '; '.join([go for go in go_terms if go.startswith('C:')])
+                        p_go = '; '.join([go for go in go_terms if go.startswith('P:')])
+                
+                    else:
+                        tm_mode = ''
+                        keywords = ''
+                        f_go = '' 
+                        c_go = '' 
+                        p_go = '' 
+                        function = ''
+                else:
+                    tm_mode = 'n.a.'
+                    keywords = 'n.a.'
+                    f_go = 'n.a.' 
+                    c_go = 'n.a.' 
+                    p_go = 'n.a.'   
+                    function = 'n.a.'
+                
+                if 'structure' in self.families_summary[family]:
+                    structure = self.families_summary[family]['structure']
+                    if structure == '':
+                        structure = 'Click to model'
+                else:
+                    structure = 'n.a.'
+                
+                data['UniprotKB'].append(uniprot_code)
+                data['Keywords'].append(keywords)
+                data['GO terms: Molecular function (F)'].append(f_go)
+                data['GO terms: Cellular component (C)'].append(c_go)
+                data['GO terms: Biological process (P)'].append(p_go)
+                data['Function'].append(function)
+                data['Predicted membrane protein'].append(tm_mode)
+                data['Structure'].append(structure)
+        
+        columns = [TableColumn(field=i, title=i) if i not in ['Structure', 'UniprotKB']
+                    else TableColumn(field=i, title=i, formatter=HTMLTemplateFormatter(
+                        template='<a href="https://swissmodel.expasy.org/repository/uniprot/<%= UniprotKB %>"><%= value %></a>')) if i=='Structure'
+                    else TableColumn(field=i, title='Representative UniprotKB', 
+                             formatter=HTMLTemplateFormatter(
+                                 template='<a href="https://www.uniprot.org/uniprot/<%= value %>"><%= value %></a>'))  
+                    for i in data.keys()]
+        
+        data = pd.DataFrame(data).sort_values(by='Frequency', ascending=False)
+        
+        return data, columns
+    
+    def compute_families_frequencies(self, **kwargs) -> tuple:
+        self._set_attributes(**kwargs)
+
+        families_frequencies = {}
+        number_of_operons = 0
+        for operon_type in self.operons:
+            for i, target in enumerate(self.operons[operon_type]['target_members']):
+                number_of_operons += 1
+                for family in self.operons[operon_type]['operon_protein_families_structure'][i]:
+                    if family not in families_frequencies:
+                        families_frequencies[family] = 1
+                    else:
+                        families_frequencies[family] += 1
+
+        return families_frequencies, number_of_operons    

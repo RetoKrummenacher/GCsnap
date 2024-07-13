@@ -19,7 +19,7 @@ class GenomicContextFigure:
         self.gc = gc
         self.operons = gc.get_selected_operons()
         self.most_populated_operon = gc.get_most_populated_operon()
-        self.synthenise = gc.get_synthenise()
+        self.syntenies = gc.get_syntenies()
         self.families_summary = gc.get_families()
         self.reference_family = ref_family
         self.family_colors = family_colors
@@ -27,13 +27,15 @@ class GenomicContextFigure:
         self.console = RichConsole()
 
     def run(self) -> None:
-            try:
-                with self.console.status('Creating genomic context figures'):                
-                    self.draw_genomic_context()
-                    self.draw_genomic_context_legend()
-            except Exception as e:
-                self.console.print_warning('Images not created due to error.')
-                logger.warning('Error message: {}'.format(e))
+        try:
+            with self.console.status('Creating genomic context figures'):                
+                self.draw_genomic_context()
+                self.draw_genomic_context_legend()
+            f_name = '{}_genomic_context.{}'.format(self.out_label, self.out_format)
+            self.console.print_info('Genomic context figures created in {}'.format(f_name))
+        except Exception as e:
+            self.console.print_warning('Images not created due to error.')
+            logger.warning('Error message: {}'.format(e))
 
     def draw_genomic_context(self) -> None:
         curr_y_level = len(self.operons.keys())
@@ -108,6 +110,16 @@ class GenomicContextFigure:
         # format genomic_context side
         ax[0].set_xlim(min(all_xs)-100, max(all_xs)+100)
         ax[0].set_ylim(0, len(self.operons.keys())+1)
+
+        # TODO: Here 
+        #   File "C:\MT\GCsnap\gcsnap\figure_genomic_context.py", line 115, in draw_genomic_context
+        #     ax[0].set_yticklabels(yticklabels, fontsize = 10, horizontalalignment='left')
+        #   File "C:\Users\retok\miniconda3\envs\gcsnap\Lib\site-packages\matplotlib\axes\_base.py", line 74, in wrapper
+        #     return get_method(self)(*args, **kwargs)
+        #            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        #   File "C:\Users\retok\miniconda3\envs\gcsnap\Lib\site-packages\matplotlib\axis.py", line 2060, in set_ticklabels
+        #     raise ValueError(
+        # ValueError: The number of FixedLocator locations (3), usually from a call to set_ticks, does not match the number of labels (2).        
 
         ax[0].set_yticks(np.arange(0, len(yticklabels)+1, 1.0))
         ax[0].set_yticklabels(yticklabels, fontsize = 10, horizontalalignment='left')
