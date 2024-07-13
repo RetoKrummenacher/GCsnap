@@ -1470,9 +1470,9 @@ def map_taxonomy(arguments):
 
 				if mode == 'taxonomy':
 					if species.split()[0] == 'uncultured':
-					  genus = species.split()[1]
+						genus = species.split()[1]
 					else:
-					  genus = species.split()[0]
+						genus = species.split()[0]
 			   
 					taxsearch = Entrez.efetch(id = taxID, db = "taxonomy", retmode = "xml")
 					taxrecords = Entrez.parse(taxsearch)
@@ -1481,13 +1481,13 @@ def map_taxonomy(arguments):
 
 					for level in taxrecord[u"LineageEx"]:
 						if level[u"Rank"] == "superkingdom":
-						   superkingdom = level[u"ScientificName"]
+							superkingdom = level[u"ScientificName"]
 						elif level[u"Rank"] == "phylum":
-						   phylum = level[u"ScientificName"]
+							phylum = level[u"ScientificName"]
 						elif level[u"Rank"] == "class":
-						   taxclass = level[u"ScientificName"]
+							taxclass = level[u"ScientificName"]
 						elif level[u"Rank"] == "order":
-						   order = level[u"ScientificName"]
+							order = level[u"ScientificName"]
 
 					if phylum == 'na':
 						phylum = '{}_na'.format(superkingdom)
@@ -3653,22 +3653,22 @@ def create_families_frequency_table(operons, families_summary):
 #@Timer("get_ncbicodes_order_in_clans", text=lambda secs: f"Time to get ncbicodes order in clans: {format_timespan(secs)}")
 def get_ncbicodes_order_in_clans(clans_file):
    
-   ncbids_ordered = []
+	ncbids_ordered = []
 
-   count = 0
-   found_seq = False
-   with open(clans_file, 'r') as clans:
-	   for line in clans:
-		   if '<seq>' in line:
-			   	found_seq = True
-		   elif '</seq>' in line:
-			   	found_seq = False
-		   elif found_seq and line.startswith('>'):
-			   	line = line[1:]
-			   	ncbi_code = line.split(' ')[0].split(':')[0].split('|')[0].split('_#')[0].replace('>','').strip()
+	count = 0
+	found_seq = False
+	with open(clans_file, 'r') as clans:
+		for line in clans:
+			if '<seq>' in line:
+				found_seq = True
+			elif '</seq>' in line:
+				found_seq = False
+			elif found_seq and line.startswith('>'):
+				line = line[1:]
+				ncbi_code = line.split(' ')[0].split(':')[0].split('|')[0].split('_#')[0].replace('>','').strip()
 				ncbids_ordered.append(ncbi_code)
 			   
-   return ncbids_ordered
+	return ncbids_ordered
 
 #@Timer("get_clusters_from_clans", text=lambda secs: f"Time to get clusters from clans: {format_timespan(secs)}")
 def get_clusters_from_clans(clans_file, cluster_codes = None):
@@ -3938,7 +3938,7 @@ def find_and_add_protein_families(in_syntenies, out_label = None, num_threads = 
 				curr_numbers.append(protein_family)
 
 				if ncbi_code == in_syntenies[target]['assembly_id'][0]:
-				   in_syntenies[target]['target_family'] = protein_family
+					in_syntenies[target]['target_family'] = protein_family
 
 		curr_numbers = sorted(list(set(curr_numbers)))
 		for target in in_syntenies:
