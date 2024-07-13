@@ -1,6 +1,7 @@
 import os
 import gzip # to work with .gz
 import urllib.request
+import time
 
 from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole
@@ -62,8 +63,7 @@ class Assemblies:
         try:
             accession = self.get_assembly_accession(ncbi_code)
             assembly_url = self.get_assembly_url(accession)
-            assembly_file = self.download_gz_file(assembly_url)
-            lines = self.read_gz_file(assembly_file)
+            assembly_file, lines = self.download_and_read_gz_file(assembly_url)
             flanking_genes = self.parse_assembly(ncbi_code, lines)
             return {target: {'flanking_genes': flanking_genes,
                              'assembly_id':  [ncbi_code, accession, assembly_url]}}   
@@ -100,6 +100,19 @@ class Assemblies:
             raise WarningToLog('No url found for accession {}'.format(assembly_accession))
         return url      
         
+    def download_and_read_gz_file(self, url: str, retries: int = 3) -> tuple:
+        try:
+            full_path = self.download_gz_file(url)
+            content = self.read_gz_file(full_path)
+        except (urllib.error.URLError, EOFError) as e:        
+            if retries > 0:     
+                time.sleep(1)
+                full_path, content = self.download_and_read_gz_file(url, retries - 1)
+            else:
+                raise WarningToLog('Download failed for {} with error {}'.format(url, e))
+
+        return full_path, content
+
     def download_gz_file(self, url: str) -> str:
         assembly_label = url.split('/')[-1]  # e.g., GCF_000260135.1_ASM26013v1
         assembly_file_gz = '{}_genomic.gff.gz'.format(assembly_label)
@@ -117,7 +130,7 @@ class Assemblies:
 
         return full_path
 
-    def read_gz_file(self, file_path: str) -> str:
+    def read_gz_file(self, file_path: str) -> list:
         with gzip.open(file_path, 'rt', encoding='utf-8') as file:
             content = file.read()
         return content.splitlines()                
