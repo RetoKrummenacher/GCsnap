@@ -15,7 +15,8 @@ class GenomicContext:
         self.operon_types_summary = {}
         self.selected_operons = {}
         self.most_populated_operon = ''    
-        self.taxonomy = {}    
+        self.taxonomy = {}  
+        self.curr_targets = []  
         # get config arguments
         self.n_max_operons = config.arguments['n_max_operons']['value']
 
@@ -50,8 +51,10 @@ class GenomicContext:
             current |= v
             self.taxonomy[k] = current                  
 
+    def get_curr_targets(self) -> list:
+        return self.curr_targets
+    
     def get_families(self) -> dict:
-
         return self.families
     
     def get_syntenies(self) -> dict:
@@ -343,29 +346,31 @@ class GenomicContext:
         lines_to_write.append(header_line + '\n')
             
         # all paths from taxonomy
-        tax_search_dict = self.flatten_taxonomy(self.taxonomy)        
+        tax_search_dict = self.create_taxonomy_search_dict()        
         # all targets and the corresponding operon type
-        targets_operon_list = [(target, operon.split()[-2]) for operon in self.operon_types_summary 
-                        for target in self.operon_types_summary[operon]['target_members']]
+        targets_operon_list = [(target, operon.split()[-2]) for operon in self.selected_operons 
+                        for target in self.selected_operons[operon]['target_members']]
         
         for target, operon_type in targets_operon_list:
             # line space between the targets
             lines_to_write.append('\n')
             for i, prot_name in enumerate(self.syntenies[target]['flanking_genes']['names']):
-                line_to_write = '\t'.join([operon_type, 
-                                        target, 
-                                        self.syntenies[target]['assembly_id'][1], 
-                                        self.syntenies[target]['flanking_genes']['directions'][i], 
-                                        self.syntenies[target]['flanking_genes']['starts'][i], 
-                                        self.syntenies[target]['flanking_genes']['ends'][i],
-                                        self.syntenies[target]['flanking_genes']['relative_starts'][i], 
-                                        self.syntenies[target]['flanking_genes']['relative_ends'][i], 
-                                        self.syntenies[target]['flanking_genes']['families'][i], 
-                                        self.syntenies[target]['flanking_genes']['ncbi_codes'][i], 
-                                        self.syntenies[target]['flanking_genes']['names'][i]])
+                list_to_join = [operon_type, 
+                                target, 
+                                self.syntenies[target]['assembly_id'][1], 
+                                self.syntenies[target]['flanking_genes']['directions'][i], 
+                                str(self.syntenies[target]['flanking_genes']['starts'][i]), 
+                                str(self.syntenies[target]['flanking_genes']['ends'][i]),
+                                str(self.syntenies[target]['flanking_genes']['relative_starts'][i]), 
+                                str(self.syntenies[target]['flanking_genes']['relative_ends'][i]), 
+                                str(self.syntenies[target]['flanking_genes']['families'][i]), 
+                                self.syntenies[target]['flanking_genes']['ncbi_codes'][i], 
+                                self.syntenies[target]['flanking_genes']['names'][i]]
+                line_to_write = '\t'.join(list_to_join)
                 if 'TM_annotations' in self.syntenies[target]['flanking_genes']:
                     line_to_write += '\t' + self.syntenies[target]['flanking_genes']['TM_annotations'][i]
                 # add taxonomy information by searching the dictionary
+                print(tax_search_dict.get(target))
                 line_to_write += '\t' + '\t'.join(tax_search_dict.get(target)) + '\n'
                 lines_to_write.append(line_to_write)
 
@@ -394,7 +399,7 @@ class GenomicContext:
         """        
         flat_list = []
         for key, value in taxonomy.items():
-            if isinstance(value, dict):
+            if isinstance(value, dict) and 'target_members' not in value:
                 flat_list.extend(self.flatten_taxonomy(value, parent_keys + [key]))
             else:
                 flat_list.append(parent_keys + [key, value])
@@ -412,5 +417,4 @@ class GenomicContext:
                 'sequences': [],
                 'species': None,
                 'taxID': None,
-                'families': [],
-                'TM_annotations': []}
+                'families': []}
