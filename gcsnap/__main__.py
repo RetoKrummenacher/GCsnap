@@ -1,4 +1,5 @@
 import os
+import shutil
 # TODO: For faster debugging
 import pickle
 
@@ -24,64 +25,59 @@ def main():
     console.print_title()
 
     # 1. Parse configuration and arguments
-    with console.status('Parsing CLI arguments and config.yaml'):
-        config = Configuration()
-        config.parse_arguments()
+    config = Configuration()
+    config.parse_arguments()
 
     # 2. parse targets
-    # TODO: Implement clans support
-    with console.status('Parsing targets'):
-        targets = Target(config)
-        targets.run()
+    targets = Target(config)
+    targets.run()
 
     # 3. Iterate over each target list
     for out_label in targets.targets_lists:
         # all execution conditions depending on arguments from CLI or config.yaml
         # are handled in the classes themselves
 
-        # TODO: For debugging
-        gc = GenomicContext(config, out_label)
-        working_dir = os.path.join(starting_directory, out_label)        
+        # A. Prework 
+        working_dir = os.path.join(starting_directory, out_label)
+        if not os.path.isdir(working_dir):
+            os.mkdir(working_dir)
         os.chdir(working_dir)
-
-        # # A. Create working directory
-        # working_dir = os.path.join(starting_directory, out_label)
-        # if not os.path.isdir(working_dir):
-        #     os.mkdir(working_dir)
-        # os.chdir(working_dir)
-        # targets_list = targets.targets_lists[out_label]
-
+        targets_list = targets.targets_lists[out_label]
+        if len(targets_list) < 2:
+            console.print_warning('GCsnap was asked to analyze only one target')
+            console.print_skipped_step('Skipping target {}'.format(out_label))
+            continue
+        else:
+            console.print_working_on('Analyzing target list: {}'.format(out_label))
+        # write configuration to log file
+        config.write_configuration_yaml_log('{}_input_arguments.log'.format(out_label))
+        # Datastructure to store all information
+        gc = GenomicContext(config, out_label)
+        # add targets to genomic context
+        gc.targets = targets_list
 
         # # B. Map sequences to UniProtKB-AC and NCBI EMBL-CDS
         # # a). Map all targets to UniProtKB-AC
         # mappingA = SequenceMapping(config, targets_list, 'UniProtKB-AC')
         # mappingA.run()
-
         # # b) Map all to RefSeq
         # mappingB = SequenceMapping(config, mappingA.get_codes(), 'RefSeq')
         # mappingB.run()
         # # merge them to A (only if A is not nan)
         # mappingA.merge_mapping_dfs(mappingB.mapping_df)
-
-
         # # c). Map all targets to NCBI EMBL-CDS
         # mappingC = SequenceMapping(config, mappingA.get_codes(), 'EMBL-CDS')
         # mappingC.run()
         # # merge the two mapping results dataframes
         # mappingA.merge_mapping_dfs(mappingC.mapping_df)
-
         # # create targets and ncbi_columns and log not found targets
         # mappingA.finalize()
         # targets_and_ncbi_codes = mappingA.get_targets_and_ncbi_codes()  
 
-
         # # C. Find assembly accession, download and parse assemblies
         # assemblies = Assemblies(config, targets_and_ncbi_codes)
         # assemblies.run()
-        # # Datastructure to store all information
-        # gc = GenomicContext(config, out_label)
         # gc.update_syntenies(assemblies.get_flanking_genes())
-
 
         # # D. Add sequence information to flanking genes
         # sequences = Sequences(config, gc)
@@ -89,59 +85,68 @@ def main():
         # gc.update_syntenies(sequences.get_sequences())
         # gc.write_syntenies_to_json('genomic_context_information.json')
 
+        if not config.arguments['collect_only']['value']:
+            # # Ea) Add protein families
+            # families = Families(config, gc, out_label)
+            # families.run()
+            # gc.update_syntenies(families.get_families())
+            # gc.create_and_write_families_summary()
 
-        # # Ea) Add protein families
-        # families = Families(config, gc, out_label)
-        # families.run()
-        # gc.update_syntenies(families.get_families())
-        # gc.create_and_write_families_summary()
+            # # Eb). Add functions and structures to families
+            # # execution conditions handeled in the class
+            # ffs = FamiliesFunctionsStructures(config, gc)
+            # ffs.run()
+            # gc.update_families(ffs.get_annotations_and_structures())
+            # gc.write_families_to_json('protein_families_summary.json')
+        
+            # # F. Find and add operons
+            # operons = Operons(config, gc, out_label)
+            # operons.run()
+            # gc.update_syntenies(operons.get_operons())
+            # gc.create_and_write_operon_types_summary()
+            # gc.find_most_populated_operon_types()   
 
-        # # Eb). Add functions and structures to families
-        # # execution conditions handeled in the class
-        # ffs = FamiliesFunctionsStructures(config, gc)
-        # ffs.run()
-        # gc.update_families(ffs.get_annotations_and_structures())
-        # gc.write_families_to_json('protein_families_summary.json')
-       
+            # # G. Get taxonomy information
+            # taxonomy = Taxonomy(config, gc)
+            # taxonomy.run()
+            # gc.update_taxonomy(taxonomy.get_taxonomy())
+            # gc.write_taxonomy_to_json('taxonomy.json')     
+  
+            # # H. Annotate TM 
+            # tm = TMsegments(config, gc, out_label)
+            # tm.run()
+            # gc.update_syntenies(tm.get_annotations())
 
-        # # F. Find and add operons
-        # operons = Operons(config, gc, out_label)
-        # operons.run()
-        # gc.update_syntenies(operons.get_operons())
-        # gc.create_and_write_operon_types_summary()
-        # gc.find_most_populated_operon_types()   
+            # # TODO: For debugging
+            # with open('gc.pkl', 'wb') as file:
+            #     pickle.dump(gc, file)  
+
+            # TODO: For debugging        
+            with open('gc.pkl', 'rb') as file:
+                gc = pickle.load(file) 
+             
+            # I. Produce genomic context figures
+            figures = Figures(config, gc, out_label, starting_directory)      
+            figures.run()
+
+            # G. Write output to summary file
+            gc.write_summary_table('{}_summary_table.tab'.format(out_label))
+            gc.write_families_to_json('protein_families_summary.json')
 
 
-        # # G. Get taxonomy information
-        # taxonomy = Taxonomy(config, gc)
-        # taxonomy.run()
-        # gc.update_taxonomy(taxonomy.get_taxonomy())
-        # gc.write_taxonomy_to_json('taxonomy.json')
 
+        
+        else:
+            console.print_skipped_step('GCsnap was asked to collect genomic context only. Will not proceed further.')
 
-
-        # TODO: For debugging
-        with open('gc.pkl', 'rb') as file:
-            gc = pickle.load(file)  
-
-        # H. Annotate TM 
-        tm = TMsegments(config, gc, out_label)
-        tm.run()
-        gc.update_syntenies(tm.get_annotations())
- 
-        with open('gc.pkl', 'wb') as file:
-            pickle.dump(gc, file)    
-
-        # Ia). Produce genomic context figures
-        figures = Figures(config, gc, out_label, starting_directory, targets_list)      
-        figures.run()
-
-    # 4. 
-
+        # J. Wrap up
+        gc.write_syntenies_to_json('all_syntenies.json')
+        if config.arguments['overwrite_config']['value']:
+            config.write_configuration_yaml()
+        # copy log file to working direcotry
+        shutil.copy(os.path.join(starting_directory,'gcsnap.log'), os.getcwd())
 
     console.print_final()
-
-
     
 if __name__ == '__main__':
     main()
