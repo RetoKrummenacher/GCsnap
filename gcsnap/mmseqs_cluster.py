@@ -22,8 +22,7 @@ class MMseqsCluster:
         # set arguments
         self.gc = gc
         self.out_dir = out_dir
-
-        # TODO: Sensitivity is hard coded?   
+  
         self.sensitivity = 7.5
 
         self.console = RichConsole()
