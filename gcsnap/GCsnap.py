@@ -4492,6 +4492,7 @@ def main():
 
 	# set starting directory
 	starting_directory = os.getcwd()
+	print(os.getcwd())
 
 	## START PIPELINE HERE
 
