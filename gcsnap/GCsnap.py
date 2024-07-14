@@ -178,6 +178,8 @@ def find_ncbi_code_assembly(ncbi_code, database_assembly_mapping):
 		handle = Entrez.efetch(db="protein", id=ncbi_code, rettype="ipg", retmode="xml")
 		record = Entrez.read(handle)
 
+		print(' ... ... Searching for assembly for {}'.format(ncbi_code))
+
 		assemblies_found = {}
 		for report in record:
 			if 'ProteinList' in record[report]:
