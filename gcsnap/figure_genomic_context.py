@@ -121,7 +121,7 @@ class GenomicContextFigure:
         #     raise ValueError(
         # ValueError: The number of FixedLocator locations (3), usually from a call to set_ticks, does not match the number of labels (2).        
 
-        ax[0].set_yticks(np.arange(0, len(yticklabels)+1, 1.0))
+        ax[0].set_yticks(np.arange(0, len(yticklabels), 1.0))
         ax[0].set_yticklabels(yticklabels, fontsize = 10, horizontalalignment='left')
         ax[0].spines['right'].set_visible(False)
         ax[0].spines['left'].set_visible(False)
