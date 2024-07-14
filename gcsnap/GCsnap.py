@@ -3771,7 +3771,7 @@ def download_and_parse_refseq_and_gb_databases(databases = ['genbank', 'refseq']
 			print(' ... ... Downloading')
 			t1 = Timer('db_download_single', text=lambda secs: f"Time for download {db}: {format_timespan(secs)}")
 			t1.start()
-			download_db_table = sp.Popen(['wget', link], stdout=sp.PIPE, stderr=sp.PIPE, stdin=sp.PIPE)
+			download_db_table = sp.Popen(['wget', link, '-O', summary_table], stdout=sp.PIPE, stderr=sp.PIPE, stdin=sp.PIPE)
 			stdout, stderr = download_db_table.communicate()
 			t1.stop()
 			print(' ... ... Done Downloading')
