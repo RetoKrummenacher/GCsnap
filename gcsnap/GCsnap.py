@@ -56,9 +56,9 @@ from codetiming import Timer
 from humanfriendly import format_timespan
 from datetime import datetime
 
-# now = datetime.now()
-# current_time = now.strftime("%d-%m-%Y_%H-%M-%S")
-# timing_log_file = f'times_{current_time}.tsv'
+now = datetime.now()
+current_time = now.strftime("%d-%m-%Y_%H-%M-%S")
+timing_log_file = f'times_{current_time}.tsv'
 
 # import bokeh.layouts 
 
@@ -1327,7 +1327,7 @@ def draw_genomic_context(operons, all_syntenies, family_colors, reference_family
 	ax[0].set_xlim(min(all_xs)-100, max(all_xs)+100)
 	ax[0].set_ylim(0, len(operons.keys())+1)
 
-	ax[0].set_yticks(np.arange(0, len(yticklabels)+1, 1.0))
+	ax[0].set_yticks(np.arange(0, len(yticklabels), 1.0))
 	ax[0].set_yticklabels(yticklabels, fontsize = 10, horizontalalignment='left')
 	ax[0].spines['right'].set_visible(False)
 	ax[0].spines['left'].set_visible(False)
@@ -4329,6 +4329,8 @@ def write_summary_table(operons, all_syntenies, taxonomy, label = None):
 @Timer("main", text=lambda secs: f"Time to run main: {format_timespan(secs)}")
 def main():
 
+	global timing_log_file  # Declare timing_log_file as global 
+
 	# GET INPUTS
 	parser = argparse.ArgumentParser(prog = 'GCsnap v1.0.17', usage = 'GCsnap -targets <targets> -user_email <user_email> [options]', 
 									 description = 'GCsnap is a python-based, local tool that generates interactive snapshots\nof conserved protein-coding genomic contexts.',
@@ -4684,9 +4686,9 @@ def main():
 
 
 if __name__ == '__main__':
-	now = datetime.now()
-	current_time = now.strftime("%d-%m-%Y_%H-%M-%S")
-	timing_log_file = f'times_{current_time}.tsv'
+	# now = datetime.now()
+	# current_time = now.strftime("%d-%m-%Y_%H-%M-%S")
+	# timing_log_file = f'times_{current_time}.tsv'
 
 	main_start = time.time()
 	main()
