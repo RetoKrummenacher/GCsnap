@@ -37,7 +37,7 @@ Homepage = "https://github.com/RetoKrummenacher/GCsnap"
 GCsnap = "gcsnap.GCsnap:main"
 
 [build-system]
-requires = ["setuptools>=61", "wheel"]
+requires = ["setuptools>=61", "wheel", "cython"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
