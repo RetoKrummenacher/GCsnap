@@ -201,8 +201,8 @@ def find_ncbi_code_assembly(ncbi_code, database_assembly_mapping):
 
 							assembly_link = database_assembly_mapping[assembly_id]
 		t2.stop()
+		print('... !!! assembli id found: {}'.format(assembly_id))
 	except Exception as e:
-		print(e)
 		assembly_id = 'nan'
 		assembly_source = 'nan'
 		assembly_link = 'nan'
