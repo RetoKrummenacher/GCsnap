@@ -5,6 +5,7 @@ import pickle
 
 from gcsnap.rich_console import RichConsole 
 from gcsnap.configuration import Configuration 
+from gcsnap.timing import Timing
 from gcsnap.targets import Target 
 from gcsnap.sequence_mapping import SequenceMapping
 from gcsnap.assemblies import Assemblies
@@ -28,9 +29,15 @@ def main():
     config = Configuration()
     config.parse_arguments()
 
+    # 2. start timing
+    timing = Timing()
+    t_all = timing.timer('All steps 0-10')
+
+    t_parse = timing.timer('Step 0: Parse Targets')
     # 2. parse targets
     targets = Target(config)
     targets.run()
+    t_parse.stop()
 
     # 3. Iterate over each target list
     for out_label in targets.targets_lists:
@@ -56,6 +63,7 @@ def main():
         # add targets to genomic context
         gc.targets = targets_list
 
+        t_collect = timing.timer('Step 1: Collecting the genomic contexts')
         # B. Map sequences to UniProtKB-AC and NCBI EMBL-CDS
         # a). Map all targets to UniProtKB-AC
         mappingA = SequenceMapping(config, targets_list, 'UniProtKB-AC')
@@ -85,20 +93,30 @@ def main():
         gc.update_syntenies(sequences.get_sequences())
         gc.write_syntenies_to_json('genomic_context_information.json')
 
+        t_collect.stop()
+
         if not config.arguments['collect_only']['value']:
+
+            t_family = timing.timer('Step 2: Finding protein families')
             # Ea) Add protein families
             families = Families(config, gc, out_label)
             families.run()
             gc.update_syntenies(families.get_families())
             gc.create_and_write_families_summary()
 
+            t_family.stop()
+
+            t_annotate_families = timing.timer('Step 3: Annotating functions and structures')
             # Eb). Add functions and structures to families
             # execution conditions handeled in the class
             ffs = FamiliesFunctionsStructures(config, gc)
             ffs.run()
             gc.update_families(ffs.get_annotations_and_structures())
             gc.write_families_to_json('protein_families_summary.json')
+
+            t_annotate_families.stop()
         
+            t_operons = timing.timer('Step 4-5: Finding operon/genomic_context')
             # F. Find and add operons
             operons = Operons(config, gc, out_label)
             operons.run()
@@ -106,16 +124,24 @@ def main():
             gc.create_and_write_operon_types_summary()
             gc.find_most_populated_operon_types()   
 
+            t_operons.stop()
+
+            t_taxonomy = timing.timer('Step 6: Mapping taxonomy')
             # G. Get taxonomy information
             taxonomy = Taxonomy(config, gc)
             taxonomy.run()
             gc.update_taxonomy(taxonomy.get_taxonomy())
             gc.write_taxonomy_to_json('taxonomy.json')     
+
+            t_taxonomy.stop()
   
+            t_tm = timing.timer('Step 7: Finding ALL proteins with transmembrane segments')
             # H. Annotate TM 
             tm = TMsegments(config, gc, out_label)
             tm.run()
             gc.update_syntenies(tm.get_annotations())
+
+            t_tm.stop()
 
             # # TODO: For debugging
             # with open('gc.pkl', 'wb') as file:
@@ -125,24 +151,40 @@ def main():
             # with open('gc.pkl', 'rb') as file:
             #     gc = pickle.load(file) 
              
+            t_figures = timing.timer('Step 8-9: Producing figures')
             # I. Produce genomic context figures
             figures = Figures(config, gc, out_label, starting_directory)      
             figures.run()
 
+            t_figures.stop()
+
+            t_output = timing.timer('Step 10: Write output')
+            
             # G. Write output to summary file
-            gc.write_summary_table('{}_summary_table.tab'.format(out_label))
+            # TODO: Still a bug line 372 in gc:
+            #     line_to_write += '\t' + '\t'.join(tax_search_dict.get(target)) + '\n'
+            #               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            # TypeError: can only join an iterable
+            # the return fomr dict.get() is None. check that dict
+            #gc.write_summary_table('{}_summary_table.tab'.format(out_label))
+
             gc.write_families_to_json('protein_families_summary.json')
         
         else:
             console.print_skipped_step('GCsnap was asked to collect genomic context only. Will not proceed further.')
+            t_output = timing.timer('Step 10: Write output')
 
         # J. Wrap up
         gc.write_syntenies_to_json('all_syntenies.json')
+        t_output.stop()
+
         if config.arguments['overwrite_config']['value']:
             config.write_configuration_yaml()
         # copy log file to working direcotry
         shutil.copy(os.path.join(starting_directory,'gcsnap.log'), os.getcwd())
 
+    t_all.stop()
+    timing.to_csv('timing.csv')
     console.print_final()
     
 if __name__ == '__main__':
