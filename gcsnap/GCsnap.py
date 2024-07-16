@@ -3767,7 +3767,7 @@ def download_and_parse_refseq_and_gb_databases(databases = ['genbank', 'refseq']
 		summary_table = '{}/assembly_summary_{}.txt'.format(os.getcwd(), db)
 
 		if not os.path.isfile(summary_table):
-			link = 'ftp://ftp.ncbi.nlm.nih.gov/genomes/{}/assembly_summary_{}.txt'.format(db, db)
+			link = 'https://ftp.ncbi.nlm.nih.gov/genomes/{}/assembly_summary_{}.txt'.format(db, db)
 			print(' ... ... Downloading')
 			t1 = Timer('db_download_single', text=lambda secs: f"Time for download {db}: {format_timespan(secs)}")
 			t1.start()
