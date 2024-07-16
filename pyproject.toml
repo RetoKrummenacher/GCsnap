@@ -1,7 +1,7 @@
 
 [project]
 name = "gcsnap"
-version = "1.0.17"
+version = "2.0.0"
 description = "GCsnap: Interactive snapshots for the comparison of protein-coding genomic contexts"
 authors = [
     {name = "Joana Pereira", email = "pereira.joanam@gmail.com"},
@@ -31,7 +31,7 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/JoanaMPereira/GCsnap"
+Homepage = "https://github.com/RetoKrummenacher/GCsnap"
 
 [project.scripts]
 GCsnap = "gcsnap.GCsnap:main"
