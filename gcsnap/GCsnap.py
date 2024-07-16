@@ -56,9 +56,9 @@ from codetiming import Timer
 from humanfriendly import format_timespan
 from datetime import datetime
 
-# now = datetime.now()
-# current_time = now.strftime("%d-%m-%Y_%H-%M-%S")
-# timing_log_file = f'times_{current_time}.tsv'
+now = datetime.now()
+current_time = now.strftime("%d-%m-%Y_%H-%M-%S")
+timing_log_file = f'times_{current_time}.tsv'
 
 # import bokeh.layouts 
 
@@ -1327,7 +1327,7 @@ def draw_genomic_context(operons, all_syntenies, family_colors, reference_family
 	ax[0].set_xlim(min(all_xs)-100, max(all_xs)+100)
 	ax[0].set_ylim(0, len(operons.keys())+1)
 
-	ax[0].set_yticks(np.arange(0, len(yticklabels)+1, 1.0))
+	ax[0].set_yticks(np.arange(0, len(yticklabels), 1.0))
 	ax[0].set_yticklabels(yticklabels, fontsize = 10, horizontalalignment='left')
 	ax[0].spines['right'].set_visible(False)
 	ax[0].spines['left'].set_visible(False)
@@ -1470,9 +1470,9 @@ def map_taxonomy(arguments):
 
 				if mode == 'taxonomy':
 					if species.split()[0] == 'uncultured':
-					  genus = species.split()[1]
+						genus = species.split()[1]
 					else:
-					  genus = species.split()[0]
+						genus = species.split()[0]
 			   
 					taxsearch = Entrez.efetch(id = taxID, db = "taxonomy", retmode = "xml")
 					taxrecords = Entrez.parse(taxsearch)
@@ -1481,13 +1481,13 @@ def map_taxonomy(arguments):
 
 					for level in taxrecord[u"LineageEx"]:
 						if level[u"Rank"] == "superkingdom":
-						   superkingdom = level[u"ScientificName"]
+							superkingdom = level[u"ScientificName"]
 						elif level[u"Rank"] == "phylum":
-						   phylum = level[u"ScientificName"]
+							phylum = level[u"ScientificName"]
 						elif level[u"Rank"] == "class":
-						   taxclass = level[u"ScientificName"]
+							taxclass = level[u"ScientificName"]
 						elif level[u"Rank"] == "order":
-						   order = level[u"ScientificName"]
+							order = level[u"ScientificName"]
 
 					if phylum == 'na':
 						phylum = '{}_na'.format(superkingdom)
@@ -3653,22 +3653,22 @@ def create_families_frequency_table(operons, families_summary):
 #@Timer("get_ncbicodes_order_in_clans", text=lambda secs: f"Time to get ncbicodes order in clans: {format_timespan(secs)}")
 def get_ncbicodes_order_in_clans(clans_file):
    
-   ncbids_ordered = []
+	ncbids_ordered = []
 
-   count = 0
-   found_seq = False
-   with open(clans_file, 'r') as clans:
-	   for line in clans:
-		   if '<seq>' in line:
-			   found_seq = True
-		   elif '</seq>' in line:
-			   found_seq = False
-		   elif found_seq and line.startswith('>'):
-			   line = line[1:]
-			   ncbi_code = line.split(' ')[0].split(':')[0].split('|')[0].split('_#')[0].replace('>','').strip()
-			   ncbids_ordered.append(ncbi_code)
+	count = 0
+	found_seq = False
+	with open(clans_file, 'r') as clans:
+		for line in clans:
+			if '<seq>' in line:
+				found_seq = True
+			elif '</seq>' in line:
+				found_seq = False
+			elif found_seq and line.startswith('>'):
+				line = line[1:]
+				ncbi_code = line.split(' ')[0].split(':')[0].split('|')[0].split('_#')[0].replace('>','').strip()
+				ncbids_ordered.append(ncbi_code)
 			   
-   return ncbids_ordered
+	return ncbids_ordered
 
 #@Timer("get_clusters_from_clans", text=lambda secs: f"Time to get clusters from clans: {format_timespan(secs)}")
 def get_clusters_from_clans(clans_file, cluster_codes = None):
@@ -3767,11 +3767,11 @@ def download_and_parse_refseq_and_gb_databases(databases = ['genbank', 'refseq']
 		summary_table = '{}/assembly_summary_{}.txt'.format(os.getcwd(), db)
 
 		if not os.path.isfile(summary_table):
-			link = 'ftp://ftp.ncbi.nlm.nih.gov/genomes/{}/assembly_summary_{}.txt'.format(db, db)
+			link = 'https://ftp.ncbi.nlm.nih.gov/genomes/{}/assembly_summary_{}.txt'.format(db, db)
 			print(' ... ... Downloading')
 			t1 = Timer('db_download_single', text=lambda secs: f"Time for download {db}: {format_timespan(secs)}")
 			t1.start()
-			download_db_table = sp.Popen(['wget', link], stdout=sp.PIPE, stderr=sp.PIPE, stdin=sp.PIPE)
+			download_db_table = sp.Popen(['wget', link, '-O', summary_table], stdout=sp.PIPE, stderr=sp.PIPE, stdin=sp.PIPE)
 			stdout, stderr = download_db_table.communicate()
 			t1.stop()
 			print(' ... ... Done Downloading')
@@ -3938,7 +3938,7 @@ def find_and_add_protein_families(in_syntenies, out_label = None, num_threads = 
 				curr_numbers.append(protein_family)
 
 				if ncbi_code == in_syntenies[target]['assembly_id'][0]:
-				   in_syntenies[target]['target_family'] = protein_family
+					in_syntenies[target]['target_family'] = protein_family
 
 		curr_numbers = sorted(list(set(curr_numbers)))
 		for target in in_syntenies:
@@ -4329,6 +4329,8 @@ def write_summary_table(operons, all_syntenies, taxonomy, label = None):
 @Timer("main", text=lambda secs: f"Time to run main: {format_timespan(secs)}")
 def main():
 
+	global timing_log_file  # Declare timing_log_file as global 
+
 	# GET INPUTS
 	parser = argparse.ArgumentParser(prog = 'GCsnap v1.0.17', usage = 'GCsnap -targets <targets> -user_email <user_email> [options]', 
 									 description = 'GCsnap is a python-based, local tool that generates interactive snapshots\nof conserved protein-coding genomic contexts.',
@@ -4490,17 +4492,25 @@ def main():
 
 	# set starting directory
 	starting_directory = os.getcwd()
+	print(os.getcwd())
 
 	## START PIPELINE HERE
 
 	try:
-		# Get the list of target codes
-		print('\nParsing targets\n')
-		targets = parse_targets(targets, label = out_label, clans_patterns = clans_patterns)
 
 		# Download and parse RefSeq and Genbank databases
 		print('\nDownloading and parsing RefSeq and Genbank summary tables\n')
 		refseq_gb_assembly_map = download_and_parse_refseq_and_gb_databases()
+
+		t_all_steps = Timer('All steps 0-10', text=lambda secs: f"Time to run steps 1-9: {format_timespan(secs)}")
+		t_all_steps.start()
+
+		t0 = Timer('Step 0: Parse Targets', text=lambda secs: f"Time to run step 1: {format_timespan(secs)}")
+		t0.start()
+		# Get the list of target codes
+		print('\nParsing targets\n')
+		targets = parse_targets(targets, label = out_label, clans_patterns = clans_patterns)
+		t0.stop()
 
 		for out_label in targets:
 
@@ -4522,11 +4532,9 @@ def main():
 			# Collect the genomic_context of all target ncbi codes
 			curr_targets = targets[out_label]
 
-			t_all_steps = Timer('t_all_steps', text=lambda secs: f"Time to run steps 1-9: {format_timespan(secs)}")
-			t_all_steps.start()
 			if len(curr_targets) > 1:
 				print("\n 1. Collecting the genomic contexts of {} unique input entrezIDs (may take some time)\n".format(len(curr_targets)))
-				t1 = Timer('step_1', text=lambda secs: f"Time to run step 1: {format_timespan(secs)}")
+				t1 = Timer('Step 1: Collecting the genomic contexts', text=lambda secs: f"Time to run step 1: {format_timespan(secs)}")
 				t1.start()
 				all_syntenies = get_genomic_context_information_for_ncbi_codes(curr_targets, refseq_gb_assembly_map = refseq_gb_assembly_map, n_flanking5 = n_flanking5, n_flanking3 = n_flanking3, exclude_partial = exclude_partial, tmp_folder = tmp_folder, threads = n_cpus)
 				t1.stop()
@@ -4535,7 +4543,7 @@ def main():
 					if not collect_only:
 						# Find shared protein families by running all-against-all blast searches for all proteins collected
 						print("\n 2. Finding protein families (may take some time depending on the number of flanking sequences taken)\n")
-						t2 = Timer('step_2', text=lambda secs: f"Time run step 2: {format_timespan(secs)}")
+						t2 = Timer('Step 2: Finding protein families', text=lambda secs: f"Time run step 2: {format_timespan(secs)}")
 						t2.start()
 						all_syntenies, protein_families_summary = find_and_add_protein_families(all_syntenies, out_label = out_label, num_threads = n_cpus, num_alignments = num_alignments, max_evalue = max_evalue, num_iterations = num_iterations, blast = blast, mmseqs = mmseqs, min_coverage = min_coverage, default_base = default_base, tmp_folder = tmp_folder, method = method)
 						t2.stop()
@@ -4544,7 +4552,7 @@ def main():
 						if get_pdb or get_functional_annotations:
 
 							print("\n 3. Annotating functions and/or finding structures for the protein families found\n")
-							t3 = Timer('step_3', text=lambda secs: f"Time run step 3: {format_timespan(secs)}")
+							t3 = Timer('Step 3: Annotating functions and structures', text=lambda secs: f"Time run step 3: {format_timespan(secs)}")
 							t3.start()
 							protein_families_summary = update_families_with_functions_and_structures(protein_families_summary, get_pdb = get_pdb, get_functional_annotations = get_functional_annotations, threads = n_cpus)
 							t3.stop()
@@ -4553,14 +4561,14 @@ def main():
 
 						# Find operon/genomic_context types by clustering them by similarity
 						print("\n 4. Finding operon/genomic_context types\n")
-						t4 = Timer('step_4', text=lambda secs: f"Time run step 4: {format_timespan(secs)}")
+						t4 = Timer('Step 4: Finding operon/genomic_context', text=lambda secs: f"Time run step 4: {format_timespan(secs)}")
 						t4.start()
 						all_syntenies, operon_types_summary = find_and_add_operon_types(all_syntenies, protein_families_summary, label = out_label, advanced = operon_cluster_advanced, min_family_freq = min_family_freq, max_family_freq = max_family_freq)
 						t4.stop()
 
 						# Select top N most populated operon/genomic_context types
 						print("\n 5. Selecting top {} most common operon/genomic_context types\n".format(n_max))
-						t5 = Timer('step_5', text=lambda secs: f"Time run step 5: {format_timespan(secs)}")
+						t5 = Timer('Step 5: Selecting most common operon/genomic context', text=lambda secs: f"Time run step 5: {format_timespan(secs)}")
 						t5.start()
 						selected_operons, most_populated_operon = find_most_populated_operon_types(operon_types_summary, nmax = n_max)
 						json.dump(selected_operons, open('selected_operons.json', 'w'), indent = 4)
@@ -4570,7 +4578,7 @@ def main():
 						if get_taxonomy:
 							# Map taxonomy to the input targets. Load if already precomputed
 							print("\n 6. Mapping taxonomy (may take some time)\n")
-							t6 = Timer('step_6', text=lambda secs: f"Time run step 6: {format_timespan(secs)}")
+							t6 = Timer('Step 6: Mapping taxonomy', text=lambda secs: f"Time run step 6: {format_timespan(secs)}")
 							t6.start()
 							taxonomy = map_taxonomy_to_targets(all_syntenies, threads = n_cpus)
 							json.dump(taxonomy, open('taxonomy.json', 'w'), indent = 4)
@@ -4578,7 +4586,7 @@ def main():
 
 						else:
 							print("\n 6. Taxonomy will not be mapped\n")
-							t6b = Timer('step_6b', text=lambda secs: f"Time run step 6b: {format_timespan(secs)}")
+							t6b = Timer('Step 6b: No mapping', text=lambda secs: f"Time run step 6b: {format_timespan(secs)}")
 							t6b.start()
 							taxonomy = map_taxonomy_to_targets(all_syntenies, mode = 'as_input')
 							t6b.stop()
@@ -4587,7 +4595,7 @@ def main():
 						if annotate_TM:
 							# Try to annotate transmembrane segments
 							print("\n 7. Finding ALL proteins with transmembrane segments and signal peptides\n")
-							t7 = Timer('step_7', text=lambda secs: f"Time run step 7 using {annotation_TM_mode}: {format_timespan(secs)}")
+							t7 = Timer('Step 7: Finding ALL proteins with transmembrane segments', text=lambda secs: f"Time run step 7 using {annotation_TM_mode}: {format_timespan(secs)}")
 							t7.start()
 							all_syntenies = annotate_TMs_in_all(all_syntenies, annotation_TM_mode, annotation_TM_file, label = out_label)
 							t7.stop()
@@ -4598,7 +4606,7 @@ def main():
 						# Make operon/genomic_context conservation figure
 						print("\n 8. Making operon/genomic_context blocks figure\n")
 						try:
-							t8 = Timer('step_8', text=lambda secs: f"Time run step 8: {format_timespan(secs)}")
+							t8 = Timer('Step 8: Making genomic context figure', text=lambda secs: f"Time run step 8: {format_timespan(secs)}")
 							t8.start()
 							make_genomic_context_figure(selected_operons, most_populated_operon, all_syntenies, protein_families_summary, cmap = genomic_context_cmap, label = out_label, out_format = args.out_format)
 							t8.stop()
@@ -4609,7 +4617,7 @@ def main():
 							print("\n 9. Making interactive html output file\n")
 							#check if Bokeh is available
 							# try:
-							t9 = Timer('step_9', text=lambda secs: f"Time run step 9 (operon cluster advanced mode: {operon_cluster_advanced}): {format_timespan(secs)}")
+							t9 = Timer('Step 9: Making interactive html output', text=lambda secs: f"Time run step 9 (operon cluster advanced mode: {operon_cluster_advanced}): {format_timespan(secs)}")
 							t9.start()
 							if operon_cluster_advanced:
 								make_advanced_interactive_genomic_context_figures(selected_operons, all_syntenies, protein_families_summary, taxonomy, most_populated_operon, input_targets = curr_targets, tree = in_tree, gc_legend_mode = gc_legend_mode, cmap = genomic_context_cmap, label = out_label, sort_mode = sort_mode, min_coocc = min_coocc, n_flanking5=n_flanking5, n_flanking3=n_flanking3, tree_format = in_tree_format, max_family_freq=max_family_freq, min_family_freq=min_family_freq, min_family_freq_accross_contexts=min_family_freq_accross_contexts, clans_file=clans_file, out_label = out_label, num_threads = n_cpus, num_alignments = num_alignments, max_evalue = max_evalue, num_iterations = num_iterations, blast = blast, mmseqs = mmseqs, min_coverage = min_coverage, default_base = default_base, tmp_folder = tmp_folder, method = method)
@@ -4626,14 +4634,19 @@ def main():
 							print("\n 9. Interactive html output file will not be generated\n")
 
 						# Write summary table
+						t10 = Timer('Step 10: Write output', text=lambda secs: f"Time run step 9 (operon cluster advanced mode: {operon_cluster_advanced}): {format_timespan(secs)}")
+						t10.start()
 						print("\n Finished {}: Writting summary table\n".format(out_label))
 						write_summary_table(selected_operons, all_syntenies, taxonomy, label = out_label)
 						json.dump(protein_families_summary, open('protein_families_summary.json', 'w'), indent = 4)
 
 					else:
 						print(' GCsnap was asked to collect genomic context only. Will not proceed further.')
+						t10 = Timer('Step 10: Write output', text=lambda secs: f"Time run step 9 (operon cluster advanced mode: {operon_cluster_advanced}): {format_timespan(secs)}")
+						t10.start()
 
 					json.dump(all_syntenies, open('all_syntenies.json', 'w'), indent = 4)
+					t10.stop()
 
 					end = time.time()
 					numb_seconds = end - start
@@ -4674,9 +4687,9 @@ def main():
 
 
 if __name__ == '__main__':
-	now = datetime.now()
-	current_time = now.strftime("%d-%m-%Y_%H-%M-%S")
-	timing_log_file = f'times_{current_time}.tsv'
+	# now = datetime.now()
+	# current_time = now.strftime("%d-%m-%Y_%H-%M-%S")
+	# timing_log_file = f'times_{current_time}.tsv'
 
 	main_start = time.time()
 	main()

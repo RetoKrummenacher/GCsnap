@@ -50,6 +50,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+.VSCodeCounter/
 
 # Translations
 *.mo
@@ -164,3 +165,4 @@ cython_debug/
 
 # mmseqs-win64 folder
 mmseqs-win64/
+.VSCodeCounter/2024-07-15_11-45-21/details.md
