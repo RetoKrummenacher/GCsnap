@@ -36,7 +36,7 @@ class Target():
                 self.targets_lists[label].append(target)
 
     def get_targets_from_file(self, target_file: str) -> None:
-        curr_label = target_file.split('/')[-1].split('.')[0]
+        curr_label = os.path.basename(target_file).split('.')[0]
         if curr_label not in self.targets_lists:
             self.targets_lists[curr_label] = []
 

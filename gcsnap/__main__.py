@@ -159,7 +159,7 @@ def main():
             t_figures.stop()
 
             t_output = timing.timer('Step 10: Write output')
-            
+
             # G. Write output to summary file
             # TODO: Still a bug line 372 in gc:
             #     line_to_write += '\t' + '\t'.join(tax_search_dict.get(target)) + '\n'
