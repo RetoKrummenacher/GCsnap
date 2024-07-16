@@ -163,9 +163,6 @@ def find_ncbi_code_assembly(ncbi_code, database_assembly_mapping):
 	uniprot_code = 'nan'
 	search_database = 'nan'
 
-	# debugging on miniHPC:
-	print(database_assembly_mapping['GCA_900505695.1'])
-
 	if '.' not in ncbi_code:
 		uniprot_code = ncbi_code
 		t1 = Timer('map_uniprot_to_ncbi',
