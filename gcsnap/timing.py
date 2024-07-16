@@ -34,8 +34,9 @@ class Timing:
         self.counter += 1
         timer = Timer(name)
         self.timers[self.counter] = timer
+        timer.start()
         return timer
-
+    
     def get_timing_data(self):
         data = []
         for counter, timer in self.timers.items():
