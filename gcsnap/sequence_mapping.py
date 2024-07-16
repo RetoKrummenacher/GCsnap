@@ -238,34 +238,38 @@ class SequenceMapping:
 
         # RefSeqs where no UniProtKB-AC was found
         ref_no_uniprot = df.loc[(df['RefSeq'].notna()) & (df['UniProtKB-AC'].isna()) ,'target'].to_list()
-        message = '{} RefSeq ids not mapped to UniProtKB-AC but included in NCBI-Code.'.format(len(ref_no_uniprot))
-        self.console.print_warning(message)
-        for id in ref_no_uniprot:
-            logger.warning(f'Target sequence {id}') 
+        if len(ref_no_uniprot) > 0:
+            message = '{} RefSeq ids not mapped to UniProtKB-AC but included in NCBI-Code.'.format(len(ref_no_uniprot))
+            self.console.print_warning(message)
+            for id in ref_no_uniprot:
+                logger.warning(f'Target sequence {id}') 
 
         # those where no UniProtKB-AC was found
         no_uniprot = df.loc[df['UniProtKB-AC'].isna(), 'target'].to_list()
         no_uniprot = list(set(no_uniprot).difference(set(ref_no_uniprot)))
-        message = '{} ids not mapped to UniProtKB-AC.'.format(len(no_uniprot))
-        self.console.print_warning(message)
-        for id in no_uniprot:
-            logger.warning(f'Target sequence {id}')   
+        if len(no_uniprot) > 0:
+            message = '{} ids not mapped to UniProtKB-AC.'.format(len(no_uniprot))
+            self.console.print_warning(message)
+            for id in no_uniprot:
+                logger.warning(f'Target sequence {id}')   
 
         # those where no RefSeq or EMBL-CDS was found:
         no_ncbi = df.loc[df['ncbi_code'].isna(), 'target'].to_list()
         no_ncbi = list(set(no_ncbi).difference(set(no_uniprot)))
-        message = '{} ids mapped to UniProtKB-AC but not to NCBI-Code.'.format(len(no_ncbi))
-        self.console.print_warning(message)
-        for id in no_ncbi:
-            logger.warning(f'Target sequence {id}')          
+        if len(no_ncbi) > 0:
+            message = '{} ids mapped to UniProtKB-AC but not to NCBI-Code.'.format(len(no_ncbi))
+            self.console.print_warning(message)
+            for id in no_ncbi:
+                logger.warning(f'Target sequence {id}')          
 
     def log_failed(self) -> None:
         df = self.mapping_df.copy()
         no_hits = df.loc[df[self.to_type].isna(), 'target'].to_list()
-        message = '{} ids not mapped to {}.'.format(len(no_hits),self.to_type)
-        self.console.print_warning(message)
-        for id in no_hits:
-            logger.warning(f'Target sequence {id}')            
+        if len(no_hits) > 0:
+            message = '{} ids not mapped to {}.'.format(len(no_hits),self.to_type)
+            self.console.print_warning(message)
+            for id in no_hits:
+                logger.warning(f'Target sequence {id}')            
 
     def merge_mapping_dfs(self, mapping_df: pd.DataFrame, key_column: str = 'UniProtKB-AC',
                           columns_to_merge: list = ['EMBL-CDS']) -> pd.DataFrame:
