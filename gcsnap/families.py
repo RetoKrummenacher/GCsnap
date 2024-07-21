@@ -15,8 +15,7 @@ class Families:
 
         # set arguments
         self.out_label = out_label
-        self.out_dir = os.path.join(os.getcwd(), f'{out_label}_all_against_all_searches')
-        self.make_dir(self.out_dir)        
+        self.out_dir = os.path.join(os.getcwd(), f'{out_label}_all_against_all_searches')     
         self.gc = gc
         self.syntenies = gc.get_syntenies()
 
@@ -26,6 +25,7 @@ class Families:
         return self.families_adapted
 
     def run(self) -> None:
+        # MMseqsCluster creates the directory
         self.find_cluster()
 
         with self.console.status('Assigning families to flanking genes'):
@@ -99,7 +99,3 @@ class Families:
                     syntenies[k]['flanking_genes']['ncbi_codes'].index(syntenies[k]['assembly_id'][0])]
 
         return syntenies
-    
-    def make_dir(self, path: str) -> None:
-        if not os.path.isdir(path):
-            os.mkdir(path)
