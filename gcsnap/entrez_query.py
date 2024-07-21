@@ -21,6 +21,7 @@ class EntrezQuery:
         # get necessary configuration arguments        
         self.cores = config.arguments['n_cpu']['value']
         self.api_key = config.arguments['ncbi_api_key']['value']
+        self.ncbi_email = config.arguments['ncbi_user_email']['value']
         # Information for the user regarding api keys: 
         # https://www.ncbi.nlm.nih.gov/books/NBK25497/#chapter2.chapter2_table1
         # Pargaraph: API Keys
@@ -33,6 +34,8 @@ class EntrezQuery:
         self.retmode = retmode
         self.search_codes = search_codes
         self.logging = logging
+
+
 
         # set correct function depending on rettype
         if db == 'protein' and rettype == 'ipg':
@@ -101,9 +104,18 @@ class EntrezQuery:
         return 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db='+self.db
 
     def query_chunk(self, chunk: list) -> ET.Element:
+        # information about eutils email and api key
+        # https://www.ncbi.nlm.nih.gov/books/NBK25497/
+
         ids = '&id=' + ','.join(chunk) # works for single ids as well
         rt = '&rettype=' + self.rettype
         rm = '&retmode=' + self.retmode
+
+        # add email if provided
+        if self.api_key is not None:
+            email = '&email=' + self.ncbi_email
+        else:
+            email = ''
 
         # add api key if provided
         if self.api_key is not None:
@@ -115,7 +127,7 @@ class EntrezQuery:
         #timeout = len(chunk_list) * 0.2
         timeout = None
 
-        url = self.get_ncbi_base_url() + ids + rt + rm + api_key
+        url = self.get_ncbi_base_url() + ids + rt + rm + email + api_key
 
         # Entrez has an API limit of 3 request per second without an API key
         # and 10 request per second with an API key.
