@@ -28,7 +28,8 @@ class TMsegments:
         self.out_label = out_label  
         self.out_dir = os.path.join(os.getcwd(), f'{out_label}_TM_annotations')   
         if not os.path.isdir(self.out_dir):
-            os.mkdir(self.out_dir)                  
+            os.mkdir(self.out_dir)    
+        self.annotations = {}                          
 
         self.console = RichConsole()
 
@@ -40,7 +41,6 @@ class TMsegments:
         if not self.annotate_TM:
             msg = 'TM annotation set to False. Transmembrane segments and signal peptides will not be searched'
             self.console.print_skipped_step(msg)
-            self.annotations = {}
             return
         
         # create fasta file and get order if sequences in fasta file
@@ -50,12 +50,12 @@ class TMsegments:
 
         # outfile if not specified in config.yaml
         if self.annotate_file is None:
-            # name of fasta file without extension            
+            # set as the name of fasta file without extension            
             self.annotation_out_file = os.path.join(self.out_dir, '{}_{}.out'.format(
                     os.path.basename(self.fasta_file)[:-6], self.annotate_mode))             
-            self.single_annotation()
+            self.signal_annotation()
         else:
-            # the name of the input file            
+            # set as the name of the input file            
             self.annotation_out_file = os.path.join(self.out_dir, '{}'.format(
                     os.path.basename(self.annotate_file)))              
             # copy the specified file to the output directory
@@ -65,21 +65,27 @@ class TMsegments:
             except FileNotFoundError:
                 self.console.print_error('Your specifed file {} could not be found.'. \
                                          format(self.annotate_file)) 
-                msg =  'Check file at speciefed path {} run GCsnap by specifying --annotation-TM-file.'. \
+                msg =  'Check file is at speciefed path {} ans run GCsnap by specifying --annotation-TM-file.'. \
                         format(self.annotate_file)
                 self.console.print_hint(msg)
                 exit(1)                   
         
-        # at this point, the file does exit
-        with self.console.status('Parsing annotation file and updating flanking genes'):
-            self.parse_annotation_file()
-            self.update_flanking_genes()
+        # at this point, the file might not exist when no phobius or tmhmm installation was found
+        if os.path.isfile(self.annotation_out_file):
+            with self.console.status('Parsing annotation file and updating flanking genes'):
+                self.parse_annotation_file()
+                self.update_flanking_genes()
 
-    def single_annotation(self) -> None:
+        # The code finishes upon errors in phobius or tmhmm
+        # self.annotations remains empty and hence mergable to syntenies
+
+    def signal_annotation(self) -> None:
         # do single tm annotation depending on mode
         if self.annotate_mode == 'phobius' or self.annotate_mode == 'tmhmm':
             with self.console.status('Annotating TM segments with {}'.format(self.annotate_mode)):                
                 self.tool_annotation()
+                # if phobius or tmhmm could not be executed, e warning instead of error
+                # but no file is written.
         else:
             self.console.print_step('TM annotation with "uniprot" mode needs mapping first')
             # map all members to UniProtKB-AC
@@ -117,19 +123,17 @@ class TMsegments:
                 # if no error raised
                 self.write_to_file(stdout)
             except FileNotFoundError:
-                self.console.print_error('No {} installation was found.'.format(self.annotate_mode)) 
+                self.console.print_warning('No {} installation was found.'.format(self.annotate_mode)) 
                 msg =  'Run {} online and run GCsnap by specifying --annotation-TM-file.'. \
                         format(self.annotate_mode)
                 self.console.print_hint(msg)
-                self.extended_instructions()
-                exit(1)          
+                self.extended_instructions()      
 
     def run_command(self, tool: str) -> tuple:
         # returns stdout,stderr
         command = [tool, 
                     self.fasta_file,
                     '-short']
-        # TODO: is this -short for tmhmm as well?
         
         result = subprocess.run(command, capture_output=True, text=True, shell=True)        
         return result.stdout, result.stderr   
@@ -218,7 +222,6 @@ class TMsegments:
         return annotations       
     
     def update_flanking_genes(self) -> None:
-        self.annotations = {}
         for curr_target in self.syntenies:
             flanking_genes = self.syntenies[curr_target]['flanking_genes']
             flanking_genes['TM_annotations'] = []
@@ -229,7 +232,7 @@ class TMsegments:
                 else:
                     flanking_genes['TM_annotations'].append('')
 
-            self.syntenies[curr_target]['flanking_genes'] = flanking_genes        
+            self.annotations[curr_target]['flanking_genes'] = flanking_genes        
 
     def write_to_file(self, data: str) -> None:
         with open(self.annotation_out_file, 'w') as file:
