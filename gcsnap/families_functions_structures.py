@@ -28,7 +28,7 @@ class FamiliesFunctionsStructures:
             # always exclude non-conserved families and pseudogenes as uniprot mapping
             all_members = [member_code for family in self.families.keys() 
                            for member_code in self.families[family]['members']
-                           if 0 < family < 10000]
+                           if 0 < family]
             
             # map all members to UniProtKB-AC
             mapping = SequenceMapping(self.config, all_members, 
@@ -80,7 +80,7 @@ class FamiliesFunctionsStructures:
         for family, members in family_keys:
 
             # pseudo genes and non-conserved families
-            if family == 0 or family == 10000:
+            if family == 0 or family == -1:
                 family_function = 'n.a.'
                 family_structure = 'n.a.'
                 family_uniprot_code = 'n.a.'

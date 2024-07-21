@@ -188,7 +188,7 @@ class InteractiveFigure:
         self._set_attributes(**kwargs)
 
         family_labels = sorted([family for family in self.families_summary.keys() 
-                                if family > 0 and family < 10000])
+                                if family > 0])
         matrix = [[0 for family in family_labels] for family in family_labels]
 
         context_count = 0
@@ -200,7 +200,7 @@ class InteractiveFigure:
                             out_family = list(set(genomic_context))[i]
                             in_family = list(set(genomic_context))[j]
 
-                            if all(family > 0 and family < 10000 for family in [out_family, in_family]):
+                            if all(family > 0 for family in [out_family, in_family]):
                                 matrix[family_labels.index(out_family)][family_labels.index(in_family)] += 1
                                 matrix[family_labels.index(in_family)][family_labels.index(out_family)] += 1
 
@@ -280,7 +280,7 @@ class InteractiveFigure:
         self._set_attributes(**kwargs)
 
         family_labels = sorted([family for family in self.families_summary.keys() 
-                                if family > 0 and family < 10000])
+                                if family > 0])
         matrix = [[0 for family in family_labels] for family in family_labels]
         
         for operon in self.operons:
@@ -289,7 +289,7 @@ class InteractiveFigure:
                     out_family = genomic_context[i]
                     in_family = genomic_context[i+1]
 
-                    if all(family > 0 and family < 10000 for family in [out_family, in_family]):
+                    if all(family > 0 for family in [out_family, in_family]):
                         matrix[family_labels.index(out_family)][family_labels.index(in_family)] += 1
                         matrix[family_labels.index(in_family)][family_labels.index(out_family)] += 1
 
@@ -317,7 +317,7 @@ class InteractiveFigure:
             coords = self.node_graph_coords[node]
             protein_name = self.families_summary[family]['name']
             
-            if family > 0 and family < 10000 and 'function' in self.families_summary[family]:
+            if family > 0 and 'function' in self.families_summary[family]:
                 if 'TM_topology' in self.families_summary[family]['function']:
                     tm_type = self.families_summary[family]['function']["TM_topology"]
                     
@@ -344,7 +344,7 @@ class InteractiveFigure:
                 elif model_state == 'Model does not exist':
                     model_state = 'No (click to model with Swiss-Model)'
                 else:
-                    if family > 0 and family < 10000:
+                    if family > 0:
                         model_state = 'Not possible to find'
                     else:
                         model_state = ''
@@ -358,7 +358,7 @@ class InteractiveFigure:
                 model_state = 'n.a.'
                 structure = 'n.a.'
             
-            if family != 0 and family != self.reference_family and family < 10000:
+            if family > 0 and family != self.reference_family:
                 data['family'].append(family)
             else:
                 data['family'].append(str(''))
@@ -471,12 +471,12 @@ class InteractiveFigure:
                 data['text'].append('Non-conserved gene')
             elif family == self.reference_family:
                 data['text'].append('Target protein: {}'.format(self.families_summary[family]['name']))
-            elif family == 10000:
+            elif family == -1:
                 data['text'].append('Pseudogene')
             elif family in self.families_summary:
                 data['text'].append(self.families_summary[family]['name'])
             
-            if family != 0 and family != self.reference_family and family < 10000:
+            if family > 0 and family != self.reference_family:
                 data['family'].append(family)
             else:
                 data['family'].append(str(''))
@@ -489,7 +489,7 @@ class InteractiveFigure:
                 elif model_state == 'Model does not exist':
                     model_state = 'click to model/view with Swiss-Model'
                 else:
-                    if family > 0 and family < 10000:
+                    if family > 0:
                         model_state = 'Not possible to find'
                     else:
                         model_state = 'n.a.'
@@ -498,7 +498,7 @@ class InteractiveFigure:
                 
             data['found_models'].append(model_state)
             
-            if family > 0 and family < 10000 and 'function' in self.families_summary[family]:
+            if family > 0 and 'function' in self.families_summary[family]:
                 if 'TM_topology' in self.families_summary[family]['function']:
                     tm_type = self.families_summary[family]['function']["TM_topology"]
                     keywords = ', '.join(sorted(self.families_summary[family]['function']['Keywords']))

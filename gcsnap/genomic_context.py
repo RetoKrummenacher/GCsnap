@@ -201,8 +201,8 @@ class GenomicContext:
                 except:
                     self.families[family]['name'] = self.families[family]['name'][0]
 
-            if 10000 in self.families:
-                n_pseudogenes = len(self.families[10000]['members'])
+            if -1 in self.families:
+                n_pseudogenes = len(self.families[-1]['members'])
             else:
                 n_pseudogenes = 0
 
@@ -215,7 +215,7 @@ class GenomicContext:
             self.families = dict(sorted(self.families.items()))
 
         msg = 'Found {} conserved protein families, {} pseudogenes and {} non-conserved protein coding regions'.format(
-            len([i for i in self.families if i != 0 and i != 10000]), n_pseudogenes, n_nonconserved)
+            len([i for i in self.families if i > 0]), n_pseudogenes, n_nonconserved)
         self.console.print_info(msg)
 
     def write_families_summary_to_txt(self) -> None:

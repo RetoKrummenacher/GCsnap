@@ -116,7 +116,7 @@ class Operons:
 
     def get_family_presence_matrix(self, clean: bool = True) -> tuple[np.ndarray, list, list]:
         sorted_targets = sorted(list(self.syntenies.keys()))
-        sorted_families   = [i for i in sorted(list(self.families.keys())) if (i >= 0 and i < 10000)]
+        sorted_families   = [i for i in sorted(list(self.families.keys())) if (i >= 0)]
 
         # select only the protein families that are not very frequenct but also not very rare
         if clean and len(sorted_families) > 10:

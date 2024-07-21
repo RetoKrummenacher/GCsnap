@@ -87,7 +87,7 @@ class Figures:
                 colors[label]['Color (tuplet)'] = 'lightgrey'
                 colors[label]['Line color'] = 'lightgrey'
                 colors[label]['Line style'] = '-'
-            elif type(label) == int and label == 10000:  # a pseudogene
+            elif type(label) == int and label == -1:  # a pseudogene
                 colors[label]['Color (RGBA)'] = 'white'
                 colors[label]['Color (tuplet)'] = 'white'
                 colors[label]['Line color'] = 'grey'

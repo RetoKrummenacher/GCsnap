@@ -87,7 +87,7 @@ class GenomicContextFigure:
                             facecolor = facecolor, edgecolor = edgecolor, linestyle = linestyle)
                     
                 text_x = gene_x_tail + (gene_dx/2)
-                if family != 0 and family != self.reference_family and family < 10000:
+                if family < 0 and family != self.reference_family:
                     ax[0].text(text_x, curr_y_level+0.3, str(family), horizontalalignment='center')
 
                 # make histogram side
@@ -164,7 +164,7 @@ class GenomicContextFigure:
             elif family == self.reference_family:
                 plt.text(dx + 2, curr_y_level, 'Target protein: {}'.format(
                     self.families_summary[family]['name']) )
-            elif family == 10000:
+            elif family == -1:
                 plt.text(dx + 2, curr_y_level, 'Pseudogene')
             elif family in self.families_summary:
                 plt.text(2.25, curr_y_level+0.3, str(family), horizontalalignment='center')

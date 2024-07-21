@@ -576,7 +576,7 @@ class Figure:
             data['tm_text_y'].append(1)
             data['tm_pred_text'].append(tm_pred_text)
 
-            if family != 0 and family != Figure.reference_family and family < 10000:
+            if family > 0 and family != Figure.reference_family:
                 data['family'].append(family)
             else:
                 data['family'].append(str(''))
@@ -589,7 +589,7 @@ class Figure:
                 elif model_state == 'Model does not exist':
                     model_state = 'No (click to model with Swiss-Model)'
                 else:
-                    if family > 0 and family < 10000:
+                    if family > 0:
                         model_state = 'Not possible to find'
                     else:
                         model_state = ''
@@ -773,7 +773,7 @@ class Figure:
                     
                 data['tm_text'].append(tm_annotation)
                                     
-                if family != 0 and family != Figure.reference_family and family < 10000:
+                if family > 0 and family != Figure.reference_family:
                     data['family'].append(family)
                 else:
                     data['family'].append(str(''))

@@ -715,7 +715,7 @@ class AdvancedInteractiveFigure:
     def clean_uncommon_families(self, **kwargs) -> pd.DataFrame:
         self._set_attributes(**kwargs)
 
-        families_labels = [i for i in sorted(self.families_summary.keys()) if i < 10000 and i > 0]
+        families_labels = [i for i in sorted(self.families_summary.keys()) if i < 0]
         matrix = [[0 for family in families_labels] for operon_type in self.operons_labels]
 
         for i, operon_type in enumerate(self.operons_labels):
@@ -885,7 +885,7 @@ class AdvancedInteractiveFigure:
         families_frequencies, number_of_operons = self.compute_families_frequencies(**kwargs)
         
         for family in families_frequencies:  
-            if family > 0 and family < 10000:
+            if family > 0:
                 data['Family'].append(family)
                 data['Frequency'].append(round(families_frequencies[family]*100/number_of_operons, 1))
                 data['Name'].append(self.families_summary[family]['name'])

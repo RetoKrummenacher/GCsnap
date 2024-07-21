@@ -67,10 +67,10 @@ class Families:
                 try:
                     protein_family = self.cluster_list[self.cluster_order.index(ncbi_code)]
                 except:
-                    protein_family = 10000
+                    protein_family = -1
 
                 if protein_name == 'pseudogene':
-                    protein_family = 10000
+                    protein_family = -1
                 if ncbi_code == k:
                     protein_family = max(self.cluster_list)+1
 
