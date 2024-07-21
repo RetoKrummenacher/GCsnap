@@ -37,11 +37,23 @@ class FamiliesFunctionsStructures:
             mapping_dict = mapping.get_target_to_result_dict()
             mapping.log_failed()
 
-            # split the dictionary into chunks
-            dict_list = split_dict_chunks(self.families, self.cores)
-            # create parallel arguments
-            parallel_args = [(dict_, mapping_dict, self.get_pdb, self.get_annotations) 
-                             for dict_ in dict_list]
+            # TODO: Ask Osman what we actually report in plots (ressources meaning cores)
+            # As GCsnap1 uses threads (mostly as many as there are targets)
+            # GCsnap2.0 uses processes sometimes more than families like here Version2
+            # but for mapping as manny as there are sequence ID standards
+
+            # # Version 1: Parallel processing with chunks
+            # # split the dictionary into chunks
+            # dict_list = split_dict_chunks(self.families, self.cores)
+            # # create parallel arguments
+            # parallel_args = [(dict_, mapping_dict, self.get_pdb, self.get_annotations) 
+            #                  for dict_ in dict_list]
+            
+            # Version 2: Parallel processing each family
+            # As this relieas on APIs, we try to minimies load imbalance not
+            # know apriori how long each family will take (as depends on the number of members)
+            parallel_args = [({k,v}, mapping_dict, self.get_pdb, self.get_annotations)
+                             for k,v in self.families.items()]
 
             with self.console.status('Get functional annotations and structures'):
                 result_list = processpool_wrapper(self.cores, parallel_args, self.run_each)
