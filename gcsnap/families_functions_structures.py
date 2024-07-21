@@ -52,7 +52,7 @@ class FamiliesFunctionsStructures:
             # Version 2: Parallel processing each family
             # As this relieas on APIs, we try to minimies load imbalance not
             # know apriori how long each family will take (as depends on the number of members)
-            parallel_args = [({k,v}, mapping_dict, self.get_pdb, self.get_annotations)
+            parallel_args = [({k: v}, mapping_dict, self.get_pdb, self.get_annotations)
                              for k,v in self.families.items()]
 
             with self.console.status('Get functional annotations and structures'):
