@@ -27,6 +27,9 @@ class MMseqsCluster:
             self.out_dir = out_dir
         else:
             self.out_dir = mmseqs_out_dir
+        # check if existing
+        if not os.path.isdir(self.out_dir):
+            os.mkdir(self.out_dir)            
   
         self.sensitivity = 7.5
 
