@@ -21,7 +21,12 @@ class MMseqsCluster:
 
         # set arguments
         self.gc = gc
-        self.out_dir = out_dir
+        # if mmseqs temporary folder is not set, use the output folder
+        mmseqs_out_dir = config.arguments['tmp_mmseqs_folder']['value']
+        if mmseqs_out_dir is None:
+            self.out_dir = out_dir
+        else:
+            self.out_dir = mmseqs_out_dir
   
         self.sensitivity = 7.5
 
