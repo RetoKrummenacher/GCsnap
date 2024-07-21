@@ -6,6 +6,10 @@ out-label:
     value: default
     type: str
     help: Name of output directory. If default, name of the input file.
+tmp-mmseqs-folder:
+    value: None
+    type: str
+    help: The temporary folder to store mmseqs files. May be changed so that intermediary mmseqs files are saved somewhere else then the automatic 'out-label' directory.
 collect-only:
     value: False
     type: bool
@@ -22,6 +26,10 @@ clans-file:
     value: None
     type: str
     help: Used only for advanced interactive output representation (Clans file if the input is a clans file and -operon_cluster_advanced is set to True).
+ncbi-user-email:
+    value: None
+    type: str
+    help: Email address of the user. May be required to access NCBI databases and is not used for anything else.
 ncbi-api-key:
     value: None
     type: str
