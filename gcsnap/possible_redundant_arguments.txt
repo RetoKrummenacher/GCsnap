@@ -1,10 +1,3 @@
-questionable?
-user_email:
-    value: None
-    type: str
-    help: Email address of the user. May be required to access NCBI databases and is not used for anything else.
-
-
 redundant!
  - optionalNamed.add_argument('-out_label_suffix', dest='out_label_suffix', default = '',type=str, help='A suffix to add to the out_label (default: "").')
     out_label_suffix: used to define the outfolder as {out_label}_{out_label_suffix} if specified.
@@ -15,6 +8,4 @@ protein family identification
  - optionalNamed.add_argument('-psiblast_location', dest='blast', default = 'psiblast',type=str, help='Location of psiBLAST (if not in path) (default: psiblast)')
 
 
-optional inputs!
- - optionalNamed.add_argument('-tmp_folder', dest='tmp_folder', default = '/tmp',type=str, help='The temporary folder (default: /tmp). May be changed so that intermediary files (e.g., assembly files) are saved somewhere else.')
- figure making optional inputs
+
