@@ -53,7 +53,7 @@ class Operons:
         # update syntenies with the new operon clusters
         self.update_syntenies()       
 
-    def run_advanced(self, args: tuple) -> None:
+    def run_advanced(self) -> None:
         # get the clusters by excluding the most common families
         res = self.find_operon_clusters_with_PaCMAP(clean = True, coordinates_only = False) 
         self.clean_coordinates, self.operon_clusters, self.sorted_targets = res
@@ -135,7 +135,7 @@ class Operons:
 
         return np.array(presence_matrix), sorted_targets, sorted_families   
 
-    def calculate_start_eps(coordinates: list) -> float:
+    def calculate_start_eps(self, coordinates: list) -> float:
         distances = []
         for i, vector_i in enumerate(coordinates):
             for j, vector_j in enumerate(coordinates):
