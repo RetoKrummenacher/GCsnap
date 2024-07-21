@@ -61,7 +61,6 @@ class MMseqsCluster:
             self.mmseqs_results = os.path.join(self.out_dir, '{}_{}.mmseqs'.format(
                 os.path.basename(self.fasta_file)[:-6], self.max_evalue))
             
-            # TODO: Why checking if file exists first?
             if not os.path.isfile(self.mmseqs_results):
                 try:
                     _, stderr = self.mmseqs_command('mmseqs')

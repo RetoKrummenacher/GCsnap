@@ -83,7 +83,6 @@ class Families:
         return (syntenies , curr_numbers) 
     
     def adapt_families(self, args: tuple) -> dict:
-        # TODO: Check what this curr_numbers is
         syntenies, curr_numbers = args
         for k in syntenies.keys():
             for i, _ in enumerate(syntenies[k]['flanking_genes']['ncbi_codes']):
