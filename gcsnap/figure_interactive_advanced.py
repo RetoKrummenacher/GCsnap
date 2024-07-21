@@ -393,11 +393,13 @@ class AdvancedInteractiveFigure:
                     else:
                         in_syntenies[target]['flanking_genes'][key] = [self.syntenies[target]
                                                                        ['flanking_genes'][key][context_idx]]
-        # TODO: What is going on here. If done again, keep old results?
-        # replace syntenies in gc with the new ones
+        
+        # Here MMSeqs only with targets and not flanking genes
+        # hence we use a copy of the gc object and replaye the syntenies with the in_syntenies
         gc_temp = self.gc.copy()
         gc_temp.syntenise = in_syntenies
-        mmseqs = MMseqsCluster(self.config, gc_temp, self.out_label)
+        out_label = '{}_targets'.format(self.out_label)
+        mmseqs = MMseqsCluster(self.config, gc_temp, out_label)
         mmseqs.run()
         distance_matrix = mmseqs.get_distance_matrix()
         ordered_ncbi_codes = mmseqs.get_fasta_order()
