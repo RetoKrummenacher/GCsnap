@@ -11,11 +11,14 @@ class Target():
         self.console = RichConsole()
 
         # empty dictionary to store the targets
-        self.targets_lists = {}
+        self.targets_dict = {}
 
     def run(self) -> None:
         with self.console.status('Parsing targets'):
             self.parse_targets(self.targets)
+
+    def get_targets_dict(self) -> dict:
+        return self.targets_dict
 
     def parse_targets(self, targets: Union[str, list]) -> dict:
         for target in targets:
@@ -30,15 +33,15 @@ class Target():
                 # target is a list of ids
                 # the name of this list (the label) by default is the 'default' 
                 label = self.arguments['out_label']['value']
-                if label not in self.targets_lists:
-                    self.targets_lists[label] = []
+                if label not in self.targets_dict:
+                    self.targets_dict[label] = []
                 
-                self.targets_lists[label].append(target)
+                self.targets_dict[label].append(target)
 
     def get_targets_from_file(self, target_file: str) -> None:
         curr_label = os.path.basename(target_file).split('.')[0]
-        if curr_label not in self.targets_lists:
-            self.targets_lists[curr_label] = []
+        if curr_label not in self.targets_dict:
+            self.targets_dict[curr_label] = []
 
         is_fasta = False
         with open(target_file, 'r') as f:
@@ -52,16 +55,17 @@ class Target():
             elif not is_fasta:
                 curr_target = line.strip().split()[0]
 
-            if curr_target not in self.targets_lists[curr_label]:
-                self.targets_lists[curr_label].append(curr_target)        
+            if curr_target not in self.targets_dict[curr_label]:
+                self.targets_dict[curr_label].append(curr_target)        
 
 
     def get_clusters_from_clans(self, clans_file: str) -> dict:
         ncbis_ordered = self.get_ncbicodes_order_in_clans(clans_file)
         cluster_codes = self.arguments['cluster_patterns']['value']
 
-        # TODO: This what bothers me, but I assume its the target list
-        clusters = {}
+        # TODO: Ask Joana if realy each Cluster has its own list of targets
+        # and hence is its own job. If so, its correct as its appended to argets
+        # list with the cluster nubmer/name as key -> the out label
         
         if cluster_codes != None:
             found_seqgroup = False
@@ -83,13 +87,13 @@ class Target():
                             numbers = line.split('=')[-1].split(';')[:-1]
                             numbers = [int(i) for i in numbers]
                             numbers = [ncbis_ordered[i] for i in numbers]
-                            self.targets_lists[current_cluster] = numbers
+                            self.targets_dict[current_cluster] = numbers
 
                             found_allowed_cluster = False
 
         else:
-            label = clans_file.split('/')[-1].split('.')[0]
-            self.targets_lists[label] = ncbis_ordered
+            label = os.path.basename(clans_file).split('.')[0]
+            self.targets_dict[label] = ncbis_ordered
     
     def get_ncbicodes_order_in_clans(self, clans_file: str) -> list:   
         ncbids_ordered = []

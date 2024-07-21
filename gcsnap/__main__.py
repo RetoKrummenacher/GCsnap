@@ -39,8 +39,9 @@ def main():
     targets.run()
     t_parse.stop()
 
-    # 3. Iterate over each target list
-    for out_label in targets.targets_lists:
+    # 3. Iterate over each element in target list
+    # each element is a dictionary with the label as key and the list of targets as value
+    for out_label in targets.get_targets_dict():
         # all execution conditions depending on arguments from CLI or config.yaml
         # are handled in the classes themselves
 
