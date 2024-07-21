@@ -22,6 +22,7 @@ class GenomicContext:
 
         # set parameters
         self.out_label = out_label
+        self.config = config
 
         self.console = RichConsole()
 
@@ -403,7 +404,18 @@ class GenomicContext:
                 flat_list.extend(self.flatten_taxonomy(value, parent_keys + [key]))
             else:
                 flat_list.append(parent_keys + [key, value])
-        return flat_list            
+        return flat_list        
+
+    def copy(self) -> 'GenomicContext':
+        new_gc = GenomicContext(self.config, self.out_label)
+        new_gc.syntenies = self.syntenies.copy()
+        new_gc.families = self.families.copy()
+        new_gc.operon_types_summary = self.operon_types_summary.copy()
+        new_gc.selected_operons = self.selected_operons.copy()
+        new_gc.most_populated_operon = self.most_populated_operon
+        new_gc.taxonomy = self.taxonomy.copy()
+        new_gc.curr_targets = self.curr_targets.copy()
+        return new_gc    
                     
     @staticmethod
     def get_empty_flanking_genes() -> dict:  
