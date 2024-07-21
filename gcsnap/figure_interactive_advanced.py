@@ -84,7 +84,7 @@ class AdvancedInteractiveFigure:
         self._set_attributes(**kwargs)
 
         # Create the dataframe with all data used to plot. it allows for cross interativity between plots
-        cluster_colors = self.define_operons_cluster(cluster = self.operons.keys(), 
+        cluster_colors = self.define_operons_colors(clusters = self.operons.keys(), 
                                                     mode = 'bokeh', cmap = 'gist_rainbow')
         scatter_data = self.create_data_structure(cluster_colors = cluster_colors,
                                                 **kwargs)
@@ -195,7 +195,7 @@ class AdvancedInteractiveFigure:
         self._set_attributes(**kwargs)
 
         colors = {}
-        cmap = matplotlib.cm.get_cmap(cmap)
+        cmap = plt.get_cmap(self.cmap)
         norm = matplotlib.colors.Normalize(vmin=0, vmax=len(self.clusters))
         colours = [cmap(norm(i)) for i in range(len(self.clusters))]
         #random.shuffle(colours)
@@ -283,9 +283,9 @@ class AdvancedInteractiveFigure:
         # now go through the sequences in the gene clusters and collect their xy clans coordinates if they
         # are in the clans map
         for operon_type in sorted(list(self.operons.keys())):
-            facecolor = self.clusters_colors[operon_type]['Color (RGBA)']
-            edgecolor = self.clusters_colors[operon_type]['Line color']
-            size = self.clusters_colors[operon_type]['Size']
+            facecolor = self.cluster_colors[operon_type]['Color (RGBA)']
+            edgecolor = self.cluster_colors[operon_type]['Line color']
+            size = self.cluster_colors[operon_type]['Size']
             
             for i, member in enumerate(self.operons[operon_type]['target_members']):
                 if member in clans_coords:
@@ -399,10 +399,11 @@ class AdvancedInteractiveFigure:
         gc_temp = self.gc.copy()
         gc_temp.syntenise = in_syntenies
         out_label = '{}_targets'.format(self.out_label)
-        mmseqs = MMseqsCluster(self.config, gc_temp, out_label)
+        out_dir = os.path.join(os.getcwd(), out_label)
+        mmseqs = MMseqsCluster(self.config, gc_temp, out_dir)
         mmseqs.run()
         distance_matrix = mmseqs.get_distance_matrix()
-        ordered_ncbi_codes = mmseqs.get_fasta_order()
+        ordered_ncbi_codes = mmseqs.get_cluster_order()
 
         paCMAP_embedding = pacmap.PaCMAP(n_components = 2)
         paCMAP_coordinat = paCMAP_embedding.fit_transform(distance_matrix)
@@ -618,7 +619,7 @@ class AdvancedInteractiveFigure:
                                     operon_type = 'GC Type {:05d}'.format(operon_type)
 
                                     if '-' not in operon_type:
-                                        operon_color = self.clusters_colors[operon_type]['Color (RGBA)']
+                                        operon_color = self.cluster_colors[operon_type]['Color (RGBA)']
 
                                         data['Target EntrezID'].append(target)
                                         data['Superkingdom'].append(superkingdom)

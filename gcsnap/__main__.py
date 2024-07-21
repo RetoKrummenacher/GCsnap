@@ -50,7 +50,7 @@ def main():
         if not os.path.isdir(working_dir):
             os.mkdir(working_dir)
         os.chdir(working_dir)
-        targets_list = targets.targets_lists[out_label]
+        targets_list = targets.get_targets_dict().get(out_label)
         if len(targets_list) < 2:
             console.print_warning('GCsnap was asked to analyze only one target')
             console.print_skipped_step('Skipping target {}'.format(out_label))
@@ -64,93 +64,93 @@ def main():
         # add targets to genomic context
         gc.targets = targets_list
 
-        t_collect = timing.timer('Step 1: Collecting the genomic contexts')
-        # B. Map sequences to UniProtKB-AC and NCBI EMBL-CDS
-        # a). Map all targets to UniProtKB-AC
-        mappingA = SequenceMapping(config, targets_list, 'UniProtKB-AC')
-        mappingA.run()
-        # b) Map all to RefSeq
-        mappingB = SequenceMapping(config, mappingA.get_codes(), 'RefSeq')
-        mappingB.run()
-        # merge them to A (only if A is not nan)
-        mappingA.merge_mapping_dfs(mappingB.mapping_df)
-        # c). Map all targets to NCBI EMBL-CDS
-        mappingC = SequenceMapping(config, mappingA.get_codes(), 'EMBL-CDS')
-        mappingC.run()
-        # merge the two mapping results dataframes
-        mappingA.merge_mapping_dfs(mappingC.mapping_df)
-        # create targets and ncbi_columns and log not found targets
-        mappingA.finalize()
-        targets_and_ncbi_codes = mappingA.get_targets_and_ncbi_codes()  
+        # t_collect = timing.timer('Step 1: Collecting the genomic contexts')
+        # # B. Map sequences to UniProtKB-AC and NCBI EMBL-CDS
+        # # a). Map all targets to UniProtKB-AC
+        # mappingA = SequenceMapping(config, targets_list, 'UniProtKB-AC')
+        # mappingA.run()
+        # # b) Map all to RefSeq
+        # mappingB = SequenceMapping(config, mappingA.get_codes(), 'RefSeq')
+        # mappingB.run()
+        # # merge them to A (only if A is not nan)
+        # mappingA.merge_mapping_dfs(mappingB.mapping_df)
+        # # c). Map all targets to NCBI EMBL-CDS
+        # mappingC = SequenceMapping(config, mappingA.get_codes(), 'EMBL-CDS')
+        # mappingC.run()
+        # # merge the two mapping results dataframes
+        # mappingA.merge_mapping_dfs(mappingC.mapping_df)
+        # # create targets and ncbi_columns and log not found targets
+        # mappingA.finalize()
+        # targets_and_ncbi_codes = mappingA.get_targets_and_ncbi_codes()  
 
-        # C. Find assembly accession, download and parse assemblies
-        assemblies = Assemblies(config, targets_and_ncbi_codes)
-        assemblies.run()
-        gc.update_syntenies(assemblies.get_flanking_genes())
+        # # C. Find assembly accession, download and parse assemblies
+        # assemblies = Assemblies(config, targets_and_ncbi_codes)
+        # assemblies.run()
+        # gc.update_syntenies(assemblies.get_flanking_genes())
 
-        # D. Add sequence information to flanking genes
-        sequences = Sequences(config, gc)
-        sequences.run()
-        gc.update_syntenies(sequences.get_sequences())
-        gc.write_syntenies_to_json('genomic_context_information.json')
+        # # D. Add sequence information to flanking genes
+        # sequences = Sequences(config, gc)
+        # sequences.run()
+        # gc.update_syntenies(sequences.get_sequences())
+        # gc.write_syntenies_to_json('genomic_context_information.json')
 
-        t_collect.stop()
+        # t_collect.stop()
 
         if not config.arguments['collect_only']['value']:
 
-            t_family = timing.timer('Step 2: Finding protein families')
-            # Ea) Add protein families
-            families = Families(config, gc, out_label)
-            families.run()
-            gc.update_syntenies(families.get_families())
-            gc.create_and_write_families_summary()
+            # t_family = timing.timer('Step 2: Finding protein families')
+            # # Ea) Add protein families
+            # families = Families(config, gc, out_label)
+            # families.run()
+            # gc.update_syntenies(families.get_families())
+            # gc.create_and_write_families_summary()
 
-            t_family.stop()
+            # t_family.stop()
 
-            t_annotate_families = timing.timer('Step 3: Annotating functions and structures')
-            # Eb). Add functions and structures to families
-            # execution conditions handeled in the class
-            ffs = FamiliesFunctionsStructures(config, gc)
-            ffs.run()
-            gc.update_families(ffs.get_annotations_and_structures())
-            gc.write_families_to_json('protein_families_summary.json')
+            # t_annotate_families = timing.timer('Step 3: Annotating functions and structures')
+            # # Eb). Add functions and structures to families
+            # # execution conditions handeled in the class
+            # ffs = FamiliesFunctionsStructures(config, gc)
+            # ffs.run()
+            # gc.update_families(ffs.get_annotations_and_structures())
+            # gc.write_families_to_json('protein_families_summary.json')
 
-            t_annotate_families.stop()
+            # t_annotate_families.stop()          
         
-            t_operons = timing.timer('Step 4-5: Finding operon/genomic_context')
-            # F. Find and add operons
-            operons = Operons(config, gc, out_label)
-            operons.run()
-            gc.update_syntenies(operons.get_operons())
-            gc.create_and_write_operon_types_summary()
-            gc.find_most_populated_operon_types()   
+            # t_operons = timing.timer('Step 4-5: Finding operon/genomic_context')
+            # # F. Find and add operons
+            # operons = Operons(config, gc, out_label)
+            # operons.run()
+            # gc.update_syntenies(operons.get_operons())
+            # gc.create_and_write_operon_types_summary()
+            # gc.find_most_populated_operon_types()   
 
-            t_operons.stop()
+            # t_operons.stop()
 
-            t_taxonomy = timing.timer('Step 6: Mapping taxonomy')
-            # G. Get taxonomy information
-            taxonomy = Taxonomy(config, gc)
-            taxonomy.run()
-            gc.update_taxonomy(taxonomy.get_taxonomy())
-            gc.write_taxonomy_to_json('taxonomy.json')     
+            # t_taxonomy = timing.timer('Step 6: Mapping taxonomy')
+            # # G. Get taxonomy information
+            # taxonomy = Taxonomy(config, gc)
+            # taxonomy.run()
+            # gc.update_taxonomy(taxonomy.get_taxonomy())
+            # gc.write_taxonomy_to_json('taxonomy.json')     
 
-            t_taxonomy.stop()
+            # t_taxonomy.stop()
   
-            t_tm = timing.timer('Step 7: Finding ALL proteins with transmembrane segments')
-            # H. Annotate TM 
-            tm = TMsegments(config, gc, out_label)
-            tm.run()
-            gc.update_syntenies(tm.get_annotations())
+            # t_tm = timing.timer('Step 7: Finding ALL proteins with transmembrane segments')
+            # # H. Annotate TM 
+            # tm = TMsegments(config, gc, out_label)
+            # tm.run()
+            # gc.update_syntenies(tm.get_annotations())
 
-            t_tm.stop()
+            # t_tm.stop()
 
             # # TODO: For debugging
             # with open('gc.pkl', 'wb') as file:
             #     pickle.dump(gc, file)  
 
-            # # TODO: For debugging        
-            # with open('gc.pkl', 'rb') as file:
-            #     gc = pickle.load(file) 
+            # TODO: For debugging        
+            with open('gc.pkl', 'rb') as file:
+                gc = pickle.load(file)      
              
             t_figures = timing.timer('Step 8-9: Producing figures')
             # I. Produce genomic context figures
@@ -158,6 +158,8 @@ def main():
             figures.run()
 
             t_figures.stop()
+
+            exit(1)
 
             t_output = timing.timer('Step 10: Write output')
 
