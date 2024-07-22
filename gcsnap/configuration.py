@@ -9,6 +9,7 @@ import yaml
 from ruamel.yaml.main import round_trip_dump as yaml_dump
 
 from gcsnap.rich_console import RichConsole 
+from gcsnap.utils import get_base_path
 
 
 class CustomArgumentParser(argparse.ArgumentParser):
@@ -102,7 +103,7 @@ class CustomArgumentParser(argparse.ArgumentParser):
 
 class Configuration:    
     def __init__(self):                     
-        self.path = os.path.dirname(os.path.abspath(__file__))
+        self.path = get_base_path()
         self.console = RichConsole()
 
         # in case config.yaml is not found, use default configuration
