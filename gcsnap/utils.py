@@ -1,25 +1,21 @@
-import os
-from typing import Callable, Union
-
-from threading import Thread, Lock
-
-from multiprocessing import Pool as ProcessPool
-from multiprocessing.pool import ThreadPool
-
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures import as_completed
-
-import dask
-from dask.distributed import Client
-from dask import config
-
 
 # Exception classes
 # ------------------------------------------------------
-class WarningToLog(Exception):
-    """Exception raised when something goes wrong and needs to be logged."""
+class WarningToLog(Exception):    
+    """
+    Exception to raise when a warning should be logged.
+
+    Attributes:
+        message (str): The message to log.
+    """
+
     def __init__(self, message: str):
+        """
+        Initialize the exception.
+
+        Args:
+            message (str): The message to log.
+        """        
         self.message = message
         super().__init__(self.message)       
 # ------------------------------------------------------      
@@ -27,6 +23,16 @@ class WarningToLog(Exception):
 # Split dictionary into list of dictoonary chunks
 # ------------------------------------------------------
 def split_dict_chunks(input_dict: dict, n_chunks: int) -> list[dict]:
+    """
+    Split a dictionary into n_chunks sub-dictionaries.
+
+    Args:
+        input_dict (dict): The dictionary to split.
+        n_chunks (int): The number of sub-dictionaries to create.
+
+    Returns:
+        list[dict]: A list of n_chunks sub-dictionaries.
+    """    
     # list of all key-value pairs, a list of tuples
     key_values = list(input_dict.items())  
     sub_lists = split_list_chunks(key_values, n_chunks)
@@ -38,6 +44,16 @@ def split_dict_chunks(input_dict: dict, n_chunks: int) -> list[dict]:
 # Split list into list of chunks
 # ------------------------------------------------------
 def split_list_chunks(input_list: list, n_chunks: int) -> list[list]:
+    """
+    Split a list into n_chunks sub-lists.
+
+    Args:
+        input_list (list): The list to split.
+        n_chunks (int): The number of sub-lists to create.
+
+    Returns:
+        list[list]: A list of n_chunks sub-lists.
+    """    
     n_values = len(input_list)
     # needs some addition take care as the last part might be empty
     # like for 100 targets with 16 chunks, the step is 100//16+1=7 and 15*7>100
@@ -53,33 +69,46 @@ def split_list_chunks(input_list: list, n_chunks: int) -> list[list]:
     return sub_lists
 # ------------------------------------------------------
 
-
-    def create_adapt_chunks(self, curr_numbers: list) -> list[tuple[dict,list]]:
-        # all entries in sysntenies
-        key_values = list(self.families.items())
-        # create sub lists
-        sub_lists = self.split_list(key_values, len(key_values), self.cores)
-        return [(dict(sub_list), curr_numbers, self.cluster_list) for sub_list in sub_lists]
-
-    def split_list(self, lst: list, n_values: int, cores: int) -> list:
-        # use as many sub lists as there are cores
-        # needs some addition take care if the last part is empty
-        # like for 100 targets with 16 cores, the step is 7 and 15*7>100
-        # in such a case we make last batch larger than the previous ones        
-        incrementation = 1 if (n_values // cores) * (cores-1) >= n_values else 0 
-        n_each_list = (n_values // cores) + incrementation
-        # create cores-1 sub lists equally sized
-        sub_lists = [lst[((i-1)*n_each_list):(i*n_each_list)]
-                        for i in range(1, cores)]
-        # the last will just have all the remaining values
-        sub_lists = sub_lists + [lst[((cores-1)*n_each_list):]] 
-        return sub_lists      
-
-
-# Parallel wrappers for any function:
 # ------------------------------------------------------
-def sequential_wrapper(cores: int, parallel_args: list, func: Callable) -> list:
-    
+""" 
+Various parallelization methods to apply a function to a list of argument tuples in parallel.
+including:
+    - sequential_wrapper: Apply a function to a list of arguments sequentially.
+    - threading_wrapper: Apply a function to a list of arguments using threads.
+    - processpool_wrapper: Apply a function to a list of arguments using a process pool.
+    - threadpool_wrapper: Apply a function to a list of arguments using a thread pool.
+    - futures_thread_wrapper: Apply a function to a list of arguments using ThreadPoolExecutor.
+    - futures_process_wrapper: Apply a function to a list of arguments using ProcessPoolExecutor.
+    - daskthread_wrapper: Apply a function to a list of arguments using Dask with threads.
+    - daskprocess_wrapper: Apply a function to a list of arguments using Dask with processes.
+"""
+
+from typing import Callable
+
+from threading import Thread, Lock
+
+from multiprocessing import Pool as ProcessPool
+from multiprocessing.pool import ThreadPool
+
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import as_completed
+
+import dask
+from dask.distributed import Client
+
+def sequential_wrapper(parallel_args: list[tuple], func: Callable) -> list:
+    """
+    Apply a function to a list of arguments sequentially. The arguments are passed as tuples
+    and are unpacked within the function.
+
+    Args:
+        parallel_args (list[tuple]): A list of tuples, where each tuple contains the arguments for the function.
+        func (Callable): The function to apply to the arguments.
+
+    Returns:
+        list: A list of results from the function applied to the arguments.
+    """        
     result_list = []
     
     for arg in parallel_args:
@@ -87,8 +116,18 @@ def sequential_wrapper(cores: int, parallel_args: list, func: Callable) -> list:
         
     return result_list
 
+def threading_wrapper(parallel_args: list[tuple], func: Callable) -> list:
+    """
+    Apply a function to a list of arguments using threads. The arguments are passed as tuples
+    and are unpacked within the function.
 
-def threading_wrapper(n_threads: int, parallel_args: list, func: Callable) -> list:
+    Args:
+        parallel_args (list[tuple]): A list of tuples, where each tuple contains the arguments for the function.
+        func (Callable): The function to apply to the arguments.
+
+    Returns:
+        list: A list of results from the function applied to the arguments.
+    """    
     def worker(index):
         result = func(parallel_args[index])
         with lock:
@@ -108,8 +147,21 @@ def threading_wrapper(n_threads: int, parallel_args: list, func: Callable) -> li
 
     return results_list
 
+def processpool_wrapper(n_processes: int, parallel_args: list[tuple], func: Callable) -> list:       
+    """
+    Apply a function to a list of arguments using a process pool. The arguments are passed as tuples
+    and are unpacked within the function, meaning the function takes only one argument, but a tuple.
+    This allows the use of the map function of the pool which takes only one argument.
+    They are asynchronus, meaning the order of the results is not guaranteed.
 
-def processpool_wrapper(n_processes: int, parallel_args: list, func: Callable, return_results: bool = True) -> Union[list,None]:       
+    Args:
+        n_processes (int): The number of processes to use.
+        parallel_args (list[tuple]): A list of tuples, where each tuple contains the arguments for the function.
+        func (Callable): The function to apply to the arguments.
+
+    Returns:
+        list: A list of results from the function applied to the arguments in the order they finish.
+    """        
     pool = ProcessPool(processes = n_processes)
     
     # imap and map take just one argument, hence unpacking within function
@@ -127,12 +179,24 @@ def processpool_wrapper(n_processes: int, parallel_args: list, func: Callable, r
     pool.join() # wait until all have finished.
     
     result_list = results.get()
-    if return_results:
-        # Convert to a list of results from the MapResult object
-        return result_list
 
+    return result_list
 
-def threadpool_wrapper(n_threads: int, parallel_args: list, func: Callable) -> list:
+def threadpool_wrapper(n_threads: int, parallel_args: list[tuple], func: Callable) -> list:
+    """
+    Apply a function to a list of arguments using a thread pool. The arguments are passed as tuples
+    and are unpacked within the function, meaning the function takes only one argument, but a tuple.
+    This allows the use of the map function of the pool which takes only one argument.
+    They are asynchronus, meaning the order of the results is not guaranteed.
+
+    Args:
+        n_threads (int): The number of threads to use.
+        parallel_args (list[tuple]): A list of tuples, where each tuple contains the arguments for the function.
+        func (Callable): The function to apply to the arguments.
+
+    Returns:
+        list: A list of results from the function applied to the arguments in the order they finish.
+    """    
     pool = ThreadPool(n_threads)
 
     # Use map_async to apply the function asynchronously
@@ -145,8 +209,19 @@ def threadpool_wrapper(n_threads: int, parallel_args: list, func: Callable) -> l
     result_list = results.get()
     return result_list
 
+def futures_thread_wrapper(n_threads: int, parallel_args: list[tuple], func: Callable) -> list:
+    """
+    Apply a function to a list of arguments using ThreadPoolExecutor. The arguments are passed as tuples
+    and are unpacked within the function. As completed is used to get the results in the order they finish.
 
-def futures_thread_wrapper(n_threads: int, parallel_args: list, func: Callable) -> list:
+    Args:
+        n_threads (int): The number of threads to use.
+        parallel_args (list[tuple]): A list of tuples, where each tuple contains the arguments for the function.
+        func (Callable): The function to apply to the arguments.
+
+    Returns:
+        list: A list of results from the function applied to the arguments in the order they finish.
+    """    
     # executor.submit() to submit each task to the executor. 
     # This returns a Future object for each task. You then use as_completed() 
     # to get an iterator that yields futures as they complete. 
@@ -160,7 +235,19 @@ def futures_thread_wrapper(n_threads: int, parallel_args: list, func: Callable) 
 
     return result_list
 
-def futures_process_wrapper(n_processes: int, parallel_args: list, func: Callable) -> list: 
+def futures_process_wrapper(n_processes: int, parallel_args: list[tuple], func: Callable) -> list:
+    """
+    Apply a function to a list of arguments using ProcessPoolExecutor. The arguments are passed as tuples
+    and are unpacked within the function. As completed is used to get the results in the order they finish.
+
+    Args:
+        n_processes (int): The number of processes to use.
+        parallel_args (list[tuple]): A list of tuples, where each tuple contains the arguments for the function.
+        func (Callable): The function to apply to the arguments.
+
+    Returns:
+        list: A list of results from the function applied to the arguments in the order they finish.
+    """    
     # Same as with futures and threads
     # Create a ProcessPoolExecutor
     with ProcessPoolExecutor(max_workers=n_processes) as executor:
@@ -169,8 +256,19 @@ def futures_process_wrapper(n_processes: int, parallel_args: list, func: Callabl
 
     return result_list
 
+def daskthread_wrapper(n_threads: int, parallel_args: list[tuple], func: Callable) -> list:  
+    """
+    Apply a function to a list of arguments using Dask with threads. The arguments are passed as tuples
+    and are unpacked within the function. Dask is executed asynchronusly, but with the order of the results guaranteed.
 
-def daskthread_wrapper(n_threads: int, parallel_args: list, func: Callable) -> list:    
+    Args:
+        n_threads (int): The number of threads to use.
+        parallel_args (list[tuple]): A list of tuples, where each tuple contains the arguments for the function.
+        func (Callable): The function to apply to the arguments.
+
+    Returns:
+        list: A list of results from the function applied to the arguments in the order they are provided.
+    """      
     # n_workers: number of processes (Defaults to 1)
     # threads_per_worker: threads in each process (Defaults to None)
         # i.e. it uses all available cores.        
@@ -186,8 +284,19 @@ def daskthread_wrapper(n_threads: int, parallel_args: list, func: Callable) -> l
     
     return result_list
 
+def daskprocess_wrapper(n_processes: int, parallel_args: list[tuple], func: Callable) -> list: 
+    """
+    Apply a function to a list of arguments using Dask with processes. The arguments are passed as tuples
+    and are unpacked within the function. Dask is executed asynchronusly, but with the order of the results guaranteed.
 
-def daskprocess_wrapper(n_processes: int, parallel_args: list, func: Callable) -> list:   
+    Args:
+        n_processes (int): The number of processes to use.
+        parallel_args (list[tuple]): A list of tuples, where each tuple contains the arguments for the function.
+        func (Callable): The function to apply to the arguments.
+
+    Returns:
+        list: A list of results from the function applied to the arguments in the order they are provided.
+    """      
     # n_workers: number of processes (Defaults to 1)
     # threads_per_worker: threads in each process (Defaults to None)
         # i.e. it uses all available cores.        
@@ -203,55 +312,20 @@ def daskprocess_wrapper(n_processes: int, parallel_args: list, func: Callable) -
     
     return result_list
 # ------------------------------------------------------
+   
 
+# ------------------------------------------------------
+""" 
+Logging within the GCsnap pipeline.
 
-
-
-# Downloading
-# -----------
-# pip install wget
-import wget
-import requests
-# pip install asyncio
-import asyncio # single threaded coroutines
-# pip install aiohttp
-import aiohttp  # asynchronous asyncio
-
-# asyncio
-async def download_asyncio(url: str, file_path: str, file_name: str) -> None:
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
-            with open(os.path.join(file_path, file_name), 'wb') as f:
-                f.write(await resp.read())    
-
-async def wrapper_download_asyncio(args_list: list[tuple[str,str,str]]) -> None:
-    tasks = [download_asyncio(args[0], args[1], args[2]) for args in args_list]
-    await asyncio.gather(*tasks)
-    
-# wget
-def download_wget(url: str, file_path: str, file_name: str) -> None:
-    wget.download(url, out=os.path.join(file_path, file_name))
-        
-def wrapper_download(args_list: list[tuple[str,str,str]]) -> None:
-    for args in args_list:
-        download_wget(args[0], args[1], args[2])    
-        
-# request
-def download_request(url: str, file_path: str, file_name: str) -> None:
-    with requests.get(url, stream=True) as r:
-        r.raise_for_status()
-        with open(os.path.join(file_path, file_name), 'wb') as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk)
-
-def wrapper_download_request(args_list: list[tuple[str,str,str]]) -> None:
-    for args in args_list:
-        download_request(args[0], args[1], args[2])
-        
-
-
-# Logging
-# -------
+Log desired information to gcnap.log file. The log file is created in the working directory.
+Logging levels are set to INFO by default but set to WARNING for the asyncio logger.
+Loggin messages are formatted as follows:
+    - Timestamp
+    - Logger name
+    - Log level
+    - Log message   
+"""
 import logging # already sets the loggin process
 
 # loggin never done in parallel:
@@ -259,7 +333,22 @@ import logging # already sets the loggin process
 # https://docs.python.org/3/howto/logging-cookbook.html#logging-to-a-single-file-from-multiple-processes
 
 class CustomFormatter(logging.Formatter):
-    def format(self, record):
+    """
+    Custom formatter for logging messages.
+
+    Attributes:
+        message (str): The message to log.
+    """    
+    def format(self, record: str) -> str:
+        """
+        Initialize the formatter.
+
+        Args:
+            record (str): The format of the log record.
+
+        Returns:
+            str: The formatted log record.
+        """        
         record.name = record.name.split('.')[-1]
         return super().format(record)
 
@@ -280,5 +369,5 @@ logger = logging.getLogger()
 # Update handlers to use the custom formatter
 for handler in logger.handlers:
     handler.setFormatter(formatter)
-
+# ------------------------------------------------------
 
