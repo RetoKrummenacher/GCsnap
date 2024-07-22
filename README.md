@@ -29,14 +29,14 @@ GCsnap is written in Python 3.11. It was tested on Python 3.11. It requires most
 
 For detailed requirements including working versions, check ```pyproject.toml```.
 
-Additionally, GCsnap relies on a local installation of MMseqs or for Windows users, the static binary available here: https://mmseqs.com/latest/
-
+Additionally, GCsnap relies on a local installation of MMseqs or for Windows users, the static binary. See below for installation details.
 ## Installation
 
 ### Installing from Source
 
 Clone the repository with git, create a Conda environment and install:
 
+**Linux/MacOS**
 ```
 # To download
 git clone https://github.com/RetoKrummenacher/GCsnap
@@ -46,10 +46,28 @@ cd GCsnap
 git checkout gcsnap2desktop
 
 # To install
-conda create -n GCsnap -c conda-forge gcc=14.1 python=3.11 -c bioconda mmseqs2=15.6
+conda create -n GCsnap -c conda-forge -c bioconda gcc=14.1 python=3.11 mmseqs2
 conda activate GCsnap
 pip install .
 ```
+
+**Windows**
+There is no MMseqs2 installation candidate, just create Conda environment without mmseqs2 and get the static binary executable from here: https://mmseqs.com/latest/. Download, extract and store locally.
+When running GCsnap, pass the path to the executable (i.e., mmseqs.bat) via the ```--mmseqs-executable-path``` argument.
+```
+# To download
+git clone https://github.com/RetoKrummenacher/GCsnap
+cd GCsnap
+
+# Change to new developpment branch 
+git checkout gcsnap2desktop
+
+# To install
+conda create -n GCsnap -c conda-forge -c bioconda gcc=14.1 python=3.11
+conda activate GCsnap
+pip install .
+```
+
 
 ## Allowed inputs
 
@@ -86,6 +104,12 @@ The most relevant arguments are:
   --clans-pattern: a set of patterns in CLANS groups names that define different groups to be considered as independent jobs.
   --operon-cluster-advanced: set to true to have a more comprehensive analysis/summary of the genomic contexts found. Ideal for very large input sets.  
 ```
+
+For Windows users:
+```  
+  --mmseqs-executable-path: path to MMseqs executable (i.e., mmseqs.bat) if not installed in Conda environment.
+```
+
 
 ### 1. Simple job
 
