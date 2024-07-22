@@ -71,8 +71,8 @@ class AdvancedInteractiveFigure:
         # Make a copy of the current object's attributes (all contained in instance __dict__)
         kwargs = self.__dict__.copy()
 
-        with self.console.status('Making advanced interactive figure summary page.'):        
-            f_name = self.create_interactive_output_html(**kwargs)
+        self.console.print_working_on('Making advanced interactive figure summary page.')  
+        f_name = self.create_interactive_output_html(**kwargs)
         self.console.print_info('Summary visualization created in {}'.format(f_name))       
 
         with self.console.status('Making advanced interactive figure per operon type page.'):           
