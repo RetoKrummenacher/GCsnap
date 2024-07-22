@@ -41,14 +41,16 @@ Download the zip archive or clone the repository with git:
 
 ```
 # To download
-git clone https://github.com/JoanaMPereira/GCsnap
+git clone https://github.com/RetoKrummenacher/GCsnap
 cd GCsnap
 
-# To update
-git pull origin master
+# Change to new developpment branch 
+git checkout gcsnap2desktop
 
 # To install
-python setup.py install
+conda create -n GCsnap -c conda-forge -c bioconda mmseqs2 python=3.11 gcc_linux-64 gxx_linux-64
+conda activate GCsnap
+python install .
 ```
 
 ## Allowed inputs
