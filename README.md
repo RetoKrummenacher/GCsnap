@@ -10,34 +10,32 @@ GCsnap is not limited to a single input format, can preform batch jobs and accep
 
 All information is stored in detailed, human and machine-readable files, and customable publication-ready figures.
 
-## User Survey
-
-If you use GCsnap for your research, we would very much appreciate your feedback so that we can further improve or extend its functionalities to better meet your needs.
-
-We are conducting a survey and would very much appreciate your feedback and suggestions. You can participate by following this link: https://docs.google.com/forms/d/e/1FAIpQLSd2MaUpyz_45wNOKmF0AynSFA8OZl68vrRw-i0iIJBA2TzF3Q/viewform?usp=sf_link 
-
-Although you need a google account and will be asked to provide an email address, *responses will be anonymous* and we will not collect this information.
 
 Thank you for using and showing interest on GCsnap!
 
 ## Dependencies
 
-GCsnap is written in Python 3.7 and should run on Python 3.x. It was tested on Python 3.7 and 3.8. It requires mostly core Python modules and only five external packages are required: 
+GCsnap is written in Python 3.11. It was tested on Python 3.11. It requires mostly core Python modules and some external packages: 
   - Biopython
   - Bokeh
+  - Matplotlib
   - Networkx 
-  - PaCMAP
+  - PaCMAP (requires Numba which requires NumPy)
   - Scikit-learn
+  - Pandas
+  - Rich
+  - Urllib3 and Requests
+  - Jinja2
 
-For detailed requirements, check ```requirements.txt```.
+For detailed requirements including working versions, check ```pyproject.toml```.
 
-Additionally, GCsnap relies on a local installation of BLASTp and PsiBlast (versions 2.4.0+ and above) and MMseqs. 
+Additionally, GCsnap relies on a local installation of MMseqs or for Windows users, the static binary available here: https://mmseqs.com/latest/
 
 ## Installation
 
 ### Installing from Source
 
-Download the zip archive or clone the repository with git:
+Clone the repository with git, create a Conda environment and install:
 
 ```
 # To download
@@ -48,9 +46,9 @@ cd GCsnap
 git checkout gcsnap2desktop
 
 # To install
-conda create -n GCsnap -c conda-forge -c bioconda mmseqs2 python=3.11 gcc_linux-64 gxx_linux-64
+conda create -n GCsnap -c conda-forge gcc=14.1 python=3.11 -c bioconda mmseqs2=15.6
 conda activate GCsnap
-python install .
+pip install .
 ```
 
 ## Allowed inputs
@@ -67,23 +65,28 @@ In its most simple mode of usage, GCsnap only requires a list of sequence identi
 
 **Required** arguments are:
 ```
-  -targets: which can be a list of sequence identifiers, a text file, a fasta file, a clans file or a list of files
+  --targets: which can be a list of sequence identifiers, a text file, a fasta file, a clans file or a list of files
 ```
-**Optional** arguments allow for the tweaking of GCsnap behaviour. There are various optional arguments that can be used, but the most relevant are:
+**Optional** arguments allow for the tweaking of GCsnap behaviour. Default values for arguments are taken from the  ```config.yaml```. They can be changed there directly or pass via the CLI, e.g., --ncpu 2.
+A list of all possible arguments and their current default value can be show in the terminal via:
 ```  
-  -user_email: it may be required to access the NCBI databases. It is not used for anything else.
-  -ncbi_api_key: the key for NCBI API, which allows for up to 10 queries per second to NCBI databases. Can be obtained after obtaing an NCBI account.
-  -cpu: the number of cpus used for running. By default, it is set to 1. Using more allows GCsnap to parallelize the most time-consuming steps. We recommend using this in combination with a ncbi api key.
-  -n_flanking: the number of flanking genes (to each side) to be taken. By default, it is set to 4.
-  -n_flanking5: the number of flanking genes to be taken on the 5' side. By default, it is set to 4.
-  -n_flanking3: the number of flanking genes to be taken on the 3' side. By default, it is set to 4.
-  -get_taxonomy: set to false if no taxonomy is to be collected.
-  -annotate_TM: set to true to annotate the presence of transmembrane segments and signal peptides.
-  -annotation_TM_mode: the mode to use to collect transmembrane and signal peptide annotations (phobius, tmhmm or uniprot).
-  -clans_pattern: a set of patterns in CLANS groups names that define different groups to be considered as independent jobs.
-  -operon_cluster_advanced: set to true to have a more comprehensive analysis/summary of the genomic contexts found. Ideal for very large input sets.
-  -all-against-all_method: BLASTp is as default, but can be set to mmseqs if MMseqs2 is available.
+  GCsnap --help 
 ```
+
+The most relevant arguments are:
+```  
+  --n-cpu: the number of cores of zour CPU to be used when processing.
+  --n-flanking5: the number of flanking genes to be taken on the 5' side.
+  --n-flanking3: the number of flanking genes to be taken on the 3' side.
+  --ncbi-user-email: it may be required to access the NCBI databases. It is not used for anything else.
+  --ncbi-api-key: the key for NCBI API, which allows for up to 10 queries per second to NCBI databases. Can be obtained after   obtaing an NCBI account.
+  --get-taxonomy: set to false if no taxonomy is to be collected.
+  --annotate-TM: set to true to annotate the presence of transmembrane segments and signal peptides.
+  --annotation-TM-mode: the mode to use to collect transmembrane and signal peptide annotations (phobius, tmhmm or uniprot).
+  --clans-pattern: a set of patterns in CLANS groups names that define different groups to be considered as independent jobs.
+  --operon-cluster-advanced: set to true to have a more comprehensive analysis/summary of the genomic contexts found. Ideal for very large input sets.  
+```
+
 ### 1. Simple job
 
 Using the example in folder `example/ybez_KHI`, the input file `targets_ybez_selected.txt` contains a list of protein sequence identifiers in UniprotKB format. Running:
