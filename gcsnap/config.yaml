@@ -65,7 +65,7 @@ num-iterations:
 mmseqs-executable-path:
     value: None
     type: str
-    help: Path of MMseqs executable (i.e., mmseqs.bat) if not installed in Conda environment.
+    help: Path to MMseqs executable (i.e., mmseqs.bat) if not installed in Conda environment.
 get-pdb:
     value: True
     type: bool
