@@ -41,7 +41,7 @@ classifiers = [
 Homepage = "https://github.com/RetoKrummenacher/GCsnap"
 
 [project.scripts]
-GCsnap = "gcsnap.GCsnap:main"
+GCsnap = "gcsnap.__main__:main"
 
 [build-system]
 requires = ["setuptools", "wheel"]
