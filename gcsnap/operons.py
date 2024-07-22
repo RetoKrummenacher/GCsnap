@@ -82,12 +82,12 @@ class Operons:
                 n_dims = 2
             
             paCMAP_embedding = pacmap.PaCMAP(n_components = n_dims)
-            paCMAP_coordinat = paCMAP_embedding.fit_transform(presence_matrix)
+            paCMAP_N_coordinat = paCMAP_embedding.fit_transform(presence_matrix)
 
 		# find clusters in the paCMAP space
 		# do this by selecting the best eps based on the number of clusters it creates compared to the number of operons 
 		# that are not assigned a clusters (i.e., a given maximum cost)        
-        eps = self.calculate_start_eps(paCMAP_coordinat)    
+        eps = self.calculate_start_eps(paCMAP_N_coordinat)    
 
         n_clusters = [0]
         n_singletons = [0]
