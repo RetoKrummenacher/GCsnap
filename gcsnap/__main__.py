@@ -3,6 +3,13 @@ import shutil
 # TODO: For faster debugging
 import pickle
 
+#TODO: This part should work, once its installed with pip install .
+# from GCsnap import (
+#     RichConsole, Configuration, Timing, Target, SequenceMapping, Assemblies,
+#     GenomicContext, Sequences, Families, FamiliesFunctionsStructures,
+#     Operons, Taxonomy, TMsegments, Figures
+# )
+
 from gcsnap.rich_console import RichConsole 
 from gcsnap.configuration import Configuration 
 from gcsnap.timing import Timing
