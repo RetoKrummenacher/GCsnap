@@ -215,7 +215,7 @@ class RichConsole():
             yield progress, task_id        
         self.print_done(message)
 
-    def print_help(self, parser: argparse.Parser) -> None:
+    def print_help(self, parser: argparse.PARSER) -> None:
         """
         Prints the help message for all arguments as defined in the configuration file
         with the usage, optional arguments and epilog. Shown when using GCsnap --help.
