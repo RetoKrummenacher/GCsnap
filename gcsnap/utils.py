@@ -1,3 +1,19 @@
+# Get path of __file__ working in package and script
+# ------------------------------------------------------
+import sys
+from pathlib import Path
+def get_base_path():
+    """
+    Get the base path of the file, whether running as a script or in a package.
+
+    Returns:
+        _type_: The base path of the file.
+    """    
+    if getattr(sys, 'frozen', False):  # If running in a bundled executable
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve()
+# ------------------------------------------------------
+
 
 # Exception classes
 # ------------------------------------------------------
