@@ -105,6 +105,10 @@ class Configuration:
         self.path = os.path.dirname(os.path.abspath(__file__))
         self.console = RichConsole()
 
+        # in case config.yaml is not found, use default configuration
+        # and by default write to file after all parsing
+        self.default_write = False
+
         self.read_configuration_yaml()
         with self.console.status('Parsing CLI arguments and config.yaml'):
             self.create_argument_parser()
@@ -128,7 +132,8 @@ class Configuration:
         if not os.path.isfile(os.path.join(self.path,'config.yaml')):
             self.console.print_warning('Configuration file config.yaml not found')
             self.arguments_hyphen = self.get_default_configuration()
-            self.write_configuration_yaml()
+            # set default write to True to write the default configuration to file
+            self.default_write = True
             self.console.print_done('Default config.yaml created')
             return
         with open(os.path.join(self.path,'config.yaml'), 'r') as file:
@@ -184,7 +189,7 @@ class Configuration:
         self.handle_special_arguments()
 
         # Write updated configuration to file
-        if self.arguments['overwrite_config']['value']:
+        if self.arguments['overwrite_config']['value'] or self.default_write:
             self.write_configuration_yaml()
         
     def create_argument_parser(self) -> None:
