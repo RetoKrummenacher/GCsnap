@@ -27,11 +27,6 @@ class GenomicContext:
         self.console = RichConsole()
 
     def update_syntenies(self, input_dict: dict) -> None:
-        """AI is creating summary for update_syntenies
-
-        Args:
-            input_dict (dict): [description]
-        """
         for k,v in input_dict.items():
             current = self.syntenies.get(k, {})
             # merge dictionaries (|= in python 3.9+ in place merge)
@@ -145,12 +140,6 @@ class GenomicContext:
             file.writelines(lines_to_write)
 
         return fasta_file
-    # TODO: Seqeuence length is only needed for BLAST, but not for MMseqs
-    # As we dropped BLAST support, this is redundant
-    # def get_sequence_length(self) -> dict:
-    #     return {ncbi_code : len(self.syntenies[target]['flanking_genes']['sequences'][i])
-    #             for target in self.syntenies.keys()
-    #             for i, ncbi_code in enumerate(self.syntenies[target]['flanking_genes']['ncbi_codes'])}   
 
     def read_syntenies_from_json(self, file_name: str, file_path: str = None) -> None:
         if file_path is None:
@@ -347,7 +336,11 @@ class GenomicContext:
         lines_to_write.append(header_line + '\n')
             
         # all paths from taxonomy
-        tax_search_dict = self.create_taxonomy_search_dict()        
+        print(self.taxonomy)
+        tax_search_dict = self.create_taxonomy_search_dict()   
+
+        print(tax_search_dict)
+
         # all targets and the corresponding operon type
         targets_operon_list = [(target, operon.split()[-2]) for operon in self.selected_operons 
                         for target in self.selected_operons[operon]['target_members']]
@@ -371,7 +364,6 @@ class GenomicContext:
                 if 'TM_annotations' in self.syntenies[target]['flanking_genes']:
                     line_to_write += '\t' + self.syntenies[target]['flanking_genes']['TM_annotations'][i]
                 # add taxonomy information by searching the dictionary
-                print(tax_search_dict.get(target))
                 line_to_write += '\t' + '\t'.join(tax_search_dict.get(target)) + '\n'
                 lines_to_write.append(line_to_write)
 
