@@ -75,6 +75,8 @@ class TMsegments:
             with self.console.status('Parsing annotation file and updating flanking genes'):
                 self.parse_annotation_file()
                 self.update_flanking_genes()
+                # save in annotations
+                self.annotations = self.syntenies
 
         # The code finishes upon errors in phobius or tmhmm
         # self.annotations remains empty and hence mergable to syntenies
@@ -232,7 +234,7 @@ class TMsegments:
                 else:
                     flanking_genes['TM_annotations'].append('')
 
-            self.annotations[curr_target]['flanking_genes'] = flanking_genes        
+            self.syntenies[curr_target]['flanking_genes'] = flanking_genes        
 
     def write_to_file(self, data: str) -> None:
         with open(self.annotation_out_file, 'w') as file:
