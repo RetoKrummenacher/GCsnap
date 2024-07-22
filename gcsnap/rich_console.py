@@ -5,11 +5,28 @@ from rich.text import Text
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
 from contextlib import contextmanager
 
+from gcsnap.configuration import CustomArgumentParser
+
 import logging
 logger = logging.getLogger(__name__) # inherits configuration from main logger
 
 class RichConsole():    
+    """
+    A class to print messages in the console with different colors and styles.
+ 
+    Attributes:
+        console: Console object from rich library.
+        color_grey (str): Color for grey messages.
+        color_blue (str): Color for blue messages.
+        color_purple (str): Color for purple messages.
+        color_gold (str): Color for gold messages.
+        color_red (str): Color for red messages.
+        color_green (str): Color for green messages.
+    """    
     def __init__(self):
+        """
+        Initializes the RichConsole class with the console object and colors to use.
+        """            
         self.console = Console()
 
         # colors to use
@@ -20,16 +37,33 @@ class RichConsole():
         self.color_red = 'indian_red1'
         self.color_green = 'pale_green1'
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict:
+        """
+        Used by pickle to convert the object into a dictionary for serialization.
+        Console object is not picklable, so it's removed from the state.
+
+        Returns:
+            dict: The state of the object without the console.
+        """        
         state = self.__dict__.copy()
         del state['console']  # Remove the console as it's not picklable
         return state
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict) -> None:
+        """
+        Used by pickle to restore the object from a dictionary after deserialization.
+        Console object is recreated.
+
+        Args:
+            state (dict): The state of the object.
+        """        
         self.__dict__.update(state)
         self.console = Console()  # Recreate the Console object        
 
     def print_title(self) -> None:
+        """
+        Prints the title of the program in the console at the start of the program.
+        """        
         color = self.color_blue
         self.print_line(color)
         self.console.print(Text('GCsnap', style=f'bold {color}'))
@@ -41,6 +75,9 @@ class RichConsole():
         logger.info('GCsnap started')
 
     def print_final(self) -> None:
+        """
+        Prints the final message of the program in the console at the end of the program.
+        """        
         color = self.color_blue
         self.print_line(color)
         self.console.print(Text('🏁  GCsnap finished successfully! 🥳🎆💫', style=color))
@@ -48,37 +85,91 @@ class RichConsole():
         logger.info('GCsnap finished successfully')                            
 
     def print_line(self, color: str) -> None:
+        """
+        Prints a line in the console with the specified color.
+
+        Args:
+            color (str): The color of the line.
+        """        
         self.console.print(Text('---------------------------------------------', style=color))
 
     def print_error(self, message: str) -> None:
+        """
+        Prints an error message in the console with the specified message.
+
+        Args:
+            message (str): The error message to print.
+        """        
         self.console.print(Text('❌  Error {}.'.format(message), style=self.color_red))   
         logger.error(f'{message}')
 
     def print_warning(self, message: str) -> None:
+        """
+        Prints a warning message in the console with the specified message.
+
+        Args:
+            message (str): The warning message to print.
+        """        
         self.console.print(Text('  ⚠️  {} Check gcsnap.log'.format(message), style=self.color_gold))   
         logger.warning(f'{message}')        
 
     def print_skipped_step(self, message: str) -> None:
+        """
+        Prints a message in the console that a step was skipped.
+
+        Args:
+            message (str): The message to print.
+        """        
         self.console.print(Text(message, style=self.color_grey))
         logger.info(f'{message}')
 
     def print_step(self, message: str) -> None:
+        """
+        Prints a message in the console for the current step.
+
+        Args:
+            message (str): The message to print.
+        """        
         self.console.print(Text(message, style=self.color_grey))
         logger.info(f'{message}')        
 
     def print_working_on(self, message: str) -> None:
+        """
+        Prints a message in the console that the program is working on a specific task.
+
+        Args:
+            message (str): The message to print.
+        """        
         self.console.print(Text('🔨  Working on {}'.format(message), style=self.color_grey))   
         logger.info(f'Working on {message}')
 
     def print_info(self, message: str) -> None:
+        """
+        Prints an information message in the console.
+
+        Args:
+            message (str): The information message to print.
+        """        
         self.console.print(Text('\t{}'.format(message), style=self.color_grey))  
         logger.info(f'{message}')        
          
     def print_hint(self, message: str) -> None:
+        """
+        Prints a hint message in the console.
+
+        Args:
+            message (str): The hint message to print.
+        """        
         self.console.print(Text('  💡  {}'.format(message), style=self.color_gold))   
         logger.warning(f'{message}')          
 
     def print_done(self, message: str) -> None:
+        """
+        Prints a done message in the console.
+
+        Args:
+            message (str): The message to print.
+        """        
         # print done message, make first character of message lowercase            
         self.console.print(Text('✅  Done {}'.format(message[0].lower() + 
                                                       message[1:]), style=self.color_green))     
@@ -86,13 +177,34 @@ class RichConsole():
 
     @contextmanager
     def status(self, message: str):
+        """
+        Context manager to print a status a dynamic message with a working icon in the console.
+        The completion message is printed when the context manager is exited.
+
+        Args:
+            message (str): The message to print.
+
+        Yields:
+            None: Yields nothing.
+        """        
         logger.info(f'{message}')  
         with self.console.status(Text('{} ...'.format(message), style=self.color_grey)):
             yield  
         self.print_done(message)
         
     @contextmanager
-    def progress(self, message: str, total: int):
+    def progress(self, message: str, total: int):    
+        """
+        Context manager to print a progress bar in the console.
+
+        Args:
+            message (str): The message to print.
+            total (int): Total amount of work to be done. E.g., total size of file to donwload.
+
+        Yields:
+            progress (Progress): The progress object to update the progress bar.
+            task_id (int): The task id associated with the progress bar.
+        """          
         logger.info(f'{message}')  
         with Progress(
             TextColumn("{task.description}"),
@@ -105,7 +217,14 @@ class RichConsole():
             yield progress, task_id        
         self.print_done(message)
 
-    def print_help(self, parser) -> None:
+    def print_help(self, parser: CustomArgumentParser) -> None:
+        """
+        Prints the help message for all arguments as defined in the configuration file
+        with the usage, optional arguments and epilog. Shown when using GCsnap --help.
+
+        Args:
+            parser (CustomArgumentParser): The argument parser object.
+        """              
         usage = 'GCsnap --targets <targets> [Optional arguments]'
         epilog = 'Example: GCsnap --targets PHOL_ECOLI A0A0U4VKN7_9PSED A0'
 
@@ -137,7 +256,15 @@ class RichConsole():
         # Print epilog
         self.console.print(epilog)
         
-    def print_argument(self, action) -> None:
+    def print_argument(self, action: argparse.Action) -> None:
+        """
+        Prints the formated help message for an argument in the console based
+        on the argument action object including the option strings, default value and help message
+        as defined in the configuration file and read by the CustomArgumentParser.
+
+        Args:
+            action (argparse.Action): The argument action object.
+        """            
         option_strings = ", ".join(action.option_strings)
         metavar = action.metavar or ""
         argument_help = Text(f"{option_strings} {metavar}", style=self.color_blue)
