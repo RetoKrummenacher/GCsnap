@@ -102,7 +102,7 @@ class CustomArgumentParser(argparse.ArgumentParser):
 
 class Configuration:    
     def __init__(self):                     
-        self.path = os.path.dirname(__file__)
+        self.path = os.path.dirname(os.path.abspath(__file__))
         self.console = RichConsole()
 
         self.read_configuration_yaml()

@@ -15,7 +15,7 @@ class AssemblyLinks:
         self.cores = config.arguments['n_cpu']['value']
         
         # set path to store assembly summaries
-        parent_path = os.path.dirname(os.path.dirname(__file__))
+        parent_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.assembly_dir = os.path.join(parent_path,'data','assembly_summaries')
         
         # database list

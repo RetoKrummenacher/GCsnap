@@ -27,7 +27,7 @@ class Assemblies:
         self.console = RichConsole()
 
         # set path to store assembly summaries
-        parent_path = os.path.dirname(os.path.dirname(__file__))
+        parent_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.assembly_dir = os.path.join(parent_path,'data','assemblies')
         self.create_folder()
 
