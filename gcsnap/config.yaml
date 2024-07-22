@@ -33,7 +33,7 @@ ncbi-user-email:
 ncbi-api-key:
     value: None
     type: str
-    help: The key for NCBI API, which allows for up to 10 queries per second to NCBI databases. Shall be obtained after obtaining an NCBI account.
+    help: The key for NCBI API, which allows for up to 10 queries per second to NCBI databases. Can be obtained after obtaining an NCBI account.
 n-flanking5:
     value: 4
     type: int
