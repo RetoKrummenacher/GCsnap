@@ -52,7 +52,10 @@ from .figures import Figures
 from .utils import processpool_wrapper, split_dict_chunks, split_list_chunks
 from .entrez_query import EntrezQuery
 from .mmseqs_cluster import MMseqsCluster
-from .uniprot_api import UniprotAPI
+from .uniprot_api import submit_id_mapping
+from .uniprot_api import check_id_mapping_results_ready
+from .uniprot_api import get_id_mapping_results_link
+from .uniprot_api import get_id_mapping_results_search
 from .uniprot_dbs_dict import UniprotDBsDict
 from .apis import SwissProtAPI, AlphaFoldAPI, UniProtAPI
 from .assembly_links import AssemblyLinks
@@ -63,6 +66,7 @@ __all__ = [
     'RichConsole', 'Configuration', 'Timing', 'Target', 'SequenceMapping', 'Assemblies',
     'GenomicContext', 'Sequences', 'Families', 'FamiliesFunctionsStructures',
     'Operons', 'Taxonomy', 'TMsegments', 'Figures', 'processpool_wrapper', 'split_dict_chunks',
-    'split_list_chunks', 'EntrezQuery', 'MMseqsCluster', 'UniprotAPI', 'UniprotDBsDict',
-    'SwissProtAPI', 'AlphaFoldAPI', 'UniProtAPI', 'AssemblyLinks'
+    'split_list_chunks', 'EntrezQuery', 'MMseqsCluster', 'UniprotDBsDict',
+    'SwissProtAPI', 'AlphaFoldAPI', 'UniProtAPI', 'AssemblyLinks', 'submit_id_mapping',
+    'check_id_mapping_results_ready', 'get_id_mapping_results_link', 'get_id_mapping_results_search'
 ]
