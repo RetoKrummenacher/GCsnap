@@ -15,10 +15,10 @@ class Taxonomy:
 
         if config.arguments['get_taxonomy']['value']:
             self.mode = 'taxonomy'
-            self.msg = 'Map taxonomy'
+            self.msg = 'Find and map taxonomy'
         else:
             self.mode = 'as_input'
-            self.msg = 'Create input taxonomy dictionary. No mapping done'
+            self.msg = 'Create input taxonomy dictionary. No taxomomies are searched'
 
         # set parameters
         self.gc = gc
@@ -41,7 +41,9 @@ class Taxonomy:
         with self.console.status(self.msg):
             dict_list = processpool_wrapper(self.cores, parallel_args, self.run_each)
             # combine results
-            self.taxonomy = {k: v for d in dict_list for k, v in d.items()}
+            # as this is a heavily nested dictionary, we need some recursive functionality
+            self.taxonomy = self.merge_all_dicts(dict_list)
+            print(self.taxonomy)
 
     def run_each(self, arg: dict) -> dict:
         content_dict = arg
@@ -97,4 +99,27 @@ class Taxonomy:
             target: {key: value for key, value in sub_dict.items() if value is not None}
             for target, sub_dict in self.entrez_taxonomy.items()
         }
+
+    def merge_nested_dicts(self, dict1: dict, dict2: dict) -> dict: 
+        for key, value in dict2.items():
+            if key in dict1:
+                if isinstance(value, dict) and isinstance(dict1[key], dict):
+                    self.merge_nested_dicts(dict1[key], value)
+                elif key == "ncbi_codes" or key == "target_members":
+                    if dict1[key] == value:
+                        dict1[key] = list(set(dict1[key] + value))
+                    else:
+                        dict1[key].extend(value)
+                        dict1[key] = list(set(dict1[key]))
+                else:
+                    dict1[key] = value
+            else:
+                dict1[key] = value
+        return dict1
+
+    def merge_all_dicts(self, dict_list: list[dict]) -> dict:
+        merged_dict = dict_list[0]
+        for d in dict_list[1:]:
+            merged_dict = self.merge_nested_dicts(merged_dict, d)
+        return merged_dict
 
