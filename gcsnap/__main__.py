@@ -63,7 +63,7 @@ def main():
             console.print_skipped_step('Skipping target {}'.format(out_label))
             continue
         else:
-            console.print_working_on('Analyzing target list: {}'.format(out_label))
+            console.print_working_on('Analyzing task: {}'.format(out_label))
         # write configuration to log file
         config.write_configuration_yaml_log('{}_input_arguments.log'.format(out_label))
         # Datastructure to store all information
@@ -160,7 +160,6 @@ def main():
             # # TODO: For debugging
             # with open('gc.pkl', 'wb') as file:
             #     pickle.dump(gc, file)  
-
 
             # TODO: For debugging        
             with open('gc.pkl', 'rb') as file:

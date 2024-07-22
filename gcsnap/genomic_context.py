@@ -336,10 +336,7 @@ class GenomicContext:
         lines_to_write.append(header_line + '\n')
             
         # all paths from taxonomy
-        print(self.taxonomy)
         tax_search_dict = self.create_taxonomy_search_dict()   
-
-        print(tax_search_dict)
 
         # all targets and the corresponding operon type
         targets_operon_list = [(target, operon.split()[-2]) for operon in self.selected_operons 

@@ -43,16 +43,25 @@ class AdvancedInteractiveFigure:
             'most_populated_operon': gc.get_most_populated_operon(),
             'syntenies': gc.get_syntenies(),
             'families_summary': gc.get_families(),
-            'taxonomy': gc.get_taxonomy(),
-            'input_targets': gc.get_curr_targets(),            
+            'taxonomy': gc.get_taxonomy(),            
             'reference_family': ref_family,
             'family_colors': family_colors,
             'starting_directory': starting_directory
         })
-        # change sort_mode and targets if needed
+
+        # store configuration arguments needed with different values at certain points
+        # to avoid multiple keyword arguments in the methods
+        self.input_targets_start =  gc.get_curr_targets()
+        self.sort_mode_start = kwargs['sort_mode']
+        self.gc_legend_mode_start = kwargs['gc_legend_mode']
+        # remove from kwargs
+        kwargs.pop('sort_mode')
+        kwargs.pop('gc_legend_mode')
+
+        # handling of mode in case in_tree argument was set
         if kwargs['in_tree'] is not None:
-            kwargs['sort_mode'] = 'tree'    
-            kwargs['input_targets'] = [target for operon in self.operons 
+            self.sort_mode_start = 'tree'   
+            self.input_targets_start = [target for operon in self.operons 
                                        for target in self.operons[operon]['target_members']]                 
 
         # Set all attributes
@@ -76,7 +85,7 @@ class AdvancedInteractiveFigure:
         self.console.print_info('Summary visualization created in {}'.format(f_name))       
 
         with self.console.status('Making advanced interactive figure per operon type page.'):           
-            self.make_advanced_operon_interactive_output(**kwargs)
+            self.create_advanced_operon_interactive_output(**kwargs)
         f_name = '{}_advanced_operons_interactive_output_??.html'.format(self.out_label)                    
         self.console.print_info('Operon visualization created in {}'.format(f_name))    
 
@@ -90,14 +99,14 @@ class AdvancedInteractiveFigure:
                                                 **kwargs)
         
         # Plot the scatter of the operons PaCMAP coordinates
-        operons_scatter = self.create_operons_clusters_scatter(scatter_data = scatter_data,**kwargs)
+        operons_scatter = self.create_operons_clusters_scatter(scatter_data = scatter_data, **kwargs)
         # Create network of operon types similarities (based on the centroids in PaCMAP space and the minimum distance between cluster members)
         operons_network, operons_distance_matrix = self.create_avg_operons_clusters_network(
                             operons_scatter = operons_scatter, scatter_data = scatter_data, 
                             **kwargs)
         
         # Plot the CLANS map of the input target sequences if given
-        clans_scatter = self.create_clans_map_scatter(scatter_data=scatter_data, **kwargs)
+        clans_scatter = self.create_clans_map_scatter(scatter_data = scatter_data, **kwargs)
         scatter_row = gridplot([[operons_scatter, operons_network, clans_scatter]], merge_tools = True)
 
         # Now create two tabs
@@ -113,19 +122,20 @@ class AdvancedInteractiveFigure:
         # distance matrix used to build the network above
 
         # Make the dendogram
+        # sort mode for this call is changed in kwargs
         oprn_dendogram, oprn_den_data = Figure.make_dendogram_figure(show_leafs = False, 
                                                 input_targets = None,                                                                        
                                                 height_factor = 25*1.2, 
                                                 sort_mode = 'operon clusters', 
-                                                distance_matrix=(1-operons_distance_matrix), 
-                                                labels=sorted([i for i in self.operons if '-' not in i]), 
-                                                colors=cluster_colors,
+                                                distance_matrix = (1-operons_distance_matrix), 
+                                                labels = sorted([i for i in self.operons if '-' not in i]), 
+                                                colors = cluster_colors,
                                                 **kwargs)
     
         family_freq_figure = self.create_family_frequency_per_operon_figure(oprn_dendogram = oprn_dendogram, 
                                                                     oprn_den_data = oprn_den_data, 
                                                                     height_factor = 25*1.2, 
-                                                                    min_freq = self.min_family_freq_accross_contexts/100
+                                                                    min_freq = self.min_family_freq_accross_contexts/100,
                                                                     **kwargs)
         
         gc_row = gridplot([[oprn_dendogram, family_freq_figure]], merge_tools = True)
@@ -158,10 +168,16 @@ class AdvancedInteractiveFigure:
                             The depiction is interactive, <b>hover</b> and <b>click</b> to get more information!</br></br>  """) 
 
                 # Work on most conserved genomic context figure
+                # remove operons to not have multiple values in keyqord arguments
+                operons = self.operons
+                kwargs.pop('operons', None)
                 most_common_gc_figure = Figure.create_most_common_genomic_features_figure(
                                             operons = curr_operon, **kwargs) 
+                kwargs['operons'] = operons
                 # Work on dendogram for the genomic context block
-                syn_dendogram, syn_den_data = Figure.make_dendogram_figure(show_leafs = False,                                                                        
+                syn_dendogram, syn_den_data = Figure.make_dendogram_figure(show_leafs = False, 
+                                                                    input_targets = self.input_targets_start,
+                                                                    sort_mode = self.sort_mode_start,                                                                       
                                                                     height_factor = 25*1.2, 
                                                                     distance_matrix = None, 
                                                                     labels = None, 
@@ -458,8 +474,7 @@ class AdvancedInteractiveFigure:
         similarity_matrix = self.normalize_matrix(similarity_matrix = similarity_matrix, 
                                                   power = 30, **kwargs)
 
-        edge_tooltips, edge_data = self.create_edges_data(scatter_data = p_data, 
-                                                          operons_labels = operons_labels,
+        edge_tooltips, edge_data = self.create_edges_data(operons_labels = operons_labels,
                                                           similarity_matrix = similarity_matrix,
                                                           **kwargs)
 
@@ -539,8 +554,8 @@ class AdvancedInteractiveFigure:
                 'color': [],
                 'alpha':[]}
 
-        for i, i_operon_type in enumerate(self.labels):
-            for j, j_operon_type in enumerate(self.labels):
+        for i, i_operon_type in enumerate(self.operons_labels):
+            for j, j_operon_type in enumerate(self.operons_labels):
                 if i > j:
                     x_start, y_start = self.operons[i_operon_type]['operon_centroid_PaCMAP']
                     x_end, y_end = self.operons[j_operon_type]['operon_centroid_PaCMAP']
@@ -548,7 +563,7 @@ class AdvancedInteractiveFigure:
                     data['x'].append([x_start, x_end])
                     data['y'].append([y_start, y_end])
                     data['color'].append('black')
-                    data['alpha'].append(round(self.alpha_matrix[i][j], 1))
+                    data['alpha'].append(round(self.similarity_matrix[i][j], 1))
 
         tooltips = [('Relative distance/alpha', '@alpha')]
 
@@ -631,14 +646,12 @@ class AdvancedInteractiveFigure:
                                         data['Genomic context type'].append(operon_type.split()[-1])
                                         data['color'].append(operon_color)
 
-        columns = [TableColumn(field=i, title=i) for i in data.keys()]
+        # columns = [TableColumn(field=i, title=i) for i in data.keys()]
 
         columns = [TableColumn(field=i, title=i) if i not in ['color']
             else TableColumn(field=i, title='Genomic context color', 
                              formatter=HTMLTemplateFormatter(template='<span style="color:<%= value %>;font-size:18pt;text-shadow: 1px 1px 2px #000000;">&#9632;</span>'))
             for i in data.keys()]																			 
-
-        data = pd.DataFrame(data)
 
         return data, columns    
     
@@ -731,6 +744,8 @@ class AdvancedInteractiveFigure:
         matrix['sum'] = matrix.sum(axis=1)
         matrix = matrix.sort_values(by='sum', ascending=False)
         matrix = matrix.drop('sum', axis=1).T    
+
+        return matrix
 
     def create_family_spectrum_data(self, **kwargs) -> tuple:
         self._set_attributes(**kwargs)
@@ -950,7 +965,9 @@ class AdvancedInteractiveFigure:
                                  template='<a href="https://www.uniprot.org/uniprot/<%= value %>"><%= value %></a>'))  
                     for i in data.keys()]
         
-        data = pd.DataFrame(data).sort_values(by='Frequency', ascending=False)
+        df = pd.DataFrame(data).sort_values(by='Frequency', ascending=False)
+        # ColumnDataSource takes a dictionary
+        data = df.to_dict(orient='list')
         
         return data, columns
     

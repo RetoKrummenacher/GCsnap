@@ -86,7 +86,8 @@ class Figure:
     def compute_dendogram(**kwargs) -> tuple[dict, list]:
         Figure.set_class_attributes(Figure, **kwargs)
 
-        distance_matrix = kwargs.get('distance_matrix', None)
+        distance_matrix = kwargs.get('distance_matrix')
+        labels = kwargs.get('labels')
         
         if distance_matrix is None:
             if Figure.in_tree != None:
