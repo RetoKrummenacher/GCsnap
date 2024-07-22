@@ -43,7 +43,6 @@ class Taxonomy:
             # combine results
             # as this is a heavily nested dictionary, we need some recursive functionality
             self.taxonomy = self.merge_all_dicts(dict_list)
-            print(self.taxonomy)
 
     def run_each(self, arg: dict) -> dict:
         content_dict = arg
