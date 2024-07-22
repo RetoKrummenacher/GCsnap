@@ -5,8 +5,6 @@ from rich.text import Text
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
 from contextlib import contextmanager
 
-from gcsnap.configuration import CustomArgumentParser
-
 import logging
 logger = logging.getLogger(__name__) # inherits configuration from main logger
 
@@ -217,7 +215,7 @@ class RichConsole():
             yield progress, task_id        
         self.print_done(message)
 
-    def print_help(self, parser: CustomArgumentParser) -> None:
+    def print_help(self, parser: argparse.Parser) -> None:
         """
         Prints the help message for all arguments as defined in the configuration file
         with the usage, optional arguments and epilog. Shown when using GCsnap --help.
