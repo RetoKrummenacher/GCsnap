@@ -26,33 +26,54 @@ from gcsnap.tm_segments import TMsegments
 from gcsnap.figures import Figures
 
 def main():
+    """
+    Main function to run the GCsnap pipeline:
+    A. Parse configuration file and arguments, initialize the RichConsole and Timing.
+    B. Parse targets.
+    C. Iterate over each element in target list.
+        1. Prework.
+        2. Block 'Collect'.
+            - a) Map sequences to UniProtKB-AC and NCBI EMBL-CDS.
+            - b) Find assembly accession, download and parse assemblies.
+            - c) Add sequence information to flanking genes.
+        3. Block 'Find families'.
+            - a) Find and add protein families.
+        4. Block 'Annotate'.
+            - a) Add functions and structures to families.
+            - b) Find and add operons.
+            - c) Get taxonomy information.
+            - d) Annotate transmembrane segments.
+        5. Produce genomic context figures.
+        6. Write output to summary file.
+        7. Wrap up.        
+    """    
 
     starting_directory = os.getcwd()
 
     console = RichConsole()
     console.print_title()
 
-    # 1. Parse configuration and arguments
+    # A. Parse configuration and arguments
     config = Configuration()
     config.parse_arguments()
 
-    # 2. start timing
+    # start timing
     timing = Timing()
     t_all = timing.timer('All steps 0-10')
 
     t_parse = timing.timer('Step 0: Parse Targets')
-    # 2. parse targets
+    # B. parse targets
     targets = Target(config)
     targets.run()
     t_parse.stop()
 
-    # 3. Iterate over each element in target list
+    # C. Iterate over each element in target list
     # each element is a dictionary with the label as key and the list of targets as value
     for out_label in targets.get_targets_dict():
         # all execution conditions depending on arguments from CLI or config.yaml
         # are handled in the classes themselves
 
-        # A. Prework 
+        # 1. Prework 
         working_dir = os.path.join(starting_directory, out_label)
         if not os.path.isdir(working_dir):
             os.mkdir(working_dir)
@@ -65,27 +86,27 @@ def main():
         else:
             console.print_working_on('Analyzing task: {}'.format(out_label))
         # write configuration to log file
-        config.write_configuration_yaml_log('{}_input_arguments.log'.format(out_label))
+        config.write_configuration_yaml_log('input_arguments.log')
         # Datastructure to store all information
         gc = GenomicContext(config, out_label)
         # add targets to genomic context
         gc.targets = targets_list        
 
 
-        #  I. Block 'Collect'
+        #  2. Block 'Collect'
         t_collect = timing.timer('Step 1: Collecting the genomic contexts')
 
-        # B. Map sequences to UniProtKB-AC and NCBI EMBL-CDS
+        # a) Map sequences to UniProtKB-AC and NCBI EMBL-CDS
         t_mapping = timing.timer('Step 1a: Mapping')
-        # a). Map all targets to UniProtKB-AC
+        # Map all targets to UniProtKB-AC
         mappingA = SequenceMapping(config, targets_list, 'UniProtKB-AC')
         mappingA.run()
-        # b) Map all to RefSeq
+        # Map all to RefSeq
         mappingB = SequenceMapping(config, mappingA.get_codes(), 'RefSeq')
         mappingB.run()
-        # merge them to A (only if A is not nan)
+        # merge them to mappingA
         mappingA.merge_mapping_dfs(mappingB.mapping_df)
-        # c). Map all targets to NCBI EMBL-CDS
+        # Map all targets to NCBI EMBL-CDS
         mappingC = SequenceMapping(config, mappingA.get_codes(), 'EMBL-CDS')
         mappingC.run()
         # merge the two mapping results dataframes
@@ -95,14 +116,14 @@ def main():
         targets_and_ncbi_codes = mappingA.get_targets_and_ncbi_codes()  
         t_mapping.stop()
 
-        # C. Find assembly accession, download and parse assemblies
+        # b). Find assembly accession, download and parse assemblies
         t_assemblies = timing.timer('Step 1b: Assemblies')
         assemblies = Assemblies(config, targets_and_ncbi_codes)
         assemblies.run()
         gc.update_syntenies(assemblies.get_flanking_genes())
         t_assemblies.stop()
 
-        # D. Add sequence information to flanking genes
+        # c). Add sequence information to flanking genes
         t_sequences = timing.timer('Step 1c: Sequences')        
         sequences = Sequences(config, gc)
         sequences.run()
@@ -114,8 +135,7 @@ def main():
 
         if not config.arguments['collect_only']['value']:
 
-            # II. Block 'Find families'
-            # Ea) Add protein families
+            # 3. Block 'Find families'
             t_family = timing.timer('Step 2: Finding protein families')
             families = Families(config, gc, out_label)
             families.run()
@@ -127,8 +147,8 @@ def main():
             # with open('gc.pkl', 'rb') as file:
             #     gc = pickle.load(file)    
 
-            # III. Block 'Annotate'
-            # Eb). Add functions and structures to families
+            # 4. Block 'Annotate'
+            # a) Add functions and structures to families
             t_annotate_families = timing.timer('Step 3: Annotating functions and structures')
             # execution conditions handeled in the class
             ffs = FamiliesFunctionsStructures(config, gc)
@@ -137,7 +157,7 @@ def main():
             gc.write_families_to_json('protein_families_summary.json')
             t_annotate_families.stop()         
         
-            # F. Find and add operons        
+            # b) Find and add operons        
             t_operons = timing.timer('Step 4-5: Finding operon/genomic_context')
             operons = Operons(config, gc, out_label)
             operons.run()
@@ -146,7 +166,7 @@ def main():
             gc.find_most_populated_operon_types()   
             t_operons.stop()
 
-            # G. Get taxonomy information
+            # c) Get taxonomy information
             t_taxonomy = timing.timer('Step 6: Mapping taxonomy')
             taxonomy = Taxonomy(config, gc)
             taxonomy.run()
@@ -154,21 +174,21 @@ def main():
             gc.write_taxonomy_to_json('taxonomy.json')     
             t_taxonomy.stop()
             
-            # H. Annotate TM   
+            # d) Annotate TM   
             t_tm = timing.timer('Step 7: Finding ALL proteins with transmembrane segments')
             tm = TMsegments(config, gc, out_label)
             tm.run()
             gc.update_syntenies(tm.get_annotations())
             t_tm.stop()     
              
-            # I. Produce genomic context figures
+            # 5. Produce genomic context figures
             t_figures = timing.timer('Step 8-9: Producing figures')
             figures = Figures(config, gc, out_label, starting_directory)      
             figures.run()
 
             t_figures.stop()             
 
-            # J. Write output to summary file
+            # 6. Write output to summary file
             t_output = timing.timer('Step 10: Write output')
             gc.write_summary_table('{}_summary_table.tab'.format(out_label))
 
@@ -182,16 +202,12 @@ def main():
             console.print_skipped_step('GCsnap was asked to collect genomic context only. Will not proceed further.')
             t_output = timing.timer('Step 10: Write output')
 
-        # J. Wrap up
+        # 7. Wrap up
         gc.write_syntenies_to_json('all_syntenies.json')
         t_output.stop()
 
-        if config.arguments['overwrite_config']['value']:
-            config.write_configuration_yaml()
         # copy log file to working direcotry
         shutil.copy(os.path.join(starting_directory,'gcsnap.log'), os.getcwd())
-        # log arguments to file
-        config.log_configuration(os.getcwd())
 
     t_all.stop()
     timing.to_csv('timing.csv')
