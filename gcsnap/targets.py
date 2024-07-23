@@ -5,7 +5,23 @@ from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole 
 
 class Target():
+    """ 
+    Methods and attributes to parse the targets from the input files.
+
+    Attributes:
+        arguments (dict): The dictionary with the arguments.
+        targets (Union[str, list]): The targets to parse.
+        console (RichConsole): The RichConsole object to print messages.
+        targets_dict (dict): The dictionary with the parsed targets.
+    """
+
     def __init__(self, configuration: Configuration):
+        """
+        Initialize the Target object.
+
+        Args:
+            configuration (Configuration): The Configuration object containing the arguments.
+        """        
         self.arguments = configuration.arguments
         self.targets = configuration.targets
         self.console = RichConsole()
@@ -14,13 +30,31 @@ class Target():
         self.targets_dict = {}
 
     def run(self) -> None:
+        """
+        Run the parsing of the targets.
+        """        
         with self.console.status('Parsing targets'):
             self.parse_targets(self.targets)
 
     def get_targets_dict(self) -> dict:
+        """
+        Getter for the targets_dict attribute.
+
+        Returns:
+            dict: The dictionary with the parsed targets.
+        """        
         return self.targets_dict
 
     def parse_targets(self, targets: Union[str, list]) -> dict:
+        """
+        Parse the targets from the input files or the list of ids.
+
+        Args:
+            targets (Union[str, list]): The targets to parse. Either a string or a list of strings.
+
+        Returns:
+            dict: The dictionary with the parsed targets.
+        """        
         for target in targets:
             # target is a file
             if os.path.isfile(target):
@@ -60,12 +94,17 @@ class Target():
 
 
     def get_clusters_from_clans(self, clans_file: str) -> dict:
+        """
+        Get the clusters from a clans file.
+
+        Args:
+            clans_file (str): The path to the clans file.
+
+        Returns:
+            dict: The dictionary with the clusters.
+        """        
         ncbis_ordered = self.get_ncbicodes_order_in_clans(clans_file)
         cluster_codes = self.arguments['cluster_patterns']['value']
-
-        # TODO: Ask Joana if realy each Cluster has its own list of targets
-        # and hence is its own job. If so, its correct as its appended to argets
-        # list with the cluster nubmer/name as key -> the out label
         
         if cluster_codes != None:
             found_seqgroup = False
@@ -96,6 +135,15 @@ class Target():
             self.targets_dict[label] = ncbis_ordered
     
     def get_ncbicodes_order_in_clans(self, clans_file: str) -> list:   
+        """
+        Get the NCBI codes in the order they appear in the clans file.
+
+        Args:
+            clans_file (str): The path to the clans file.
+
+        Returns:
+            list: The list with the NCBI codes in the order they appear in the clans file.
+        """        
         ncbids_ordered = []
 
         found_seq = False
