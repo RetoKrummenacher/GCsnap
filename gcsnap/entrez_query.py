@@ -16,8 +16,37 @@ import logging
 logger = logging.getLogger(__name__) # inherits configuration from main logger
 
 class EntrezQuery:
+    """
+    Methods and attributes to query the NCBI Entrez database for information about proteins or taxonomies.
+
+    Attributes:
+        cores (int): The number of CPU cores to use.
+        api_key (str): The NCBI API key.
+        ncbi_email (str): The email address for the NCBI API key.
+        console (RichConsole): The RichConsole object to print messages.
+        db (str): The database to query.
+        rettype (str): The return type of the query.
+        retmode (str): The return mode of the query.
+        search_codes (list): The list of search codes.
+        logging (bool): If True, log the results of the query.
+        msg (str): The message to display during the query.
+        function (function): The function to run depending on the rettype.
+        chunk_size (int): The size of the chunks to query.
+    """
+
     def __init__(self, config: Configuration, search_codes: list, db: str = 'protein', 
                  rettype: str = 'ipg', retmode: str = 'xml', logging: bool = True):
+        """
+        Initialize the EntrezQuery object.
+
+        Args:
+            config (Configuration): The Configuration object containing the arguments.
+            search_codes (list): The list of search codes.
+            db (str, optional): The database to query. Defaults to 'protein'.
+            rettype (str, optional): The return type of the query. Defaults to 'ipg'.
+            retmode (str, optional): The return mode of the query. Defaults to 'xml'.
+            logging (bool, optional): If True, log what is not found. Defaults to True.
+        """        
         # get necessary configuration arguments        
         self.cores = config.arguments['n_cpu']['value']
         self.api_key = config.arguments['ncbi_api_key']['value']
@@ -35,8 +64,6 @@ class EntrezQuery:
         self.search_codes = search_codes
         self.logging = logging
 
-
-
         # set correct function depending on rettype
         if db == 'protein' and rettype == 'ipg':
             self.msg = 'Find identical protein groups'
@@ -52,6 +79,12 @@ class EntrezQuery:
             self.chunk_size = 100            
 
     def run(self) -> dict:
+        """
+        Run the query to the NCBI Entrez database.
+
+        Returns:
+            dict: The dictionary with the results of the query.
+        """        
         with self.console.status(self.msg):
             chunk_list = self.create_chunks(self.chunk_size)
             # returns a result tuple with (found_dict, None) or ({}, (WarningToLog, chunk))
@@ -77,6 +110,15 @@ class EntrezQuery:
         return found
         
     def run_accession(self, chunk: list) -> tuple[dict,tuple]:
+        """
+        Run the accession query to the NCBI Entrez database.
+
+        Args:
+            chunk (list): The list of search codes to query.
+
+        Returns:
+            tuple[dict,tuple]: The result dictionary and the error tuple.
+        """        
         try:
             root = self.query_chunk(chunk)
             return (self.extract_accessions(chunk, root) , None)       
@@ -84,6 +126,15 @@ class EntrezQuery:
             return ({}, (e, chunk))      
     
     def run_sequence(self, chunk: list) -> tuple[dict,tuple]:
+        """
+        Run the sequence query to the NCBI Entrez database
+
+        Args:
+            chunk (list): The list of search codes to query.
+
+        Returns:
+            tuple[dict,tuple]: The result dictionary and the error tuple.
+        """        
         try:
             root = self.query_chunk(chunk)
             return (self.extract_sequences(root), None)
@@ -91,6 +142,15 @@ class EntrezQuery:
             return ({}, (e, chunk))
         
     def run_taxonomy(self, chunk: list) -> tuple[dict,tuple]:
+        """
+        Run the taxonomy query to the NCBI Entrez database
+
+        Args:
+            chunk (list): The list of search codes to query.
+
+        Returns:
+            tuple[dict,tuple]: The result dictionary and the error tuple.
+        """        
         try:
             root = self.query_chunk(chunk)
             return (self.extract_taxonomy(root), None)
@@ -98,12 +158,41 @@ class EntrezQuery:
             return ({}, (e, chunk))
 
     def create_chunks(self, chunk_size: int = 50) -> list:
+        """
+        Create chunks of the search codes to query.
+
+        Args:
+            chunk_size (int, optional): The size of the chunks. Defaults to 50.
+
+        Returns:
+            list: The list of chunks.
+        """        
         return [self.search_codes[i:i + chunk_size] for i in range(0, len(self.search_codes), chunk_size)]
 
     def get_ncbi_base_url(self) -> str:
+        """
+        Get the base URL for the NCBI Entrez database.
+
+        Returns:
+            str: The base URL for the NCBI Entrez database.
+        """        
         return 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db='+self.db
 
     def query_chunk(self, chunk: list) -> ET.Element:
+        """
+        Query the NCBI Entrez database with a chunk of search codes.
+        The API limit is 3 request per second without an API key and 10 request per second with an API key.
+        Information about api keys: https://www.ncbi.nlm.nih.gov/books/NBK25497/
+
+        Args:
+            chunk (list): The list of search codes to query.
+
+        Raises:
+            WarningToLog: If the query fails.
+
+        Returns:
+            ET.Element: The root element of the XML response.
+        """        
         # information about eutils email and api key
         # https://www.ncbi.nlm.nih.gov/books/NBK25497/
 
@@ -162,6 +251,16 @@ class EntrezQuery:
                 raise WarningToLog('Entrez request failed with status code {}'.format(response.status_code))
   
     def extract_accessions(self, chunk_list: list, root: ET.Element) -> dict:
+        """
+        Extract the accessions from the XML response.
+
+        Args:
+            chunk_list (list): The list of search codes.
+            root (ET.Element): The root element of the XML response.
+
+        Returns:
+            dict: The dictionary with the accessions.
+        """        
         reports = root.findall('IPGReport') # one report for each id
         # ProteinList: full identical protein group for each id
         ipg_list = [(reports[i].find('ProteinList'), chunk_list[i]) for i in range(len(reports))
@@ -196,6 +295,15 @@ class EntrezQuery:
         return return_dict
     
     def extract_sequences(self, root: ET.Element) -> dict:
+        """
+        Extract the sequences from the XML response.
+
+        Args:
+            root (ET.Element): The root element of the XML response.
+
+        Returns:
+            dict: The dictionary with the sequences.
+        """        
         # create dictionary for all found sequences
         sequences = {report.find('TSeq_accver').text : {'seq': report.find('TSeq_sequence').text,
                                 'taxid': report.find('TSeq_taxid').text,
@@ -204,6 +312,15 @@ class EntrezQuery:
         return sequences
     
     def extract_taxonomy(self, root: ET.Element) -> dict:
+        """
+        Extract the taxonomy from the XML response.
+
+        Args:
+            root (ET.Element): The root element of the XML response.
+
+        Returns:
+            dict: The dictionary with the taxonomy in nested form representing the hierarchy.
+        """        
         taxonomy_template = {'superkingdom' :  None,
                     'clade': None,
                     'phylum': None,
@@ -226,12 +343,27 @@ class EntrezQuery:
         }
     
     def log_not_found(self, not_found: list) -> None:
+        """
+        Log the search codes that were not found in the NCBI Entrez database.
+
+        Args:
+            not_found (list): The list of search codes that were not found.
+        """        
         message = '{} entrez queries returned no results for db "{}" with rettype "{}"'.format(len(not_found), self.db, self.rettype)
         self.console.print_warning(message)
         for id in not_found:
             logger.warning('No entrez entry found for {} with db "{}" and rettype "{}"'.format(id, self.db, self.rettype)) 
 
     def log_request_error(self, errors: list) -> list:
+        """
+        Log the errors of an NCBI Entrez requests.
+
+        Args:
+            errors (list): The list of errors.
+
+        Returns:
+            list: The list of search codes that failed.
+        """        
         message = '{} entrez requests failed for db "{}" with rettype "{}"'.format(len(errors), self.db, self.rettype)
         self.console.print_warning(message)
         # all filed ncbi_codes
