@@ -12,21 +12,23 @@ from gcsnap.rich_console import RichConsole
 
 class CustomArgumentParser(argparse.ArgumentParser):
     """
-    Description of CustomArgumentParser
+    Methods to handle the argument parser and the arguments from the CLI.
 
     Attributes:
-        console (type):
+        console (type): 
 
     Inheritance:
-        argparse.ArgumentParser:
-
-    Args:
-        usage=None (undefined):
-        epilog=None (undefined):
-
+        argparse.ArgumentParser: The ArgumentParser class from the argparse module.
     """
     
-    def __init__(self, usage=None, epilog=None):
+    def __init__(self, usage: str = None, epilog: str = None):
+        """
+        Initialize the CustomArgumentParser object.
+
+        Args:
+            usage (str, optional): The usage message discribing the program's usage. Defaults to None.
+            epilog (str, optional): The epilog message discribing the program's epilog. Defaults to None.
+        """   
         super().__init__(usage=usage, epilog=epilog, add_help=False)
         self.console = RichConsole()
 
@@ -62,14 +64,24 @@ class CustomArgumentParser(argparse.ArgumentParser):
         self.console.print_hint('Use --help to see all supported arguments.')
         exit(1)
 
-    """ 
-    @staticmethod: Used when you need a method inside a class but don't need to access or modify the instance (self) or class (cls) state.
-    Avoids unnecessary self or cls parameters, leading to cleaner and more readable code.
-    Ideal for utility functions related to the class's purpose but not dependent on instance or class data.    
-    """
-
+    
+    # @staticmethod: Used when you need a method inside a class but don't need to access or modify the instance (self) or class (cls) state.
+    # Avoids unnecessary self or cls (class) parameters.
+    # Ideal for utility functions related to the class's purpose but not dependent on instance or class data.    
     @staticmethod
     def str_to_bool(value: str) -> bool:
+        """
+        Convert a string to a boolean.
+
+        Args:
+            value (str): The string to convert to a boolean.
+
+        Raises:
+            argparse.ArgumentTypeError: Error message if the argument value is not supported.
+
+        Returns:
+            bool: The boolean value corresponding to the string.
+        """        
         if isinstance(value, bool):
             return value
         if value.lower() in ('yes', 'true', 'True' , 't', 'y', '1'):
@@ -81,6 +93,18 @@ class CustomArgumentParser(argparse.ArgumentParser):
 
     @staticmethod
     def str_to_type(type_str: str) -> type:
+        """
+        Convert a type-string to its type.
+
+        Args:
+            type_str (str): The string representing the type.
+
+        Raises:
+            ValueError: Error message if the type is not supported.
+
+        Returns:
+            type: The type corresponding to the string.
+        """        
         if type_str == 'bool':
             return bool
         elif type_str == 'int':
@@ -94,13 +118,38 @@ class CustomArgumentParser(argparse.ArgumentParser):
 
     @staticmethod
     def str_to_none(value: str) -> any:
+        """
+        Convert a string to None if the string is 'None'.
+
+        Args:
+            value (str): The string to convert to None.
+
+        Returns:
+            any: The value or None.
+        """        
         if value == 'None':
             return None
         return value                     
 
 
 class Configuration:    
-    def __init__(self):                     
+    """
+    Methods and attributes to parse the arguments from the CLI and the configuration file.
+    While the arguments from the CLI and the config.yaml use hyphens, 
+    the internal dictionary uses underscores.
+
+    Attributes:
+        path (str): The path to the configuration file.
+        console (RichConsole): The RichConsole object to print messages.
+        default_write (bool): Boolean statement to write the default configuration to file.
+        arguments_hyphen (dict): Dictionary with arguments from the configuration file.
+        arguments (dict): Dictionary with arguments from the configuration file with underscores.
+    """
+
+    def __init__(self):       
+        """
+        Initialize the Configuration object.
+        """                      
         self.path = os.path.join(os.getcwd(),'gcsnap')
         self.console = RichConsole()
 
@@ -112,22 +161,59 @@ class Configuration:
         with self.console.status('Parsing CLI arguments and config.yaml'):
             self.create_argument_parser()
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict:
+        """
+        Used by pickle to convert the object into a dictionary for serialization.
+        Parser object is not picklable, so it's removed from the state.
+
+        Returns:
+            dict: The state of the object without the console.
+        """         
         state = self.__dict__.copy()
         del state['parser']
         return state
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict) -> None:
+        """
+        Used by pickle to restore the object from a dictionary after deserialization.
+        Parser object is recreated.
+
+        Args:
+            state (dict): The state of the object.
+        """              
         self.__dict__.update(state)
         self.create_argument_parser()
 
     def hyphen_to_underscore(self, argument: str) -> str:
+        """
+        Convert a string with hyphens to a string with underscores.
+
+        Args:
+            argument (str): String with hyphens.
+
+        Returns:
+            str: String with underscores.
+        """        
         return argument.replace('-', '_')
 
     def underscore_to_hyphen(self, argument: str) -> str:
+        """
+        Convert a string with underscores to a string with hyphens.
+
+        Args:
+            argument (str): String with underscores.
+
+        Returns:
+            str: String with hyphens.
+        """        
         return argument.replace('_', '-')        
         
-    def read_configuration_yaml(self) -> None:   
+    def read_configuration_yaml(self) -> None:  
+        """
+        Read the configuration file and load the arguments from it.
+        If the file is not found, create a default configuration and set
+        boolean statement to write it to file at the end.
+        """         
         if not os.path.isfile(os.path.join(self.path,'config.yaml')):
             self.console.print_warning('Configuration file config.yaml not found')
             self.arguments_hyphen = self.get_default_configuration()
@@ -140,6 +226,9 @@ class Configuration:
         self.console.print_done('Configuration file config.yaml loaded')
             
     def write_configuration_yaml(self) -> None:
+        """
+        Write the configuration dictionary to the configuration file.
+        """        
         out = {self.underscore_to_hyphen(key): value for key, value in self.arguments.items()}
         header_comment = (
             'Configuration file to set arguments for GCsnap.\n'
@@ -153,24 +242,26 @@ class Configuration:
             yaml_dump(out, default_flow_style=False, indent=4, block_seq_indent=4)
 
     def write_configuration_yaml_log(self, file_name: str, file_path: str = None) -> None:
+        """
+        Write the configuration dictionary to a log file.
+
+        Args:
+            file_name (str): The name of the log file.
+            file_path (str, optional): The path to the log file. Defaults to None.
+        """        
         if file_path is None:
             file_path = os.getcwd()
-
         lines_to_write = ['{}:\t{}\n'.format(self.underscore_to_hyphen(key), value['value']) 
                           for key, value in self.arguments.items()]
 
         with open(os.path.join(file_path, file_name), 'w') as file:
             file.writelines(lines_to_write)
-
-    def log_configuration(self, path : str = None) -> None:
-        if path is None:
-            path = os.getcwd()
-        to_write = ['{}:\t{}\n'.format(self.underscore_to_hyphen(key), value['value'])
-                    for key, value in self.arguments.items()]
-        with open(os.path.join(path, 'config.log'), 'w') as file:
-            file.writelines(to_write)        
-        
+            
     def parse_arguments(self) -> None:
+        """
+        Parse and handle the arguments from the CLI and update the configuration dictionary.
+        If --help is detected, call print method from console attribute and exit.
+        """        
         args = self.parser.parse_args()
 
         # show help message (--help) and exit
@@ -200,6 +291,9 @@ class Configuration:
             self.write_configuration_yaml()
         
     def create_argument_parser(self) -> None:
+        """
+        Create the argument parser with usage and epilog messages.
+        """        
         usage = 'GCsnap --targets <targets> [Optional arguments]'
         epilog = 'Example: GCsnap --targets PHOL_ECOLI A0A0U4VKN7_9PSED A0'
         
@@ -224,6 +318,9 @@ class Configuration:
                           in self.arguments_hyphen.items()}
 
     def handle_special_arguments(self) -> None:
+        """
+        Handle special arguments that require additional processing.
+        """        
         # handle special arguments that require additional processing
         
         # clanse file
@@ -236,7 +333,15 @@ class Configuration:
 
         self.arguments['clans_file']['value'] = clans_file
 
-    def get_default_configuration(self) -> None:
+    def get_default_configuration(self) -> dict:
+        """
+        Define the default configuration dictionary if no config.yaml is found.
+        This can be used to create a new config.yaml file if it was messed up.
+        Just delete the config.yaml file and run the GCsnap again.
+
+        Returns:
+            dict: The default configuration dictionary.
+        """        
         return {
             "out-label": {
                 "value": "default",
