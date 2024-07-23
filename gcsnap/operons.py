@@ -17,7 +17,34 @@ import logging
 logger = logging.getLogger(__name__) # inherits configuration from main logger
 
 class Operons:
+    """ 
+    Methods and attributes to cluster operons.
+
+    Attributes:
+        config (Configuration): The Configuration object containing the arguments.
+        cores (int): The number of CPU cores to use.
+        advanced (bool): The advanced operon clustering option.
+        max_freq (float): The maximum frequency of a family to be considered.
+        min_freq (float): The minimum frequency of a family to be considered.
+        families (dict): The dictionary with the families assigned to the flanking genes.
+        syntenies (dict): The dictionary with the syntenies of the target genes.
+        out_label (str): The label of the output.
+        console (RichConsole): The RichConsole object to print messages.
+        sorted_targets (list): The list of sorted targets.
+        operon_clusters (list): The list of operon clusters.
+        clean_coordinates (np.ndarray): The clean coordinates.
+        all_coordinates (np.ndarray): The all coordinates.
+    """
+
     def __init__(self, config: Configuration, gc: GenomicContext, out_label: str):
+        """
+        Initialize the Operons object.
+
+        Args:
+            config (Configuration): The Configuration object containing the arguments.
+            gc (GenomicContext): The GenomicContext object containing all genomic context information.
+            out_label (str): The label of the output.
+        """        
         self.config = config
         self.cores = config.arguments['n_cpu']['value']
         self.advanced = config.arguments['operon_cluster_advanced']['value']
@@ -37,10 +64,19 @@ class Operons:
         self.sorted_targets = list(self.syntenies.keys())
         self.operon_clusters = [1] * len(self.sorted_targets)           # list
 
-    def get_operons(self) -> None:
+    def get_operons(self) -> dict:
+        """
+        Getter for the operon_clusters attribute.
+
+        Returns:
+            dict: The syntenies dictionary with the operon clusters.
+        """        
         return self.syntenies        
 
     def run(self) -> None:
+        """
+        Run the clustering of operons. Either standard or advanced clustering.
+        """        
         # if syntenies has only one target, the default values are kept
         if len(self.syntenies) > 1:
             if self.advanced:
@@ -54,6 +90,12 @@ class Operons:
         self.update_syntenies()       
 
     def run_advanced(self) -> None:
+        """
+        Run the advanced clustering of operons with PaCMAP:
+            - Find the operon clusters with PaCMAP.
+            - Find all PaCMAP coordinates.
+            - Update the syntenies with the new operon clusters.
+        """        
         # get the clusters by excluding the most common families
         res = self.find_operon_clusters_with_PaCMAP(clean = True, coordinates_only = False) 
         self.clean_coordinates, self.operon_clusters, self.sorted_targets = res
@@ -68,6 +110,18 @@ class Operons:
                                          eps_step: float = 0.02
                                          ) -> Union[tuple[np.ndarray,list],
                                                     tuple[np.ndarray,np.ndarray,list]]:
+        """
+        Find the operon clusters with PaCMAP.
+
+        Args:
+            clean (bool, optional): Flag to clean the families. Defaults to True.
+            coordinates_only (bool, optional): Flag to return only the coordinates. Defaults to True.
+            max_eps_cost (float, optional): Maximum cost for the epsilon. Defaults to 1.3.
+            eps_step (float, optional): Step for the epsilon improvement. Defaults to 0.02.
+
+        Returns:
+            Union[tuple[np.ndarray,list], tuple[np.ndarray,np.ndarray,list]]: The coordinates and clusters.
+        """        
         
         presence_matrix, sorted_targets, sorted_families = self.get_family_presence_matrix(clean)
         paCMAP_embedding = pacmap.PaCMAP(n_components = 2)
@@ -115,6 +169,15 @@ class Operons:
         return paCMAP_coordinat, clusters, sorted_targets                
 
     def get_family_presence_matrix(self, clean: bool = True) -> tuple[np.ndarray, list, list]:
+        """
+        Get the family presence matrix.
+
+        Args:
+            clean (bool, optional): Flag to clean the families. Defaults to True.
+
+        Returns:
+            tuple[np.ndarray, list, list]: The presence matrix, sorted targets, and sorted families.
+        """        
         sorted_targets = sorted(list(self.syntenies.keys()))
         sorted_families   = [i for i in sorted(list(self.families.keys())) if (i >= 0)]
 
@@ -136,6 +199,15 @@ class Operons:
         return np.array(presence_matrix), sorted_targets, sorted_families   
 
     def calculate_start_eps(self, coordinates: list) -> float:
+        """
+        Calculate the start epsilon.
+
+        Args:
+            coordinates (list): The coordinates.
+
+        Returns:
+            float: The start epsilon.
+        """        
         distances = []
         for i, vector_i in enumerate(coordinates):
             for j, vector_j in enumerate(coordinates):
@@ -155,10 +227,21 @@ class Operons:
         return round(eps, 2)    
 
     def run_standard(self) -> None:
+        """
+        Run the standard clustering of operons:
+            - Compute the operon distance matrix.
+            - Find the clusters in the distance matrix.
+        """        
         distance_matrix, self.sorted_targets = self.compute_operon_distance_matrix()
         self.operon_cluster = self.find_clusters_in_distance_matrix(distance_matrix)
 
     def compute_operon_distance_matrix(self) -> tuple[np.ndarray,list]:
+        """
+        Compute the operon distance matrix.
+
+        Returns:
+            tuple[np.ndarray,list]: The distance matrix and sorted targets.
+        """        
         distance_matrix = [[0 for target in self.syntenies] for target in self.syntenies]
         sorted_targets = sorted(list(self.syntenies.keys()))
 
@@ -210,12 +293,25 @@ class Operons:
         return np.array(distance_matrix), sorted_targets       
 
     def find_clusters_in_distance_matrix(self, distance_matrix: np.ndarray, t: int = 0.2) -> list: 
+        """
+        Find the clusters in the distance.
+
+        Args:
+            distance_matrix (np.ndarray): The distance matrix.
+            t (int, optional): The threshold for the clustering. Defaults to 0.2.
+
+        Returns:
+            list: The clusters.
+        """        
         distance_matrix = distance.squareform(distance_matrix)
         linkage = hierarchy.linkage(distance_matrix, method = 'single')
         clusters = hierarchy.fcluster(linkage, t, criterion = 'distance')
         return [int(i) for i in clusters]
     
     def update_syntenies(self) -> None:
+        """
+        Update the syntenies with the new operon clusters
+        """        
         for i, target in enumerate(self.sorted_targets):
             self.syntenies[target]['operon_type'] = int(self.operon_clusters[i])
 
