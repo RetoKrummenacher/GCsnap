@@ -128,7 +128,7 @@ class RichConsole():
         Args:
             message (str): The message to print.
         """        
-        self.console.print(Text(message, style=self.color_grey))
+        self.console.print(Text('  {}'.format(message), style=self.color_grey))
         logger.info(f'{message}')        
 
     def print_working_on(self, message: str) -> None:
@@ -138,7 +138,7 @@ class RichConsole():
         Args:
             message (str): The message to print.
         """        
-        self.console.print(Text('🔨  Working on {}'.format(message), style=self.color_grey))   
+        self.console.print(Text('🔨 Working on {}'.format(message), style=self.color_grey))   
         logger.info(f'Working on {message}')
 
     def print_info(self, message: str) -> None:
