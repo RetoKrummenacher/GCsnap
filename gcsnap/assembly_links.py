@@ -8,7 +8,25 @@ from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole 
 
 class AssemblyLinks:    
-    def __init__(self, config: Configuration):    
+    """
+    Methods and attributes to download and parse the assembly summaries from NCBI
+    for RefSeq and Genbank to retreive the links to the assemblies.
+
+    Attributes:
+        console (RichConsole): The RichConsole object to print messages.
+        cores (int): The number of CPU cores to use.
+        assembly_dir (str): The path to store the assembly summaries.
+        db_list (list): The list of databases to download the assembly summaries.
+        links (dict): The final dictionary with the assembly code and the link to it.
+    """
+
+    def __init__(self, config: Configuration): 
+        """
+        Initialize the AssemblyLinks object.
+
+        Args:
+            config (Configuration): The Configuration object containing the arguments.
+        """           
         self.console = RichConsole()
 
         # get necessary configuration arguments        
@@ -25,19 +43,38 @@ class AssemblyLinks:
         self.links = {}
     
     def run(self) -> None:    
+        """
+        Run the download and parsing of the assembly summaries.
+        """        
         self.create_folder()
         for db in self.db_list:
             self.check_and_download(db)        
             self.links.update(self.parse_summaries(db))      
 
     def get(self) -> dict[str, str]:
+        """
+        Getter for the links attribute.
+
+        Returns:
+            dict[str, str]: The dictionary with the assembly code and the link to it.
+        """        
         return self.links              
         
-    def create_folder(self) -> None:          
+    def create_folder(self) -> None:     
+        """
+        Create the folder to store the assembly summaries.
+        """             
         if not os.path.exists(self.assembly_dir):
             os.makedirs(self.assembly_dir)
             
     def check_and_download(self, db) -> None:
+        """
+        Check if the assembly summary exists and download it if it does not.
+        Using time check to download again if older than 14 days.
+
+        Args:
+            db (_type_): The database (genbank or refseq) to download the assembly summary.
+        """        
         file = os.path.join(self.assembly_dir,'assembly_summary_{0}.txt'.format(db))
         days=14
         if os.path.exists(file):
@@ -56,6 +93,12 @@ class AssemblyLinks:
             self.download_summary(db)
 
     def download_summary(self, db: str) -> None:
+        """
+        Download the assembly summary from NCBI in parallel with pypdl Downloader.
+
+        Args:
+            db (str): The database (genbank or refseq) to download the assembly summary.
+        """        
         url = 'https://ftp.ncbi.nlm.nih.gov/genomes/{0}/assembly_summary_{0}.txt'.format(db) 
 
         # Download multithreaded with pypdl Downloader
@@ -86,6 +129,15 @@ class AssemblyLinks:
         dl.shutdown() 
         
     def parse_summaries(self, db: str) -> dict[str,str]:
+        """
+        Parse the assembly summary to extract the assembly code and the link to it.
+
+        Args:
+            db (str): The database (genbank or refseq) to parse the assembly summary.
+
+        Returns:
+            dict[str,str]: The dictionary with the assembly code and the link to it.
+        """        
         links = {}
         file = os.path.join(self.assembly_dir,'assembly_summary_{0}.txt'.format(db))
         with open(file, 'r', encoding='utf-8') as f:
