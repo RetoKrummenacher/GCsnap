@@ -9,7 +9,32 @@ from gcsnap.utils import processpool_wrapper
 from gcsnap.utils import split_dict_chunks
 
 class Families:
+    """ 
+    Methods and attributes to assign families to flanking genes of the target genes.
+
+    Attributes:
+        config (Configuration): The Configuration object containing the arguments.
+        cores (int): The number of CPU cores to use.
+        out_label (str): The label of the output.
+        out_dir (str): The path to store the output.
+        gc (GenomicContext): The GenomicContext object containing all genomic context information.
+        syntenies (dict): The dictionary with the syntenies of the target genes.
+        families (dict): The dictionary with the families assigned to the flanking genes.
+        families_adapted (dict): The dictionary with the adapted families assigned to the flanking genes.
+        cluster_list (list): The list of clusters.
+        cluster_order (list): The order of the clusters.
+        console (RichConsole): The RichConsole object to print messages.
+    """
+
     def __init__(self, config: Configuration, gc: GenomicContext, out_label: str):
+        """
+        Initialize the Families object.
+
+        Args:
+            config (Configuration): The Configuration object containing the arguments.
+            gc (GenomicContext): The GenomicContext object containing all genomic context information.
+            out_label (str): The label of the output.
+        """        
         self.config = config
         self.cores = config.arguments['n_cpu']['value']
 
@@ -22,9 +47,22 @@ class Families:
         self.console = RichConsole()
 
     def get_families(self) -> dict:
+        """
+        Getter for the families attribute.
+
+        Returns:
+            dict: The dictionary with the families assigned to the flanking genes.
+        """        
         return self.families_adapted
 
     def run(self) -> None:
+        """
+        Run the assignment of families to the flanking genes:
+            - Find the clusters with MMseqsCluster.
+            - Assign the families to the flanking genes.
+            - Adapt the families where its outside possible ranges of the clusters.
+        Uses parallel processing with processpool_wrapper from utils.py.
+        """        
         # MMseqsCluster creates the directory
         self.find_cluster()
 
@@ -44,19 +82,31 @@ class Families:
 
             # 2. adapt the families where its outside possible ranges
             parallel_args = [(sub_dict, curr_numbers) 
-                             for sub_dict in split_dict_chunks(self.families, self.cores)  ] 
+                             for sub_dict in split_dict_chunks(self.families, self.cores)] 
             dict_list = processpool_wrapper(self.cores, parallel_args, self.adapt_families)
             # combine results
             self.families_adapted = {k: v for sub_dict in dict_list for k, v in sub_dict.items()}  
 
     def find_cluster(self) -> list:
+        """
+        Find the clusters with MMseqsCluster.
+        """        
         # call MMseqsCluster
         cluster = MMseqsCluster(self.config, self.gc, self.out_dir)
         cluster.run()
         self.cluster_list = cluster.get_clusters_list() 
         self.cluster_order = cluster.get_cluster_order()           
         
-    def assign_families(self, args: tuple) -> tuple[dict,list]:
+    def assign_families(self, args: tuple[dict]) -> tuple[dict,list]:
+        """
+        Assign the families to the flanking genes.
+
+        Args:
+            args (tuple[dict]): The syntenies of the target genes.
+
+        Returns:
+            tuple[dict,list]: The syntenies with the families assigned to the flanking genes and the current numbers.
+        """         
         syntenies = args
         # loop over all targets in the chunk
         curr_numbers = []
@@ -82,7 +132,16 @@ class Families:
 
         return (syntenies , curr_numbers) 
     
-    def adapt_families(self, args: tuple) -> dict:
+    def adapt_families(self, args: tuple[dict]) -> dict:
+        """
+        Adapt the families where its outside possible ranges of the clusters.
+
+        Args:
+            args (tuple[dict]): The syntenies of the target genes and assigned families.
+
+        Returns:
+            dict: The syntenies with the adapted families assigned to the flanking genes.
+        """  
         syntenies, curr_numbers = args
         for k in syntenies.keys():
             for i, _ in enumerate(syntenies[k]['flanking_genes']['ncbi_codes']):
