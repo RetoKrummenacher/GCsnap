@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__) # inherits configuration from main logger
 
 class RichConsole():    
     """
-    A class to print messages in the console with different colors and styles.
+    Mehtods to print messages in the console with different colors and styles.
  
     Attributes:
         console: Console object from rich library.
@@ -21,9 +21,10 @@ class RichConsole():
         color_red (str): Color for red messages.
         color_green (str): Color for green messages.
     """    
+
     def __init__(self):
         """
-        Initializes the RichConsole class with the console object and colors to use.
+        Initialize the RichConsole object with the console object and colors to use.
         """            
         self.console = Console()
 
