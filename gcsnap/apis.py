@@ -42,9 +42,9 @@ class AlphaFoldAPI:
         return link
     
     
-class UniProtAPI:
+class EbiAPI:
     @staticmethod
-    def get_uniprot_annotations(uniprot_code: str, previous_annotations: str = '') -> str:
+    def get_uniprot_annotations(uniprot_code: str, previous_annotations: dict = {}) -> str:
 
         uniprot_annotations = 'nan'
         if uniprot_code != 'nan':
@@ -55,15 +55,48 @@ class UniProtAPI:
                 if uniprot_req.ok:
                     uniprot_data = uniprot_req.text
                     uniprot_data = json.loads(uniprot_data)
-                    uniprot_annotations = UniProtAPI.parse_uniprot_data(uniprot_data, 
+                    uniprot_annotations = EbiAPI.parse_uniprot_data(uniprot_data, 
                                                         previous_annotations = previous_annotations)
             except:
                 uniprot_annotations = 'nan'        
         return uniprot_annotations
     
     @staticmethod
-    def parse_uniprot_data(uniprot_data: dict, previous_annotations: str = '') -> dict:
-        if previous_annotations == '':
+    def get_uniprot_annotations_batch(uniprot_codes: list, with_parsing: bool = False) -> dict:
+        uniprot_annotations = {}
+        uniprot_accessions = [code.split('_')[0] for code in uniprot_codes if code != 'nan']
+        # separator is %2C: https://www.ebi.ac.uk/proteins/api/doc/#!/proteins/search
+        # the maximum number of accessions per is 100
+        uniprot_accession_str = '%2C'.join(uniprot_accessions)
+        
+        if uniprot_accession_str:
+            uniprot_link = 'https://www.ebi.ac.uk/proteins/api/proteins?accession={}'.format(uniprot_accession_str)
+            try:
+                # returns a list of results
+                uniprot_req = requests.get(uniprot_link, headers={ "Accept" : "application/json"})
+                if uniprot_req.ok:
+                    uniprot_data = uniprot_req.json()
+                    if with_parsing:
+                        for data in uniprot_data:
+                            accession = data.get('accession')
+                            uniprot_annotations[accession] = EbiAPI.parse_uniprot_data(data)
+                    else:
+                        for data in uniprot_data:
+                            # combine all data without parsing
+                            accession = data.get('accession')
+                            uniprot_annotations[accession] = data
+                else:
+                    uniprot_annotations = {accession: 'nan' for accession in uniprot_accessions}
+            except:
+                uniprot_annotations = {accession: 'nan' for accession in uniprot_accessions}
+        else:
+            uniprot_annotations = {accession: 'nan' for accession in uniprot_accessions}
+        
+        return uniprot_annotations    
+    
+    @staticmethod
+    def parse_uniprot_data(uniprot_data: dict, previous_annotations: dict = {}) -> dict:
+        if previous_annotations == {}:
             uniprot_annotations = {'TM_topology': '', 'GO_terms': [], 'Keywords': [],
                                    'Function_description': ''}
         else:

@@ -6,7 +6,7 @@ from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole
 from gcsnap.genomic_context import GenomicContext
 from gcsnap.sequence_mapping import SequenceMapping
-from gcsnap.apis import UniProtAPI
+from gcsnap.apis import EbiAPI
 
 from gcsnap.utils import processpool_wrapper
 from gcsnap.utils import split_list_chunks
@@ -97,9 +97,20 @@ class TMsegments:
             mapping_dict = mapping.get_target_to_result_dict()
             mapping.log_failed()
 
+            # request all annotation information from EbiAPI for all ncbi_code
+            uniprot_codes = [mapping_dict.get(ncbi_code,'nan') for ncbi_code in self.ncbi_code_order]
+            
+            # split them into chunks of at most 90 (limit is at most 100)
+            n_chunks = len(uniprot_codes) // 90 + 1
+            parallel_args = split_list_chunks(uniprot_codes, n_chunks)
+            with self.console.status('Get functional annotation from EBI'):
+                result_list = processpool_wrapper(self.cores, parallel_args, self.run_get_functional_annotations)
+                # combine results
+                all_uniprot_data = {k: v for dict_ in result_list for k, v in dict_.items()}            
+
             with self.console.status('Annotating TM segments with {}'.format(self.annotate_mode)):
                 # create parallel arguments
-                parallel_args = [(sub_list, mapping_dict) 
+                parallel_args = [(sub_list, mapping_dict, all_uniprot_data) 
                                 for sub_list in split_list_chunks(self.ncbi_code_order, self.cores)]
 
                 result_lists = processpool_wrapper(self.cores, parallel_args, self.uniprot_annotation)
@@ -141,19 +152,19 @@ class TMsegments:
         return result.stdout, result.stderr   
     
     def uniprot_annotation(self, args = tuple) -> list[tuple]:
-        ncbi_codes, mapping_dict = args
+        ncbi_codes, mapping_dict, all_uniprot_data = args
 
         result_list = []
 
         for ncbi_code in ncbi_codes:
             uniprot_code = mapping_dict.get(ncbi_code, 'nan')
             # if not found, it will be nan
-            if uniprot_code != 'nan':
+            if uniprot_code == 'nan':
                 result_list.append((ncbi_code, 'nan'))
                 continue
 
             # get uniprot annotations, returns a dictionary
-            curr_uniprot_annotations = UniProtAPI.get_uniprot_annotations(uniprot_code)
+            curr_uniprot_annotations = all_uniprot_data.get(uniprot_code)
 
             if curr_uniprot_annotations != 'nan':
                 tm_annotation = curr_uniprot_annotations['TM_topology']
@@ -252,3 +263,8 @@ class TMsegments:
 
         for msg in [msg_server, msg_run_mode, msg_output_file, msg_save_folder]:
             self.console.print_hint(msg)
+
+    def run_get_functional_annotations(self, uniprot_codes: list) -> dict:
+        return EbiAPI.get_uniprot_annotations_batch(uniprot_codes, with_parsing = True)
+        
+
