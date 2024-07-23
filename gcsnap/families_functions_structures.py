@@ -8,7 +8,27 @@ from gcsnap.utils import processpool_wrapper
 from gcsnap.utils import split_dict_chunks, split_list_chunks
 
 class FamiliesFunctionsStructures:
+    """ 
+    Methods and attributes to get the functional annotations and structures of the families.
+    
+    Attributes:
+        config (Configuration): The Configuration object containing the arguments.
+        cores (int): The number of CPU cores to use.
+        get_pdb (bool): The flag to get the PDB structures.
+        get_annotations (bool): The flag to get the functional annotations.
+        families (dict): The dictionary with the families and their members.
+        console (RichConsole): The RichConsole object to print messages.
+        annotations_and_structures (dict): The dictionary with the functional annotations and structures
+    """
+
     def __init__(self, config: Configuration, gc: GenomicContext):
+        """
+        Initialize the FamiliesFunctionsStructures object.
+
+        Args:
+            config (Configuration): The Configuration object containing the arguments.
+            gc (GenomicContext): The GenomicContext object containing all genomic context information.
+        """        
         self.config = config
         self.cores = config.arguments['n_cpu']['value']
         self.get_pdb = config.arguments['get_pdb']['value']
@@ -20,9 +40,22 @@ class FamiliesFunctionsStructures:
         self.console = RichConsole()
 
     def get_annotations_and_structures(self) -> dict:
+        """
+        Getter for the annotations_and_structures attribute.
+
+        Returns:
+            dict: The dictionary with the functional annotations and structures.
+        """        
         return self.annotations_and_structures
     
     def run(self) -> None:
+        """
+        Run the retrieval of the functional annotations and structures:
+            - Map every family member to UniProtKB-AC.
+            - Request all annotation information from EbiAPI in parallel.
+            - Extract the functional annotations and structures for each family in parallel.
+        Usese parallel processing with the processpool_wrapper from utils.py
+        """        
         if self.get_pdb or self.get_annotations:
             self.console.print_step('Functional annotation needs mapping first')
             # find all family members
@@ -75,7 +108,22 @@ class FamiliesFunctionsStructures:
             self.annotations_and_structures = {}
             self.console.print_skipped_step('No annotations or structures retrieval requested')
 
-    def run_each(self, args: tuple) -> dict:
+    def run_each(self, args: tuple[dict,dict,dict,bool,bool]) -> dict:
+        """
+        Run the retrieval of the functional annotations and structures for each family
+        used in parallel processing.
+
+        Args:
+            args (tuple[dict,dict,dict,bool,bool]): The arguments for the retrieval.
+                First element is a dictionary with the family and its members.
+                Second element is a dictionary with the mapping of the members to UniProtKB-AC.
+                Third element is a dictionary with the UniProtKB-AC codes and their annotations.
+                Fourth element is a flag to get the PDB structures.
+                Fifth element is a flag to get the functional annotations.
+
+        Returns:
+            dict: The dictionary with the family and its members with the functional annotations and structures.
+        """        
         families, mapping_dict, all_uniprot_data, get_pdb, get_annotations = args
 
         # all families that are not pseudogenes
@@ -150,4 +198,14 @@ class FamiliesFunctionsStructures:
         return families
     
     def run_get_functional_annotations(self, uniprot_codes: list) -> dict:
+        """
+        Run the retrieval of the functional annotations for a list of UniProtKB-AC codes
+        used in parallel processing.
+
+        Args:
+            uniprot_codes (list): The list of UniProtKB-AC codes.
+
+        Returns:
+            dict: The dictionary with the UniProtKB-AC codes and their annotations.
+        """        
         return EbiAPI.get_uniprot_annotations_batch(uniprot_codes)
