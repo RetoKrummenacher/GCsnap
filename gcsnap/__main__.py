@@ -190,6 +190,8 @@ def main():
             config.write_configuration_yaml()
         # copy log file to working direcotry
         shutil.copy(os.path.join(starting_directory,'gcsnap.log'), os.getcwd())
+        # log arguments to file
+        config.log_configuration(os.getcwd())
 
     t_all.stop()
     timing.to_csv('timing.csv')

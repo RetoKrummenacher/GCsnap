@@ -161,6 +161,14 @@ class Configuration:
 
         with open(os.path.join(file_path, file_name), 'w') as file:
             file.writelines(lines_to_write)
+
+    def log_configuration(self, path : str = None) -> None:
+        if path is None:
+            path = os.getcwd()
+        to_write = ['{}:\t{}\n'.format(self.underscore_to_hyphen(key), value['value'])
+                    for key, value in self.arguments.items()]
+        with open(os.path.join(path, 'config.log'), 'w') as file:
+            file.writelines(to_write)        
         
     def parse_arguments(self) -> None:
         args = self.parser.parse_args()
