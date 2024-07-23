@@ -51,7 +51,7 @@ conda activate GCsnap
 pip install .
 ```
 
-**Windows**
+**Windows**  
 There is no MMseqs2 installation candidate, just create Conda environment without mmseqs2 and get the static binary executable from here: https://mmseqs.com/latest/. Download, extract and store locally.
 When running GCsnap, pass the path to the executable (i.e., mmseqs.bat) via the ```--mmseqs-executable-path``` argument.
 ```
