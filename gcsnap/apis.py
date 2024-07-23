@@ -4,6 +4,15 @@ import json
 class SwissProtAPI:
     @staticmethod
     def find_uniprot_in_swissmodel(uniprot_code: str) -> str:
+        """
+        Find the link for information about a protein defined by its uniprot code in the SwissModel database.
+
+        Args:
+            uniprot_code (str): The uniprot code of the protein.
+
+        Returns:
+            str: The link to the SwissModel database entry of the protein.
+        """        
         link = 'nan'
         if uniprot_code != 'nan':
             link = 'https://swissmodel.expasy.org/repository/uniprot/{}'.format(uniprot_code)
@@ -27,6 +36,15 @@ class SwissProtAPI:
 class AlphaFoldAPI:    
     @staticmethod
     def find_uniprot_in_alphafold_database(uniprot_code: str) -> str:
+        """
+        Find the link to the 3D model of a protein defined by its uniprot code in the AlphaFold database.
+
+        Args:
+            uniprot_code (str): The uniprot code of the protein.
+
+        Returns:
+            str: The link to the 3D model of the protein in the AlphaFold database.
+        """        
         link = 'nan'
         if uniprot_code != 'nan':
             link = 'https://alphafold.ebi.ac.uk/entry/{}'.format(uniprot_code)
@@ -44,8 +62,17 @@ class AlphaFoldAPI:
     
 class EbiAPI:
     @staticmethod
-    def get_uniprot_annotations(uniprot_code: str, previous_annotations: dict = {}) -> str:
+    def get_uniprot_annotations(uniprot_code: str, previous_annotations: dict = {}) -> dict:
+        """
+        Get annotations for a protein defined by its uniprot code from the EBI database.
 
+        Args:
+            uniprot_code (str): The uniprot code of the protein.
+            previous_annotations (dict, optional): Previously fond annotations of the protein. Defaults to {}.
+
+        Returns:
+            dict: The annotations of the protein. 
+        """
         uniprot_annotations = 'nan'
         if uniprot_code != 'nan':
             uniprot_accession = uniprot_code.split('_')[0]
@@ -63,6 +90,17 @@ class EbiAPI:
     
     @staticmethod
     def get_uniprot_annotations_batch(uniprot_codes: list, with_parsing: bool = False) -> dict:
+        """
+        Get annotations for a list of proteins defined by their uniprot codes from the EBI database.
+        Searches in batches. Limit of up to 100 accessions per batch is not checked.
+
+        Args:
+            uniprot_codes (list): The list of uniprot codes of the proteins.
+            with_parsing (bool, optional): Should the retrieved data be parsed. Defaults to False.
+
+        Returns:
+            dict: The annotations of the proteins, either parsed or not.
+        """        
         uniprot_annotations = {}
         uniprot_accessions = [code.split('_')[0] for code in uniprot_codes if code != 'nan']
         # separator is %2C: https://www.ebi.ac.uk/proteins/api/doc/#!/proteins/search
@@ -96,6 +134,16 @@ class EbiAPI:
     
     @staticmethod
     def parse_uniprot_data(uniprot_data: dict, previous_annotations: dict = {}) -> dict:
+        """
+        Parse the data of a protein from the EBI database and extract annotations.
+
+        Args:
+            uniprot_data (dict): The data of the protein.
+            previous_annotations (dict, optional): Previously found annotations of the protein. Defaults to {}.
+
+        Returns:
+            dict: The annotations of the protein.
+        """        
         if previous_annotations == {}:
             uniprot_annotations = {'TM_topology': '', 'GO_terms': [], 'Keywords': [],
                                    'Function_description': ''}
