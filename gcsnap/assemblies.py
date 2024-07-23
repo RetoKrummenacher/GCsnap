@@ -16,7 +16,29 @@ import logging
 logger = logging.getLogger(__name__) # inherits configuration from main logger
 
 class Assemblies:    
+    """
+    Methods and attributes to download and parse flanking genes given NCBI codes.
+
+    Attributes:
+        cores (int): Number of cores to use for parallel processing.
+        n_flanking5 (int): Number of flanking genes to extract at the 5' end of target.
+        n_flanking3 (int): Number of flanking genes to extract at the 3' end of target.
+        exclude_partial (bool): Exclude partial genomic blocks.
+        config (Configuration): Configuration object.
+        console (RichConsole): Console object.
+        assembly_dir (str): Path to store assembly summaries.
+        targets_and_ncbi_codes (list): List of tuples with target and ncbi code.
+        accessions (dict): Dictionary with ncbi codes and assembly accessions.
+    """
+
     def __init__(self, config: Configuration, mappings: list[tuple[str,str]]):                     
+        """
+        Initialize the Assemblies object.
+
+        Args:
+            config (Configuration): Configuration object containing the arguments.
+            mappings (list[tuple[str,str]]): Contains the target and its ncbi code.
+        """        
         # get necessary configuration arguments        
         self.cores = config.arguments['n_cpu']['value'] 
         self.n_flanking5 = config.arguments['n_flanking5']['value']  
@@ -35,9 +57,21 @@ class Assemblies:
         self.targets_and_ncbi_codes = mappings
 
     def get_flanking_genes(self) -> dict:
+        """
+        Getter for the flanking_genes attribute.
+
+        Returns:
+            dict: The flanking gene infrmation.
+        """        
         return self.flanking_genes
     
     def run(self) -> None:
+        """
+        Run the process to download and extract flanking genes for the targets:
+            - Find the assembly accessions for the given NCBI codes.
+            - Download and extract flanking genes for each target in parallel.
+        Uses parallel processing with the processpool_wrapper from utils.py
+        """        
         # download and parse the assembly summary files
         self.load_summaries()
         # find the assembly accessions
@@ -55,6 +89,16 @@ class Assemblies:
             self.log_not_found(not_found)
 
     def run_each(self, args: tuple[str,str]) -> dict[str, dict]:
+        """
+        Run the process to download and extract flanking genes for a single target
+        used in the parallel processing.
+
+        Args:
+            args (tuple[str,str]): Contains the target and its ncbi code.
+
+        Returns:
+            dict[str, dict]: The flanking genes and assembly information.
+        """        
         # TODO: What to do if no accession/url is found?
         # adapt the two getter functions to return.
         # right now, it raises an exception which returns None for flanking genes
@@ -72,35 +116,84 @@ class Assemblies:
             return {target: {'flanking_genes': None,
                              'msg': str(e)}}
         
-    def create_folder(self) -> None:          
+    def create_folder(self) -> None:        
+        """
+        Create the folder to store the assembly summaries.
+        """          
         if not os.path.exists(self.assembly_dir):
             os.makedirs(self.assembly_dir)
 
     def load_summaries(self) -> None:
+        """
+        Load the assembly summaries.
+        """        
         # get file with assembly links
         assembly_links = AssemblyLinks(self.config)
         assembly_links.run()
         self.links = assembly_links.get()   
 
     def find_accessions(self, ncbi_codes: list) -> None:
+        """
+        Find the assembly accessions for the given NCBI codes using the EntrezQuery class.
+
+        Args:
+            ncbi_codes (list): The list of NCBI codes.
+        """        
         # get file with assembly links, no logging as its done after run()
         entrez = EntrezQuery(self.config, ncbi_codes, db='protein', rettype='ipg', 
                              retmode='xml', logging=False)
         self.accessions = entrez.run()
 
     def get_assembly_accession(self, ncbi_code: str) -> str:
+        """
+        Get the assembly accession for a given NCBI code.
+
+        Args:
+            ncbi_code (str): The NCBI code.
+
+        Raises:
+            WarningToLog: If no assembly accession is found.
+
+        Returns:
+            str: The assembly accession.
+        """        
         accession = self.accessions.get(ncbi_code, 'unk')
         if accession == 'unk':
             raise WarningToLog('No assembly accession found for {}'.format(ncbi_code))
         return accession
 
     def get_assembly_url(self, assembly_accession: str) -> str:
+        """
+        Get the assembly URL for a given assembly accession.
+
+        Args:
+            assembly_accession (str): The assembly accession.
+
+        Raises:
+            WarningToLog: If no URL is found.
+
+        Returns:
+            str: The assembly URL.
+        """        
         url = self.links.get(assembly_accession, 'unk')   
         if url == 'unk':
             raise WarningToLog('No url found for accession {}'.format(assembly_accession))
         return url      
         
     def download_and_read_gz_file(self, url: str, retries: int = 3) -> tuple:
+        """
+        Wrapper to download and read the assembly file in .gz format.
+
+        Args:
+            url (str): The URL of the assembly file.
+            retries (int, optional): The number of retries of download. Defaults to 3.
+
+        Raises:
+            WarningToLog: If the file was not downloaded properly.
+
+        Returns:
+            tuple: The full path of the downloaded file and the content of the file.
+        """        
         try:
             full_path = self.download_gz_file(url)
             content = self.read_gz_file(full_path)
@@ -114,6 +207,15 @@ class Assemblies:
         return full_path, content
 
     def download_gz_file(self, url: str) -> str:
+        """
+        Download the .gz file and save it without uncompressing.
+
+        Args:
+            url (str): The URL of the assembly file.
+
+        Returns:
+            str: The full path of the downloaded file.
+        """        
         assembly_label = url.split('/')[-1]  # e.g., GCF_000260135.1_ASM26013v1
         assembly_file_gz = '{}_genomic.gff.gz'.format(assembly_label)
         full_path = os.path.join(self.assembly_dir, assembly_file_gz)
@@ -132,20 +234,54 @@ class Assemblies:
         return full_path
 
     def read_gz_file(self, file_path: str) -> list:
+        """
+        Read the content of a .gz file.
+
+        Args:
+            file_path (str): The path of the .gz file.
+
+        Returns:
+            list: The content of the file as a list of lines.
+        """        
         with gzip.open(file_path, 'rt', encoding='utf-8') as file:
             content = file.read()
         return content.splitlines()                
                 
     def delete_assemblies(self) -> None:
+        """
+        Delete the assembly files in the assembly directory.
+        """        
         for filename in os.listdir(self.assembly_dir):
             file_path = os.path.join(self.assembly_dir, filename)
             os.remove(file_path)
 
     def parse_assembly(self, ncbi_code: str, lines: list) -> dict:
+        """
+        Wrapper to extract the genomic context block and to extract the flanking genes.
+
+        Args:
+            ncbi_code (str): The NCBI code.
+            lines (list): The content of the assembly file.
+
+        Returns:
+            dict: The flanking genes.
+        """        
         genomic_context_block = self.extract_genomic_context_block(ncbi_code, lines)
         return self.parse_genomic_context_block(ncbi_code, genomic_context_block)
 
     def extract_genomic_context_block(self, ncbi_code: str, lines: list) -> list:
+        """
+        Extract first all lines belonging to the scaffold containing the target gene.
+        Then extract the genomic context block (n_flanking5 on 5' end and 
+        n_flanking3 on 3' end based on the direction of the target) from that scaffold.
+
+        Args:
+            ncbi_code (str): The NCBI code of the target gene.
+            lines (list): The content of the assembly file.
+
+        Returns:
+            list: The lines containing the flanking genes.
+        """        
          # line numbers where different scaffolds (sequence regions) start
         scaffold_positions = [0] + [index for index, val in enumerate(lines) if 
                             val.startswith('##sequence-region')] + [len(lines)]   
@@ -195,16 +331,26 @@ class Assemblies:
         return genomic_context_block
 
     def parse_genomic_context_block(self, target_ncbi_code: str, genomic_context_block: list) -> dict:
+        """
+        Parse the genmoic context block to extract the flanking genes information.
+        One line of the genomic context block looks like this:
+            JQ926483.1	Genbank	CDS	1	668	.	+	0
+            ID=cds-AFI40896.1;Parent=gene-VP1;Dbxref=NCBI_GP:AFI40896.1;
+            Name=AFI40896.1;end_range=668,.;gbkey=CDS;gene=VP1;partial=true;
+            product=RNA-dependent RNA polymerase;protein_id=AFI40896.1;start_range=.,1
+
+        Args:
+            target_ncbi_code (str): The NCBI code of the target gene.
+            genomic_context_block (list): The lines containing the flanking genes.
+
+        Returns:
+            dict: The extracted flanking genes information.
+        """
         # result dictionary
         flanking_genes = GenomicContext.get_empty_flanking_genes()
 
         # parse the genomic context
         for line in genomic_context_block:   
-            # one line of the genomic context block:
-                # JQ926483.1	Genbank	CDS	1	668	.	+	0	
-                # ID=cds-AFI40896.1;Parent=gene-VP1;Dbxref=NCBI_GP:AFI40896.1;
-                # Name=AFI40896.1;end_range=668,.;gbkey=CDS;gene=VP1;partial=true;
-                # product=RNA-dependent RNA polymerase;protein_id=AFI40896.1;start_range=.,1
 
             line_data = line.split('\t')            
             start = int(line_data[3])
@@ -265,6 +411,12 @@ class Assemblies:
         return flanking_genes       
 
     def log_not_found(self, not_found: dict) -> None:
+        """
+        Write the targets for which no flanking genes were found to the log file.
+
+        Args:
+            not_found (dict): The targets for which no flanking genes were found.
+        """        
         message = 'No flanking genes found for {} target sequences.'.format(len(not_found))
         self.console.print_warning(message)
         for k,v in not_found.items():
