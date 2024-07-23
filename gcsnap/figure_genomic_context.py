@@ -9,7 +9,34 @@ import logging
 logger = logging.getLogger(__name__) # inherits configuration from main logger
 
 class GenomicContextFigure:
+    """ 
+    Methods to create genomic context figures.
+
+    Attributes:
+        config (Configuration): The Configuration object containing the arguments.
+        cmap (str): The colormap to use.
+        out_format (str): The output format of the figures.
+        out_label (str): The label of the output.
+        gc (GenomicContext): The GenomicContext object containing all genomic context information.
+        operons (dict): The dictionary with the operons.
+        most_populated_operon (str): The most populated operon.
+        syntenies (dict): The dictionary with the syntenies.
+        families_summary (dict): The dictionary with the families summary.
+        reference_family (str): The reference family.
+        family_colors (dict): The dictionary with the family colors.
+        console (RichConsole): The RichConsole object to print messages.
+    """
     def __init__(self, config: Configuration, gc: GenomicContext, out_label: str, ref_family: str, family_colors: dict):
+        """
+        Initialize the GenomicContextFigure object.
+
+        Args:
+            config (Configuration): The Configuration object containing the arguments.
+            gc (GenomicContext): The GenomicContext object containing all genomic context information.
+            out_label (str): The label of the output.
+            ref_family (str): The reference family.
+            family_colors (dict): The dictionary with the family colors.
+        """        
         self.config = config
         self.cmap = config.arguments['genomic_context_cmap']['value']
         self.out_format = config.arguments['out_format']['value']
@@ -27,6 +54,9 @@ class GenomicContextFigure:
         self.console = RichConsole()
 
     def run(self) -> None:
+        """
+        Run the creation of genomic context figures.
+        """        
         try:
             with self.console.status('Creating genomic context figures'):                
                 self.draw_genomic_context()
@@ -38,6 +68,9 @@ class GenomicContextFigure:
             logger.warning('Error message: {}'.format(e))
 
     def draw_genomic_context(self) -> None:
+        """
+        Draw the genomic context figure.
+        """        
         curr_y_level = len(self.operons.keys())
         all_xs = []
         all_populations = []
@@ -147,6 +180,9 @@ class GenomicContextFigure:
         plt.close('all')        
 
     def draw_genomic_context_legend(self) -> None:
+        """
+        Draw the genomic context legend.
+        """        
         curr_y_level = len(self.family_colors.keys())
         x_tail = 0
         dx = 5

@@ -14,14 +14,26 @@ from bokeh.models import HoverTool, TapTool
 from bokeh.models.callbacks import OpenURL
 
 class Figure:
+    """ 
+    Methods to create the figures used by AdvancedInteractiveFigure and InteractiveFigure.
+    """
+
     @staticmethod
     def set_class_attributes(cls, **kwargs):
-        """Static method to set attributes on the given class."""
+        """
+        Set class attributes from kwargs.
+        """        
         for key, value in kwargs.items():
             setattr(cls, key, value)  
     
     @staticmethod
     def make_dendogram_figure(**kwargs) -> tuple[figure, dict]:
+        """
+        Create the dendogram figure.
+
+        Returns:
+            tuple[figure, dict]: The figure and the data.
+        """        
         # set attributes from kwargs, it updates any keywords that are passed to method
         Figure.set_class_attributes(Figure, **kwargs)
 
@@ -84,6 +96,12 @@ class Figure:
     
     @staticmethod
     def compute_dendogram(**kwargs) -> tuple[dict, list]:
+        """
+        Compute the dendogram.
+
+        Returns:
+            tuple[dict, list]: The dendogram and the labels.
+        """        
         Figure.set_class_attributes(Figure, **kwargs)
 
         distance_matrix = kwargs.get('distance_matrix')
@@ -112,6 +130,12 @@ class Figure:
     
     @staticmethod
     def get_phylogeny_distance_matrix(**kwargs) -> tuple[np.ndarray, list]:
+        """
+        Get the phylogeny distance matrix.
+
+        Returns:
+            tuple[np.ndarray, list]: The distance matrix and the labels.
+        """        
         Figure.set_class_attributes(Figure, **kwargs)
 
         if Figure.starting_directory not in Figure.in_tree:
@@ -156,6 +180,12 @@ class Figure:
     
     @staticmethod
     def get_operons_distance_matrix(**kwargs) -> tuple[np.ndarray, list]:
+        """
+        Get the operons distance matrix.
+
+        Returns:
+            tuple[np.ndarray, list]: The distance matrix and the labels.
+        """        
         # set attributes from kwargs, it updates any keywords that are passed to method
         Figure.set_class_attributes(Figure, **kwargs)       
 
@@ -200,6 +230,12 @@ class Figure:
     
     @staticmethod
     def get_avgoperons_distance_matrix(**kwargs) -> tuple[np.ndarray, list]:  
+        """
+        Get the average operons distance matrix.
+
+        Returns:
+            tuple[np.ndarray, list]: The distance matrix and the labels.
+        """        
         Figure.set_class_attributes(Figure, **kwargs) 
 
         matrix = [[0 for i in Figure.operons if '-' not in i] for i in Figure.operons if '-' not in i]
@@ -221,6 +257,12 @@ class Figure:
     
     @staticmethod
     def get_taxonomy_distance_matrix(**kwargs) -> tuple[np.ndarray, list]:
+        """
+        Get the taxonomy distance matrix.
+
+        Returns:
+            tuple[np.ndarray, list]: The distance matrix and the labels.
+        """        
         Figure.set_class_attributes(Figure, **kwargs)
         
         targets_taxonomy_vector = {}
@@ -273,6 +315,12 @@ class Figure:
 
     @staticmethod
     def create_dendogram_features(**kwargs) -> tuple[list, dict]:
+        """
+        Create the dendogram features.
+
+        Returns:
+            tuple[list, dict]: The tooltips and the data.
+        """        
         Figure.set_class_attributes(Figure, **kwargs)
 
         if Figure.sort_mode == 'operon clusters':
@@ -357,6 +405,12 @@ class Figure:
 
     @staticmethod
     def create_most_common_genomic_features_figure(**kwargs) -> figure:
+        """
+        Create the most common genomic features figure.
+
+        Returns:
+            figure: The figure.
+        """        
         Figure.set_class_attributes(Figure, **kwargs)
 
         most_common_context = Figure.find_most_common_genomic_context(**kwargs)
@@ -409,6 +463,12 @@ class Figure:
         
     @staticmethod
     def find_most_common_genomic_context(**kwargs) -> dict:
+        """
+        Find the most common genomic context.
+
+        Returns:
+            dict: The most common genomic context.
+        """        
         Figure.set_class_attributes(Figure, **kwargs)
 
         # will use only the complete genomic contexts and ignore the partial ones	
@@ -481,6 +541,12 @@ class Figure:
             
     @staticmethod
     def create_most_common_genomic_context_features(**kwargs) -> tuple:
+        """
+        Create the most common genomic context features.
+
+        Returns:
+            tuple: The tooltips and the data.
+        """        
         Figure.set_class_attributes(Figure, **kwargs)
 
         data = {'xs': [],
@@ -619,6 +685,12 @@ class Figure:
 
     @staticmethod
     def create_genomic_context_figure(**kwargs) -> figure:
+        """
+        Create the genomic context figure.
+
+        Returns:
+            figure: The figure.
+        """        
         Figure.set_class_attributes(Figure, **kwargs)
 
         p_tooltips, p_data, p_yyticklabels = Figure.create_genomic_context_features(**kwargs)
@@ -668,6 +740,12 @@ class Figure:
     
     @staticmethod
     def create_genomic_context_features(**kwargs) -> tuple[list, dict, dict]:
+        """
+        Create the genomic context features.
+
+        Returns:
+            tuple[list, dict, dict]: The tooltips, the data, and the yyticklabels.
+        """        
         Figure.set_class_attributes(Figure, **kwargs)
         
         data = {'operon':[],

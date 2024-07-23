@@ -23,7 +23,33 @@ from gcsnap.figure_interactive import InteractiveFigure
 from gcsnap.figure_interactive_advanced import AdvancedInteractiveFigure
 
 class Figures:
+    """ 
+    Methods and attributes to create the genomic context figures.
+
+    Attributes:
+        config (Configuration): The Configuration object containing the arguments.
+        operon_cluster_advanced (bool): The boolean to use the advanced interactive figure.
+        cmap (str): The name of the colormap.
+        gc (GenomicContext): The GenomicContext object containing all genomic context information.
+        operons (dict): The dictionary with the operons.
+        most_populated_operon (str): The most populated operon.
+        syntenies (dict): The dictionary with the syntenies.
+        families_summary (dict): The dictionary with the families.
+        out_label (str): The label of the output.
+        starting_directory (str): The path to the starting directory.
+        reference_family (str): The reference family
+    """
+
     def __init__(self, config: Configuration, gc: GenomicContext, out_label: str, starting_directory: str):
+        """
+        Initialize the Figures object.
+
+        Args:
+            config (Configuration): The Configuration object containing the arguments.
+            gc (GenomicContext): The GenomicContext object containing all genomic context information.
+            out_label (str): The label of the output.
+            starting_directory (str): The path to the starting directory.
+        """        
         self.config = config
         self.operon_cluster_advanced = config.arguments['operon_cluster_advanced']['value']
         self.cmap = config.arguments['genomic_context_cmap']['value']
@@ -43,6 +69,11 @@ class Figures:
                                                 ['target_members'][0]]['target_family']
         
     def run(self) -> None:
+        """
+        Run the creation of the genomic context figures:
+            - Create genomic context figure with GenomicContextFigure.
+            - Create interactive figure with InteractiveFigure or AdvancedInteractiveFigure.
+        """        
         # 1. Create genomic context figures
         family_colors = self.define_family_colors(mode = 'matplotlib', cmap = self.cmap)
         gcf = GenomicContextFigure(self.config, self.gc, self.out_label, 
@@ -63,7 +94,17 @@ class Figures:
                                         self.starting_directory)
                 igcf.run()
 
-    def define_family_colors(self, mode: str,  cmap: str):
+    def define_family_colors(self, mode: str,  cmap: str) -> dict:
+        """
+        Define the colors for the families.
+
+        Args:
+            mode (str): The mode to define the colors (matplotlib or bokeh).
+            cmap (str): The name of the colormap.
+
+        Returns:
+            dict: The dictionary with the colors for the families.
+        """        
         families = list(self.families_summary.keys())
         colors = {}
 

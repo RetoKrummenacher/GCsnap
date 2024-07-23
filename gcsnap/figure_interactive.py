@@ -28,8 +28,21 @@ from gcsnap.figure import Figure
 from gcsnap.rich_console import RichConsole
 
 class InteractiveFigure:
+    """
+    Methods to create the interactive genomic context figures.
+    """
     def __init__(self, config: Configuration, gc: GenomicContext, out_label: str, ref_family: str, 
                  family_colors: dict, starting_directory: str):
+        """
+        Initialize the InteractiveFigure object.
+
+        Args:
+            config (Configuration): The Configuration object containing the arguments.
+            gc (GenomicContext): The GenomicContext object containing all genomic context information.
+            out_label (str): The label of the output.
+            ref_family (str): The reference family.
+            family_colors (dict): The dictionary with the family colors.
+            starting_directory (str): The path to the starting directory.        """             
         
         # Extract parameters from config and gc
         kwargs = {k: v['value'] for k, v in config.arguments.items()}
@@ -59,13 +72,24 @@ class InteractiveFigure:
         self.console = RichConsole()
 
     def _set_attributes(self, **kwargs):
-        """Helper method to set attributes from kwargs."""
+        """
+        Set attributes from kwargs.
+        """        
         for key, value in kwargs.items():
             # Only set the attribute if it does not already exist
             if not hasattr(self, key):
                 setattr(self, key, value)   
 
     def run(self) -> None:
+        """
+        Run the creation of the interactive genomic context figures
+            - Create the most common genomic context figure.
+            - Create the gene co-occurrence network figure.
+            - Create the gene adjacency network figure.
+            - Create the dendogram for the genomic context block.
+            - Create the genomic context figure.
+            - Create the legend figure.
+        """        
         with self.console.status('Creating interactive genomic context figures'):
             # Make a copy of the current object's attributes (all contained in instance __dict__)
             kwargs = self.__dict__.copy()
@@ -118,6 +142,12 @@ class InteractiveFigure:
         self.console.print_info('Genomic context visualization created in {}'.format(f_name))
 
     def create_graph_figure(self, **kwargs) -> tuple[nx.Graph, dict]:
+        """
+        Create the gene co-occurrence or adjacency network figure.
+
+        Returns:
+            tuple[nx.Graph, dict]: The networkx graph and the dictionary with the node coordinates.
+        """        
         # set attributes from kwargs, it updates any keywords that are passed to method
         self._set_attributes(**kwargs)
 
@@ -184,6 +214,12 @@ class InteractiveFigure:
         return g, self.graph_coord        
     
     def get_coocurrence_matrix(self, **kwargs) -> tuple[np.ndarray, dict]:
+        """
+        Get the co-occurrence matrix.
+
+        Returns:
+            tuple[np.ndarray, dict]: The co-occurrence matrix and the dictionary with the selected families summary.
+        """        
         # set attributes from kwargs, it updates any keywords that are passed to method
         self._set_attributes(**kwargs)
 
@@ -222,6 +258,12 @@ class InteractiveFigure:
         return matrix, selected_families_summary        
     
     def get_graph_from_matrix(self, **kwargs) -> nx.Graph:  
+        """
+        Get the graph from the matrix.
+
+        Returns:
+            nx.Graph: The networkx graph.
+        """        
         # set attributes from kwargs, it updates any keywords that are passed to method
         self._set_attributes(**kwargs)
 
@@ -257,7 +299,13 @@ class InteractiveFigure:
         
         return G    
     
-    def remove_non_adjacent_edges(self, **kwargs) -> nx.Graph:  
+    def remove_non_adjacent_edges(self, **kwargs) -> nx.Graph: 
+        """
+        Remove non-adjacent edges from the graph.
+
+        Returns:
+            nx.Graph: The networkx graph.
+        """         
         # set attributes from kwargs, it updates any keywords that are passed to method
         self._set_attributes(**kwargs)
 
@@ -276,6 +324,12 @@ class InteractiveFigure:
         return self.G 
 
     def get_adjcency_matrix(self, **kwargs) -> tuple[np.ndarray, list]: 
+        """
+        Get the adjacency matrix.
+
+        Returns:
+            tuple[np.ndarray, list]: The adjacency matrix and the list with the family labels.
+        """        
         # set attributes from kwargs, it updates any keywords that are passed to method
         self._set_attributes(**kwargs)
 
@@ -296,7 +350,13 @@ class InteractiveFigure:
         matrix = np.array(matrix)        
         return matrix, family_labels      
     
-    def create_node_features(self, **kwargs) -> tuple[dict, list]:   
+    def create_node_features(self, **kwargs) -> tuple[dict, list]:  
+        """
+        Create the node features.
+
+        Returns:
+            tuple[dict, list]: The dictionary with the node features and the list with the tooltips.
+        """         
         # set attributes from kwargs, it updates any keywords that are passed to method
         self._set_attributes(**kwargs)
 
@@ -390,6 +450,12 @@ class InteractiveFigure:
         return data, tooltips    
         
     def create_legend_figure(self, **kwargs) -> figure:
+        """
+        Create the legend figure.
+
+        Returns:
+            figure: The Bokeh figure.
+        """        
         # set attributes from kwargs, it updates any keywords that are passed to method
         self._set_attributes(**kwargs)        
 
@@ -439,6 +505,12 @@ class InteractiveFigure:
         return l    
     
     def create_legend_features(self, **kwargs) -> tuple[list, dict]:
+        """
+        Create the legend features.
+
+        Returns:
+            tuple[list, dict]: The list with the tooltips and the dictionary with the legend features.
+        """        
         # set attributes from kwargs, it updates any keywords that are passed to method
         self._set_attributes(**kwargs)     
 

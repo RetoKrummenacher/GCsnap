@@ -30,9 +30,22 @@ from gcsnap.mmseqs_cluster import MMseqsCluster
 from gcsnap.rich_console import RichConsole
 
 class AdvancedInteractiveFigure:
+    """ 
+    Methods to create advanced interactive figures.
+    """
     def __init__(self, config: Configuration, gc: GenomicContext, out_label: str, 
                  ref_family: str, family_colors: dict, starting_directory: str):
+        """
+        Initialize the AdvancedInteractiveFigure object.
 
+        Args:
+            config (Configuration): The Configuration object containing the arguments.
+            gc (GenomicContext): The GenomicContext object containing all genomic context information.
+            out_label (str): The label of the output.
+            ref_family (str): The reference family.
+            family_colors (dict): The dictionary with the colors of the families.
+            starting_directory (str): The path to the starting directory.
+        """
         # Extract parameters from config and gc
         kwargs = {k: v['value'] for k, v in config.arguments.items()}
         kwargs.update({
@@ -69,14 +82,21 @@ class AdvancedInteractiveFigure:
 
         self.console = RichConsole()
 
-    def _set_attributes(self, **kwargs):
-        """Helper method to set attributes from kwargs."""
+    def _set_attributes(self, **kwargs) -> None:
+        """
+        Helper method to set attributes from kwargs.
+        """        
         for key, value in kwargs.items():
             # Only set the attribute if it does not already exist
             if not hasattr(self, key):
                 setattr(self, key, value)   
 
     def run(self) -> None:
+        """
+        Run the creation of the advanced interactive figures.
+            - Summary page
+            - Per operon type page
+        """        
         # Make a copy of the current object's attributes (all contained in instance __dict__)
         kwargs = self.__dict__.copy()
 
@@ -90,6 +110,12 @@ class AdvancedInteractiveFigure:
         self.console.print_info('Operon visualization created in {}'.format(f_name))    
 
     def create_interactive_output_html(self, **kwargs) -> str:
+        """
+        Create the interactive output html file.
+
+        Returns:
+            str: The name of the output file.
+        """        
         self._set_attributes(**kwargs)
 
         # Create the dataframe with all data used to plot. it allows for cross interativity between plots
@@ -151,6 +177,9 @@ class AdvancedInteractiveFigure:
         return f_name
     
     def create_advanced_operon_interactive_output(self, **kwargs) -> None:
+        """
+        Create the advanced operon interactive output.
+        """        
         self._set_attributes(**kwargs)
 
         for operon_type in sorted(self.operons.keys()):
@@ -208,6 +237,12 @@ class AdvancedInteractiveFigure:
                 save(grid)
 
     def define_operons_colors(self, **kwargs) -> dict:
+        """
+        Define the colors of the operons.
+
+        Returns:
+            dict: The dictionary with the colors of the operons.
+        """        
         self._set_attributes(**kwargs)
 
         colors = {}
@@ -245,6 +280,12 @@ class AdvancedInteractiveFigure:
         return colors         
     
     def create_data_structure(self, **kwargs) -> tuple:
+        """
+        Create the data structure for the scatter plots.
+
+        Returns:
+            tuple: The tooltips and the ColumnDataSource.
+        """        
         self._set_attributes(**kwargs)
 
         if self.clans_file is not None:
@@ -354,6 +395,12 @@ class AdvancedInteractiveFigure:
         return tooltips, ColumnDataSource(data)  
 
     def parse_coordinates_from_clans(self, **kwargs) -> dict:
+        """
+        Parse the coordinates from the CLANS file.
+
+        Returns:
+            dict: The dictionary with the coordinates.
+        """        
         self._set_attributes(**kwargs)
         
         clans_coords = {}
@@ -393,6 +440,12 @@ class AdvancedInteractiveFigure:
         return clans_coords  
     
     def generate_coordinates_for_clans(self, **kwargs) -> dict:
+        """
+        Generate the coordinates for the CLANS map.
+
+        Returns:
+            dict: The dictionary with the coordinates.
+        """        
         self._set_attributes(**kwargs)
 
         in_syntenies = {}
@@ -430,6 +483,12 @@ class AdvancedInteractiveFigure:
         return clans_coords    
     
     def create_operons_clusters_scatter(self, **kwargs) -> figure:
+        """
+        Create the scatter plot of the operons clusters.
+
+        Returns:
+            figure: The Bokeh figure.
+        """        
         self._set_attributes(**kwargs)
 
         p_tooltips, p_data = self.scatter_data
@@ -466,6 +525,12 @@ class AdvancedInteractiveFigure:
         return p
     
     def create_avg_operons_clusters_network(self, **kwargs) -> tuple:
+        """
+        Create the network of the operons clusters.
+
+        Returns:
+            tuple: The Bokeh figure and the distance matrix.
+        """        
         self._set_attributes(**kwargs)
 
         p_tooltips, p_data = self.scatter_data
@@ -516,6 +581,12 @@ class AdvancedInteractiveFigure:
         return p, similarity_matrix    
     
     def get_avgoperons_distance_matrix(self,**kwargs) -> tuple:
+        """
+        Get the average operons distance matrix.
+
+        Returns:
+            tuple: The distance matrix and the operons labels.
+        """        
         self._set_attributes(**kwargs)
             
         matrix = [[0 for i in self.operons if '-' not in i] for i in self.operons if '-' not in i]        
@@ -536,6 +607,12 @@ class AdvancedInteractiveFigure:
         return np.array(matrix), selected_operons    
     
     def normalize_matrix(self, **kwargs) -> np.array:
+        """
+        Normalize the matrix.
+
+        Returns:
+            np.array: The normalized matrix.
+        """        
         self._set_attributes(**kwargs)
 
         min_dist = pd.DataFrame(self.similarity_matrix).min().min()
@@ -547,6 +624,12 @@ class AdvancedInteractiveFigure:
         return normalised_matrix    
     
     def create_edges_data(self, **kwargs) -> tuple:
+        """
+        Create the edges data.
+
+        Returns:
+            tuple: The tooltips and the ColumnDataSource.
+        """        
         self._set_attributes(**kwargs)
 
         data = {'x': [],
@@ -570,6 +653,12 @@ class AdvancedInteractiveFigure:
         return tooltips, data    
     
     def create_clans_map_scatter(self, **kwargs) -> figure:
+        """
+        Create the CLANS map scatter plot.
+
+        Returns:
+            figure: The Bokeh figure.
+        """        
         self._set_attributes(**kwargs)
 
         p_tooltips, p_data = self.scatter_data
@@ -604,6 +693,12 @@ class AdvancedInteractiveFigure:
         return p    
     
     def create_targets_summary_table(self, **kwargs) -> DataTable:
+        """
+        Create the targets summary table.
+
+        Returns:
+            DataTable: The Bokeh DataTable.
+        """        
         self._set_attributes(**kwargs)
 
         t_data, t_columns = self.create_targets_table_data(**kwargs)	
@@ -611,6 +706,12 @@ class AdvancedInteractiveFigure:
         return t
     
     def create_targets_table_data(self, **kwargs) -> tuple:
+        """
+        Create the targets table data.
+
+        Returns:
+            tuple: The data and the columns.
+        """        
         self._set_attributes(**kwargs)
 
         data = {'Target EntrezID': [],
@@ -656,6 +757,12 @@ class AdvancedInteractiveFigure:
         return data, columns    
     
     def create_family_frequency_per_operon_figure(self, **kwargs) -> figure:
+        """
+        Create the family frequency per operon figure.
+
+        Returns:
+            figure: The Bokeh figure.
+        """        
         self._set_attributes(**kwargs)
 
         families_frequencies = self.compute_families_frequencies_per_operon_cluster(**kwargs)
@@ -699,6 +806,12 @@ class AdvancedInteractiveFigure:
         return p    
     
     def compute_families_frequencies_per_operon_cluster(self, **kwargs) -> dict:
+        """
+        Compute the families frequencies per operon cluster.
+
+        Returns:
+            dict: The families frequencies per operon cluster.
+        """        
         self._set_attributes(**kwargs)
 
         families_frequencies = {}
@@ -713,6 +826,12 @@ class AdvancedInteractiveFigure:
         return families_frequencies    
     
     def compute_families_frequencies(self, **kwargs) -> tuple:
+        """
+        Compute the families frequencies.
+
+        Returns:
+            tuple: The families frequencies and the number of operons.
+        """        
         self._set_attributes(**kwargs)
 
         families_frequencies = {}
@@ -729,6 +848,12 @@ class AdvancedInteractiveFigure:
         return families_frequencies, number_of_operons    
 
     def clean_uncommon_families(self, **kwargs) -> pd.DataFrame:
+        """
+        Clean the uncommon families.
+
+        Returns:
+            pd.DataFrame: The cleaned uncommon families.
+        """        
         self._set_attributes(**kwargs)
 
         families_labels = [i for i in sorted(self.families_summary.keys()) if i < 0]
@@ -748,6 +873,12 @@ class AdvancedInteractiveFigure:
         return matrix
 
     def create_family_spectrum_data(self, **kwargs) -> tuple:
+        """
+        Create the family spectrum data.
+
+        Returns:
+            tuple: The tooltips, the data, and the y tick labels.
+        """        
         self._set_attributes(**kwargs)
 
         data = {'xs': [],
@@ -877,6 +1008,12 @@ class AdvancedInteractiveFigure:
         return tooltips, data, yyticklabels     
 
     def create_families_frequency_table(self, **kwargs) -> tuple:
+        """
+        Create the families frequency table.
+
+        Returns:
+            tuple: The Bokeh DataTable and the Div.
+        """        
         self._set_attributes(**kwargs)
         
         t_data, t_columns = self.create_family_table_data(**kwargs)        
@@ -886,6 +1023,12 @@ class AdvancedInteractiveFigure:
         return t, div       
 
     def create_family_table_data(self, **kwargs) -> tuple:
+        """
+        Create the family table data.
+
+        Returns:
+            tuple: The data and the columns.
+        """        
         self._set_attributes(**kwargs)
             
         data = {'Family': [],
@@ -972,6 +1115,12 @@ class AdvancedInteractiveFigure:
         return data, columns
     
     def compute_families_frequencies(self, **kwargs) -> tuple:
+        """
+        Compute the families frequencies.
+
+        Returns:
+            tuple: The families frequencies and the number of operons.
+        """        
         self._set_attributes(**kwargs)
 
         families_frequencies = {}
