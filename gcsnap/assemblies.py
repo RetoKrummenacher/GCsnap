@@ -119,6 +119,7 @@ class Assemblies:
         full_path = os.path.join(self.assembly_dir, assembly_file_gz)
 
         # TODO: Skip this for experiments and developpment
+        # Idea: At a time check and redownload if older then certain time, like assembly_summaries
         # Check if file already exists
         # if os.path.exists(full_path):
         #     return full_path
