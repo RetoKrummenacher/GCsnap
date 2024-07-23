@@ -1,14 +1,30 @@
 
 
 class UniprotDict:
-    
+    """ 
+    Methods and attributes to assign and store the targets as well as the database information
+    for the mapping between different standards of identifiers.
+
+    Attributes:
+        uniprot_dbs (dict): The dictionary with the database information.
+        supported (list): The list of supported databases.
+    """
     def __init__(self) -> None:
+        """
+        Initialize the UniprotDict object.
+        """        
         # create empty dictionary with mapping information
         self.get_empty_uniprot_dbs_dict()
         # get list of supported databases
         self.supported = self.get_supported_databases()
 
-    def assign_target_to_type(self, target_list: list) -> None:        
+    def assign_target_to_type(self, target_list: list) -> None:   
+        """
+        Assign the targets to the corresponding identifier standard.
+
+        Args:
+            target_list (list): The list of targets to assign.
+        """             
         # add each target to the corresponding dictionary entry
         for target in target_list:       
             target = target.strip()    
@@ -34,6 +50,16 @@ class UniprotDict:
         self.get_target_types()                             
 
     def get_empty_uniprot_dbs_dict(self) -> None:
+        """
+        Create an empty dictionary with the database information.
+        Keys in the dictionary are the different identifier standards.
+        The values are dictionaries with the following:
+            - targets: The list of targets.
+            - from_dbs: The database to map from.
+            - to_dbs: The database to map to.
+            - dtype: The data type of the database.
+            - supported: Whether the database is supported.
+        """        
         # columns according to: https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/README
         # it is not possible to map everything to everything: Check the online mapping tool https://www.uniprot.org/id-mapping
         # Every UniProtKB_AC-ID can be mapped to all, but for instance not GeneID to EMBL-CDS, only to Uniprot-KB or Swiss-Prot
@@ -157,7 +183,19 @@ class UniprotDict:
                                             'supported': False}} 
         
     def get_supported_databases(self) -> list:
+        """
+        Get the list of supported databases.
+
+        Returns:
+            list: The list of supported databases.
+        """        
         return [key for key in self.uniprot_dbs if self.uniprot_dbs[key]['supported'] == True]
     
     def get_target_types(self) -> list:
+        """
+        Get the list of id standards of the provided targets.
+
+        Returns:
+            list: The list of id standards.
+        """        
         self.target_types = [key for key in self.uniprot_dbs if len(self.uniprot_dbs[key]['targets']) > 0]
