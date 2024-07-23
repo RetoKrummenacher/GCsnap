@@ -8,7 +8,31 @@ from gcsnap.rich_console import RichConsole
 from gcsnap.configuration import Configuration
 
 class GenomicContext:
+    """ 
+    Methods and attributes to store and manipulate the genomic context information.
+
+    Attributes:
+        config (Configuration): The Configuration object containing the arguments.
+        out_label (str): The label of the output.
+        syntenies (dict): The dictionary with the syntenies of the target genes.
+        families (dict): The dictionary with the families assigned to the flanking genes.
+        operon_types_summary (dict): The dictionary with the operon types summary.
+        selected_operons (dict): The dictionary with the selected operons.
+        most_populated_operon (str): The most populated operon type.
+        taxonomy (dict): The dictionary with the taxonomy information.
+        curr_targets (list): The list of current targets.
+        n_max_operons (int): The maximum number of operons to select.
+        current_targets (list): The list of current targets.
+    """
+
     def __init__(self, config: Configuration, out_label: str = '') -> None:
+        """
+        Initialize the GenomicContext object.
+
+        Args:
+            config (Configuration): The Configuration object containing the arguments.
+            out_label (str, optional): The label of the output. Defaults to ''.
+        """        
         # empty attributes
         self.syntenies = {}
         self.families = {}
@@ -27,6 +51,12 @@ class GenomicContext:
         self.console = RichConsole()
 
     def update_syntenies(self, input_dict: dict) -> None:
+        """
+        Update the syntenies attribute with new information.
+
+        Args:
+            input_dict (dict): The dictionary with the new syntenies information.
+        """        
         for k,v in input_dict.items():
             current = self.syntenies.get(k, {})
             # merge dictionaries (|= in python 3.9+ in place merge)
@@ -34,6 +64,12 @@ class GenomicContext:
             self.syntenies[k] = current
 
     def update_families(self, input_dict: dict) -> None:
+        """
+        Update the families attribute with new information.
+
+        Args:
+            input_dict (dict): The dictionary with the new families information.
+        """        
         for k,v in input_dict.items():
             current = self.families.get(k, {})
             # merge dictionaries (|= in python 3.9+ in place merge)
@@ -41,6 +77,12 @@ class GenomicContext:
             self.families[k] = current    
 
     def update_taxonomy(self, input_dict: dict) -> None: 
+        """
+        Update the taxonomy attribute with new information.
+
+        Args:
+            input_dict (dict): The dictionary with the new taxonomy information.
+        """        
         for k,v in input_dict.items():
             current = self.taxonomy.get(k, {})
             # merge dictionaries (|= in python 3.9+ in place merge)
@@ -48,46 +90,119 @@ class GenomicContext:
             self.taxonomy[k] = current                  
 
     def get_curr_targets(self) -> list:
+        """
+        Getter for the curr_targets attribute.
+
+        Returns:
+            list: The list of current targets.
+        """        
         return self.curr_targets
     
     def get_families(self) -> dict:
+        """
+        Getter for the families attribute.
+
+        Returns:
+            dict: The dictionary with the families assigned to the flanking genes.
+        """        
         return self.families
     
     def get_syntenies(self) -> dict:
+        """
+        Getter for the syntenies attribute.
+
+        Returns:
+            dict: The dictionary with the syntenies of the target genes.
+        """        
         return self.syntenies
     
     def get_operon_types(self) -> dict:
+        """
+        Getter for the operon_types_summary attribute.
+
+        Returns:
+            dict: The dictionary with the operon types summary.
+        """        
         return self.operon_types_summary
     
     def get_selected_operons(self) -> dict:
+        """
+        Getter for the selected_operons attribute.
+
+        Returns:
+            dict: The dictionary with the selected operons.
+        """        
         return self.selected_operons
     
     def get_taxonomy(self) -> dict:
+        """
+        Getter for the taxonomy attribute.
+
+        Returns:
+            dict: The dictionary with the taxonomy information.
+        """        
         return self.taxonomy
     
     def get_most_populated_operon(self) -> str:
+        """
+        Getter for the most_populated_operon attribute.
+
+        Returns:
+            str: The most populated operon type.
+        """        
         return self.most_populated_operon
 
     def get_all_ncbi_codes(self) -> list:
+        """
+        Get all NCBI codes from the syntenies attribute.
+
+        Returns:
+            list: The list of all NCBI codes.
+        """        
         return [code for sub_dict in self.syntenies.values() 
                 for code in sub_dict['flanking_genes'].get('ncbi_codes', [])]
     
     def get_all_taxids(self) -> list:
+        """
+        Get all taxIDs from the syntenies attribute.
+
+        Returns:
+            list: The list of all taxIDs.
+        """        
         return [sub_dict['flanking_genes']['taxID'] for sub_dict in self.syntenies.values()
                 if sub_dict['flanking_genes']['taxID'] is not None]
     
     def get_syntenies_key_value_list(self) -> list:
+        """
+        Get the syntenies attribute as a list of key-value pairs.
+
+        Returns:
+            list: The list of key-value pairs.
+        """        
         return [(k, v) for k, v in self.syntenies.items()]
     
     def create_and_write_families_summary(self) -> None:
+        """
+        Create and write the families summary to a text file.
+        """        
         self.create_families_summary()
         self.write_families_summary_to_txt()
 
     def create_and_write_operon_types_summary(self) -> None:
+        """
+        Create and write the operon types summary to a text file.
+        """        
         self.create_operon_types_summary()
         self.write_operon_types_summary_to_txt()
 
     def write_taxonomy_to_json(self, file_name: str, file_path: str = None) -> None:
+        """
+        Write the taxonomy information to a json file.
+
+        Args:
+            file_name (str): The name of the file to write.
+            file_path (str, optional): The path of the file to write. Defaults to None using os.getcwd().
+        """        
         if file_path is None:
             file_path = os.getcwd()         
         with open(file_name, 'w') as file:
@@ -96,6 +211,13 @@ class GenomicContext:
         self.console.print_done('Taxonomy information written to {}'.format(file_name))        
     
     def write_syntenies_to_json(self, file_name: str, file_path: str = None) -> None:
+        """
+        Write the syntenies information to a json file.
+
+        Args:
+            file_name (str): The name of the file to write.
+            file_path (str, optional): The path of the file to write. Defaults to None using os.getcwd().
+        """        
         # using os.getcwd() as default path does not work, as its evaluated when the function is defined
         if file_path is None:
             file_path = os.getcwd()         
@@ -105,6 +227,13 @@ class GenomicContext:
         self.console.print_done('Syntenies information written to {}'.format(file_name))      
 
     def write_families_to_json(self, file_name: str, file_path: str = None) -> None:
+        """
+        Write the families information to a json file.
+
+        Args:
+            file_name (str): The name of the file to write.
+            file_path (str, optional): The path of the file to write. Defaults to None using os.getcwd().
+        """        
         if file_path is None:
             file_path = os.getcwd()   
         with open(os.path.join(file_path, file_name), 'w') as file:
@@ -113,6 +242,13 @@ class GenomicContext:
         self.console.print_done('Families information written to {}'.format(file_name))     
 
     def write_selected_operons_to_json(self, file_name: str, file_path: str = None) -> None:
+        """
+        Write the selected operons to a json file.
+
+        Args:
+            file_name (str): The name of the file to write.
+            file_path (str, optional): The path of the file to write. Defaults to None using os.getcwd().
+        """        
         if file_path is None:
             file_path = os.getcwd()   
         with open(os.path.join(file_path, file_name), 'w') as file:
@@ -121,6 +257,17 @@ class GenomicContext:
         self.console.print_done('Selected operon written to {}'.format(file_name))     
 
     def write_to_fasta(self, file_name: str, file_path: str = None, exclude_pseudogenes: bool = False) -> str:
+        """
+        Write the flanking genes to a fasta file.
+
+        Args:
+            file_name (str): The name of the file to write.
+            file_path (str, optional): The path of the file to write. Defaults to None using os.getcwd().
+            exclude_pseudogenes (bool, optional): Whether to exclude pseudogenes. Defaults to False.
+
+        Returns:
+            str: _description_
+        """        
         # extract needed information from syntenies
         # There should be no performance difference between using dict.get() and dict[key]
         # at least when no default value is provided        
@@ -142,25 +289,51 @@ class GenomicContext:
         return fasta_file
 
     def read_syntenies_from_json(self, file_name: str, file_path: str = None) -> None:
+        """
+        Read the syntenies information from a json file.
+
+        Args:
+            file_name (str): The name of the file to read.
+            file_path (str, optional): The path of the file to read. Defaults to None using os.getcwd().
+        """        
         if file_path is None:
             file_path = os.getcwd()        
         with open(os.path.join(file_path, file_name), 'r') as file:
             self.syntenies = json.load(file)  
 
     def read_families_from_json(self, file_name: str, file_path: str = None) -> None:
+        """
+        Read the families information from a json file.
+
+        Args:
+            file_name (str): The name of the file to read.
+            file_path (str, optional): The path of the file to read. Defaults to None using os.getcwd().
+        """        
         if file_path is None:
             file_path = os.getcwd()        
         with open(os.path.join(file_path, file_name), 'r') as file:
             self.families = json.load(file)              
 
     def get_fasta_order(self, exclude_pseudogenes: bool = False) -> list:
+        """
+        Get the order of the ncbi codes in the fasta file.
+
+        Args:
+            exclude_pseudogenes (bool, optional): Whether to exclude pseudogenes. Defaults to False.
+
+        Returns:
+            list: The list of ncbi codes in the same order as in the fasta file.
+        """        
         # the same order as in the fasta file
         return [ncbi_code for target in self.syntenies.keys()
             for i, ncbi_code in enumerate(self.syntenies[target]['flanking_genes']['ncbi_codes'])
             if self.syntenies[target]['flanking_genes']['names'][i] != 'pseudogene' 
             or not exclude_pseudogenes]  
 
-    def create_families_summary(self) -> None:   
+    def create_families_summary(self) -> None: 
+        """
+        Create the families summary output.
+        """          
         with self.console.status('Create families summary'):
             for target in self.syntenies.keys():
                 for i, family in enumerate(self.syntenies[target]['flanking_genes']['families']):
@@ -209,6 +382,9 @@ class GenomicContext:
         self.console.print_info(msg)
 
     def write_families_summary_to_txt(self) -> None:
+        """
+        Write the families summary to a text file.
+        """        
         out_file = '{}_protein_families_summary.txt'.format(self.out_label)
         with open(out_file, 'w') as file:
             for family in sorted(list(self.families.keys())):
@@ -218,6 +394,9 @@ class GenomicContext:
                         file.write('	 {}\t{}\n'.format(member, self.families[family]['all_names'][i]))
 
     def create_operon_types_summary(self) -> None:
+        """
+        Create the operon types summary output.
+        """        
         with self.console.status('Create operons summary'):
             advanced = False
             if 'operon_PaCMAP' in self.syntenies[list(self.syntenies.keys())[0]]:
@@ -252,6 +431,9 @@ class GenomicContext:
         self.console.print_info(msg)             
 
     def write_operon_types_summary_to_txt(self) -> None:
+        """
+        Write the operon types summary to a text file.
+        """        
         out_file = '{}_operon_types_summary.txt'.format(self.out_label)
         with open(out_file, 'w') as file:
             for operon_type in self.operon_types_summary:
@@ -261,6 +443,9 @@ class GenomicContext:
                                 self.operon_types_summary[operon_type]['operon_protein_families_structure'][i])) 
 
     def find_most_populated_operon_types(self) -> None:
+        """
+        Find the most populated operon types.
+        """        
         with self.console.status('Find most populated operon types'):        
             operons_count_matrix = []
             for operon in self.operon_types_summary:
@@ -289,6 +474,13 @@ class GenomicContext:
         self.write_selected_operons_to_json('selected_operons.json')
 
     def write_summary_table(self, file_name: str, file_path: str = None) -> None:
+        """
+        Write the summary table to a text file (.tab)
+
+        Args:
+            file_name (str): The name of the file to write.
+            file_path (str, optional): The path of the file to write. Defaults to None using os.getcwd().
+        """        
         if file_path is None:
             file_path = os.getcwd()    
 
@@ -369,6 +561,13 @@ class GenomicContext:
             file.writelines(lines_to_write)
 
     def create_taxonomy_search_dict(self) -> dict:
+        """
+        Create a dictionary to search for taxonomy information.
+        The information is a flat list version of the hierarchical taxonomy dictionary.
+
+        Returns:
+            dict: The dictionary to search for taxonomy information.
+        """        
         flat_taxonomy = self.flatten_taxonomy(self.taxonomy)
         # create dictionary
         return {member : tax_list[:-1] for tax_list in flat_taxonomy 
@@ -408,6 +607,12 @@ class GenomicContext:
                     
     @staticmethod
     def get_empty_flanking_genes() -> dict:  
+        """
+        Get an empty dictionary for the flanking genes.
+
+        Returns:
+            dict: The empty dictionary for the flanking genes.
+        """        
         return {'relative_starts' : [],
                 'relative_ends' : [],
                 'ncbi_codes': [],
