@@ -9,7 +9,28 @@ from gcsnap.utils import processpool_wrapper
 from gcsnap.utils import split_dict_chunks
 
 class Taxonomy:
+    """
+    Methods and attributes to find and map taxonomy to the flanking genes of the target genes.
+
+    Attributes:
+        config (Configuration): The Configuration object containing the arguments.
+        cores (int): The number of CPU cores to use.
+        mode (str): The mode of the taxonomy search.
+        msg (str): The message to display during the search.
+        gc (GenomicContext): The GenomicContext object containing all genomic context information.
+        cleaned_taxonomy (dict): The dictionary with the cleaned taxonomy information.
+        taxonomy (dict): The dictionary with the taxonomy assigned to the flanking genes.
+        console (RichConsole): The RichConsole object to print messages.
+    """
+
     def __init__(self, config: Configuration, gc: GenomicContext):
+        """
+        Initialize the Taxonomy object.
+
+        Args:
+            config (Configuration): The Configuration object containing the arguments.
+            gc (GenomicContext): The GenomicContext object containing all genomic context information.
+        """        
         self.config = config
         self.cores = config.arguments['n_cpu']['value']
 
@@ -26,9 +47,21 @@ class Taxonomy:
         self.console = RichConsole()
 
     def get_taxonomy(self) -> dict:
+        """
+        Getter for the taxonomy attribute.
+
+        Returns:
+            dict: The dictionary with the taxonomy assigned to the flanking genes.
+        """        
         return self.taxonomy
 
     def run(self) -> None:
+        """
+        Run the assignment of taxonomy to the flanking genes:
+            - Find taxonomies
+            - Add taxonomy to the flanking genes.
+        Uses parallel processing with the processpool_wrapper from utils.py.
+        """        
         self.cleaned_taxonomy = {}
         if self.mode == 'taxonomy':
             # find all taxonomies via entrez
@@ -45,6 +78,15 @@ class Taxonomy:
             self.taxonomy = self.merge_all_dicts(dict_list)
 
     def run_each(self, arg: dict) -> dict:
+        """
+        Run the create of the taxonomy dictionary for each target gene.
+
+        Args:
+            arg (dict): The dictionary with the target information.
+
+        Returns:
+            dict: The dictionary with the hierarchy of the taxonomy as nested dictionaries.
+        """        
         content_dict = arg
         taxonomy = {}
         for target in content_dict.keys():
@@ -88,6 +130,12 @@ class Taxonomy:
         return taxonomy
 
     def find_taxonomies(self, taxids: list) -> None:
+        """
+        Find taxonomies for all flanking genes using the EntrezQuery class.
+
+        Args:
+            taxids (list): The list of taxids to find taxonomies for.
+        """        
         # get the information for all ncbi codes
         entrez = EntrezQuery(self.config, taxids, db='taxonomy', 
                              retmode='xml', logging=True)
@@ -100,6 +148,16 @@ class Taxonomy:
         }
 
     def merge_nested_dicts(self, dict1: dict, dict2: dict) -> dict: 
+        """
+        Recursive method to merge two nested taxonomy dictionaries.
+
+        Args:
+            dict1 (dict): Dictionary to merge into.
+            dict2 (dict): Dictionary to merge from.
+
+        Returns:
+            dict: The merged dictionary.
+        """        
         for key, value in dict2.items():
             if key in dict1:
                 if isinstance(value, dict) and isinstance(dict1[key], dict):
@@ -117,6 +175,15 @@ class Taxonomy:
         return dict1
 
     def merge_all_dicts(self, dict_list: list[dict]) -> dict:
+        """
+        Merge all nested dictionaries in a list.
+
+        Args:
+            dict_list (list[dict]): The list of dictionaries to merge.
+
+        Returns:
+            dict: The merged dictionary.
+        """        
         merged_dict = dict_list[0]
         for d in dict_list[1:]:
             merged_dict = self.merge_nested_dicts(merged_dict, d)
