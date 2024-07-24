@@ -5,7 +5,7 @@
 out-label:
     value: default
     type: str
-    help: Name of output directory. If default, name of the input file.
+    help: Name of output directory. If default, name of the input file. Argument is ignored when targets are in .clans files or when multiple target files are provided.
 tmp-mmseqs-folder:
     value: None
     type: str

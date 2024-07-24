@@ -33,6 +33,10 @@ class Target():
         """
         Run the parsing of the targets.
         """        
+        # ignore --out-label if multiple files are given
+        if len(self.targets) > 1 and os.path.isfile(self.targets[1]):
+            self.arguments['out_label']['value'] = 'default'
+            
         with self.console.status('Parsing targets'):
             self.parse_targets(self.targets)
 
@@ -54,7 +58,7 @@ class Target():
 
         Returns:
             dict: The dictionary with the parsed targets.
-        """        
+        """      
         for target in targets:
             # target is a file
             if os.path.isfile(target):
@@ -63,9 +67,16 @@ class Target():
                     self.get_clusters_from_clans(target)
                 else:
                     self.get_targets_from_file(target)
+                
+                # restet outlabel, as it is only used for the first file
+
+            elif target.endswith('.fasta') or target.endswith('.txt') or target.endswith('.clans'):
+                # the error case when file path was missspelled, hence file not found
+                self.console.print_error('Target file {} does not exist, maybe the path is misspelled?'.format(target))
+                exit(1)
             else:
                 # target is a list of ids
-                # the name of this list (the label) by default is the 'default' 
+                # the name of this list (the label) by default is 'default' 
                 label = self.arguments['out_label']['value']
                 if label not in self.targets_dict:
                     self.targets_dict[label] = []
@@ -73,7 +84,18 @@ class Target():
                 self.targets_dict[label].append(target)
 
     def get_targets_from_file(self, target_file: str) -> None:
-        curr_label = os.path.basename(target_file).split('.')[0]
+        """
+        Get the targets from a file.
+
+        Args:
+            target_file (str): The path to the file with the targets.
+        """        
+        # set label
+        if self.arguments['out_label']['value'] == 'default':
+            curr_label = os.path.basename(target_file).split('.')[0]
+        else:
+            curr_label = self.arguments['out_label']['value']
+
         if curr_label not in self.targets_dict:
             self.targets_dict[curr_label] = []
 
@@ -91,7 +113,6 @@ class Target():
 
             if curr_target not in self.targets_dict[curr_label]:
                 self.targets_dict[curr_label].append(curr_target)        
-
 
     def get_clusters_from_clans(self, clans_file: str) -> dict:
         """
@@ -119,6 +140,7 @@ class Target():
 
                     elif found_seqgroup:
                         if 'name=' in line and cluster_code in line:
+
                             current_cluster = line.split('=')[-1].strip()
                             found_allowed_cluster = True
                         
