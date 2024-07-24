@@ -106,7 +106,8 @@ def main():
         mappingB = SequenceMapping(config, mappingA.get_codes(), 'RefSeq')
         mappingB.run()
         # merge them to mappingA
-        mappingA.merge_mapping_dfs(mappingB.mapping_df)
+        mappingA.merge_mapping_dfs(mappingB.mapping_df, columns_to_merge=['RefSeq'])
+
         # Map all targets to NCBI EMBL-CDS
         mappingC = SequenceMapping(config, mappingA.get_codes(), 'EMBL-CDS')
         mappingC.run()
