@@ -162,8 +162,8 @@ class MMseqsCluster:
                 '--threads', str(self.cores),
                 '--format-output',
                 'query,target,evalue']
-        
-        result = subprocess.run(command, capture_output=True, text=True, shell=True)        
+                
+        result = subprocess.run(command, capture_output=True, text=True)        
         return result.stdout, result.stderr       
     
     def extract_distance_matrix(self) -> None:
