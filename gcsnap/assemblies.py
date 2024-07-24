@@ -400,9 +400,9 @@ class Assemblies:
         else:
             # order is reversed, old ends determin the starts and vice-versa
             # old end of target is the new base point
-            lst = [e - flanking_genes['ends'][index_of_target] + 1 for e in flanking_genes['ends']]
+            lst = [flanking_genes['ends'][index_of_target] - e + 1 for e in flanking_genes['ends']]
             flanking_genes['relative_starts'] = lst  
-            lst = [e - flanking_genes['ends'][index_of_target] + 1 for e in flanking_genes['starts']]
+            lst = [flanking_genes['ends'][index_of_target] - e + 1 for e in flanking_genes['starts']]
             flanking_genes['relative_ends'] = lst  
             
             # turn + and - directions
