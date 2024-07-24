@@ -84,7 +84,8 @@ def main():
             console.print_skipped_step('Skipping target {}'.format(out_label))
             continue
         else:
-            console.print_working_on('Analyzing task: {}'.format(out_label))
+            console.print_working_on('Working on task {} with {} targets'.format(
+                out_label,len(targets_list)))
         # write configuration to log file
         config.write_configuration_yaml_log('input_arguments.log')
         # Datastructure to store all information
