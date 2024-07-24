@@ -136,7 +136,7 @@ class MMseqsCluster:
                     self.console.print_hint('Try to clean the temporary folder (e.g., rm -rf /tmp/* on Linux) and run again.') 
                     exit(1)
                 except:
-                    self.console.print_error('No MMseqs installation was found.') 
+                    self.console.print_error('No MMseqs installation was found') 
                     self.console.print_hint('Please install MMseqs or add the path to the executable to config.yaml.')
                     exit(1)                    
 
