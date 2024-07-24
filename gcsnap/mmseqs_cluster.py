@@ -125,6 +125,8 @@ class MMseqsCluster:
                 _, stderr = self.mmseqs_command('mmseqs')
                 if len(stderr) > 0:
                     raise FileNotFoundError
+                if not os.path.isfile(self.mmseqs_results):
+                    raise NoResultsError                
             except FileNotFoundError:
                 try:
                     # do again with the specified executable
@@ -138,7 +140,11 @@ class MMseqsCluster:
                 except Exception as e:
                     self.console.print_error('No MMseqs installation was found') 
                     self.console.print_hint('Please install MMseqs or add the path to the executable to config.yaml.')
-                    exit(1)                    
+                    exit(1) 
+            except NoResultsError:
+                self.console.print_error('MMseqs did not run properly') 
+                self.console.print_hint('Try to clean the temporary folder (e.g., rm -rf /tmp/* on Linux) and run again.') 
+                exit(1)                                       
 
     def mmseqs_command(self, mmseqs: str) -> tuple:
         """
