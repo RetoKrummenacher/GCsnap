@@ -125,16 +125,20 @@ class MMseqsCluster:
                 _, stderr = self.mmseqs_command('mmseqs')
                 if len(stderr) > 0:
                     raise FileNotFoundError
-                if not os.path.isfile(self.mmseqs_results):
-                    raise NoResultsError                
             except FileNotFoundError:
-                self.console.print_error('No MMseqs installation was found.') 
-                self.console.print_hint('Please install MMseqs or add the path to the executable to config.yaml.')
-                exit(1)        
-            except NoResultsError:  
-                self.console.print_error('MMseqs did not run properly.') 
-                self.console.print_hint('Clear temporary folder (e.g., ./tmp/) to remove any corrupt artefacts and try again.')
-                exit(1)          
+                try:
+                    # do again with the specified executable
+                    _, stderr = self.mmseqs_command(self.mmseqs_executable)
+                    if not os.path.isfile(self.mmseqs_results):
+                        raise NoResultsError
+                except NoResultsError:
+                    self.console.print_error('MMseqs did not run properly') 
+                    self.console.print_hint('Try to clean the temporary folder (e.g., rm -rf /tmp/* on Linux) and run again.') 
+                    exit(1)
+                except:
+                    self.console.print_error('No MMseqs installation was found.') 
+                    self.console.print_hint('Please install MMseqs or add the path to the executable to config.yaml.')
+                    exit(1)                    
 
     def mmseqs_command(self, mmseqs: str) -> tuple:
         """
@@ -213,7 +217,5 @@ class MMseqsCluster:
                              else value for value in self.cluster_list]      
         
 class NoResultsError(Exception):
-    """
-    Custom exception raised when no results are found.
-    """
+    """Custom exception raised when no results are found."""
     pass        
