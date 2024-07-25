@@ -157,8 +157,8 @@ def main():
             ffs.run()
             gc.update_families(ffs.get_annotations_and_structures())
             gc.write_families_to_json('protein_families_summary.json')
-            t_annotate_families.stop()         
-        
+            t_annotate_families.stop()
+
             # b) Find and add operons        
             t_operons = timing.timer('Step 4-5: Finding operon/genomic_context')
             operons = Operons(config, gc, out_label)
