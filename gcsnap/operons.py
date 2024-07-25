@@ -62,7 +62,7 @@ class Operons:
         # set default values if nothing has to be done in cases only 
         # one target is present in syntenies
         self.sorted_targets = list(self.syntenies.keys())
-        self.operon_clusters = [1] * len(self.sorted_targets)           # list
+        self.operon_cluster = [1] * len(self.sorted_targets)           # list
 
     def get_operons(self) -> dict:
         """
@@ -98,7 +98,7 @@ class Operons:
         """        
         # get the clusters by excluding the most common families
         res = self.find_operon_clusters_with_PaCMAP(clean = True, coordinates_only = False) 
-        self.clean_coordinates, self.operon_clusters, self.sorted_targets = res
+        self.clean_coordinates, self.operon_cluster, self.sorted_targets = res
         # and now all PacMap coordinates by using all families. 
         # This will be later used for sorting the dendogram             
         res = self.find_operon_clusters_with_PaCMAP(clean = False, coordinates_only = True) 
@@ -233,7 +233,7 @@ class Operons:
             - Find the clusters in the distance matrix.
         """        
         distance_matrix, self.sorted_targets = self.compute_operon_distance_matrix()
-        self.operon_cluster = self.find_clusters_in_distance_matrix(distance_matrix)
+        self.operon_cluster = self.find_clusters_in_distance_matrix(distance_matrix, t = 0.2)
 
     def compute_operon_distance_matrix(self) -> tuple[np.ndarray,list]:
         """
@@ -292,7 +292,7 @@ class Operons:
 
         return np.array(distance_matrix), sorted_targets       
 
-    def find_clusters_in_distance_matrix(self, distance_matrix: np.ndarray, t: int = 0.2) -> list: 
+    def find_clusters_in_distance_matrix(self, distance_matrix: np.ndarray, t: int = 0) -> list: 
         """
         Find the clusters in the distance.
 
@@ -313,7 +313,7 @@ class Operons:
         Update the syntenies with the new operon clusters
         """        
         for i, target in enumerate(self.sorted_targets):
-            self.syntenies[target]['operon_type'] = int(self.operon_clusters[i])
+            self.syntenies[target]['operon_type'] = int(self.operon_cluster[i])
 
             if self.advanced:
                 self.syntenies[target]['operon_filtered_PaCMAP'] = (

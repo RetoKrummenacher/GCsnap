@@ -436,7 +436,7 @@ class GenomicContext:
         """        
         out_file = '{}_operon_types_summary.txt'.format(self.out_label)
         with open(out_file, 'w') as file:
-            for operon_type in self.operon_types_summary:
+            for operon_type in sorted(list(self.operon_types_summary)):
                 file.write('\n ### Operon type: {}\n\n'.format(operon_type))
                 for i, target in enumerate(self.operon_types_summary[operon_type]['target_members']):
                     file.write('	 {}\t{}\n'.format(target, 
