@@ -77,8 +77,9 @@ class Families:
             # combine results
             self.families = {k: v for tup in result_list for k, v in tup[0].items()}
             curr_numbers = [num for tup in result_list for num in tup[1]]
-            # sort the curr_numbers
+            # sort the curr_numbers and remove -1
             curr_numbers = sorted(list(set(curr_numbers)))
+            curr_numbers.remove(-1)
 
             # 2. adapt the families where its outside possible ranges
             parallel_args = [(sub_dict, curr_numbers) 
@@ -99,7 +100,7 @@ class Families:
         
     def assign_families(self, args: tuple[dict]) -> tuple[dict,list]:
         """
-        Assign the families to the flanking genes.
+        Assign the family numbers to the flanking genes.
 
         Args:
             args (tuple[dict]): The syntenies of the target genes.
@@ -120,8 +121,10 @@ class Families:
                     protein_family = -1
 
                 if protein_name == 'pseudogene':
+                    # pseudogenes get a negative famili number
                     protein_family = -1
                 if ncbi_code == k:
+                    # the target gene get the highest family number
                     protein_family = max(self.cluster_list)+1
 
                 syntenies[k]['flanking_genes']['families'].append(protein_family)
@@ -134,7 +137,7 @@ class Families:
     
     def adapt_families(self, args: tuple[dict]) -> dict:
         """
-        Adapt the families where its outside possible ranges of the clusters.
+        Adapt the familiy numbers 
 
         Args:
             args (tuple[dict]): The syntenies of the target genes and assigned families.
@@ -147,12 +150,17 @@ class Families:
             for i, _ in enumerate(syntenies[k]['flanking_genes']['ncbi_codes']):
                 protein_family = syntenies[k]['flanking_genes']['families'][i]
 
-                if protein_family <= max(self.cluster_list):
+                if 0 <= protein_family <= max(self.cluster_list):
+                    # the pseudogenes have -1, hence we restrict adaption to positiv number
+                    # also excluded are the target genes with a higher number than the highest cluster number
                     cluster_range = range(min(self.cluster_list), max(self.cluster_list)+1)
+                    # this gives problems with -1. It sorted, hence -1 is at the beginning
+                    # and now indexes are + 1, thats why -1 was removed
                     if protein_family != cluster_range[curr_numbers.index(protein_family)]:
                         protein_family = cluster_range[curr_numbers.index(protein_family)]
                         syntenies[k]['flanking_genes']['families'][i] = protein_family
 
+                # add the family of the target gene to the syntenies: 'target_family'
                 syntenies[k]['target_family'] = syntenies[k]['flanking_genes']['families'][
                     syntenies[k]['flanking_genes']['ncbi_codes'].index(syntenies[k]['assembly_id'][0])]
 

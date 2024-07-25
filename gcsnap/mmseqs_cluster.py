@@ -64,11 +64,11 @@ class MMseqsCluster:
 
     def run(self) -> None:
         """
-        Run the clustering of flanking genes using MMseqs2:
+        Run the clustering of flanking genes using MMseqs2 and Scipy:
             - Prepare data for MMseqs
             - Run MMseqs
             - Extract distance matrix
-            - Find clusters
+            - Find clusters with Scipy
             - Mask singleton clusters
         """        
         with self.console.status('Prepare data for MMseqs'):
@@ -194,7 +194,7 @@ class MMseqsCluster:
 
     def find_clusters(self, t: int = 0) -> None:
         """
-        Find clusters using the distance matrix.
+        Find clusters using the distance matrix with Scipy hierarchical clustering.
 
         Args:
             t (int, optional): The threshold for the clustering. Defaults to 0.
@@ -211,6 +211,13 @@ class MMseqsCluster:
         Args:
             mask (int, optional): The value to mask the singleton clusters. Defaults to 0.
         """        
-        self.cluster_list = [mask if list(self.cluster_list).count(value) == 1 
-                             else value for value in self.cluster_list]      
+        new_clusters_list = []
+
+        for value in self.cluster_list:
+            if list(self.cluster_list).count(value) == 1:
+                new_clusters_list.append(mask)
+            else:
+                new_clusters_list.append(value)
+
+        self.cluster_list = new_clusters_list
   
