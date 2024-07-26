@@ -136,9 +136,9 @@ class SequenceMapping:
         uniprot_dict = UniprotDict()
         # fill uniprot_dbs with the targets        
         uniprot_dict.assign_target_to_type(self.target_list)
-        self.supported = uniprot_dict.supported
-        self.target_types = uniprot_dict.target_types
-        self.uniprot_dict = uniprot_dict.uniprot_dbs
+        self.supported = uniprot_dict.get_supported_databases()
+        self.target_types = uniprot_dict.get_target_types()
+        self.uniprot_dict = uniprot_dict.get_uniprot_dict()
 
     def create_parallel_input(self, api_limit: int = 1000) -> list[tuple]:
         """
@@ -328,7 +328,8 @@ class SequenceMapping:
 
     def make_unique(self, mapping_df: pd.DataFrame, from_type: list, to_type: str) -> pd.DataFrame:
         """
-        Make the mapping DataFrame unique by removing duplicates.
+        Make the mapping DataFrame unique by removing duplicates. If there is a tie of same duplicates,
+        select the one with the shorter 'to_type' id.
 
         Args:
             mapping_df (pd.DataFrame): The DataFrame with the mapping results.
