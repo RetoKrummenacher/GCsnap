@@ -79,7 +79,8 @@ class Families:
             curr_numbers = [num for tup in result_list for num in tup[1]]
             # sort the curr_numbers and remove -1
             curr_numbers = sorted(list(set(curr_numbers)))
-            curr_numbers.remove(-1)
+            if -1 in curr_numbers:
+                curr_numbers.remove(-1)
 
             # 2. adapt the families where its outside possible ranges
             parallel_args = [(sub_dict, curr_numbers) 
