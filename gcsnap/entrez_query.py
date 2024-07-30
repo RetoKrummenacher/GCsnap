@@ -92,7 +92,7 @@ class EntrezQuery:
             # combine all dictionaries
             found = {k: v for result_tuple in results_list for k, v 
                      in result_tuple[0].items() if result_tuple[1] is None}
-            # get those with failed entrez requests
+            # get those with failed entrez requests:[(error, chunk)]
             errors = [(result_tuple[1][0], result_tuple[1][1]) 
                       for result_tuple in results_list 
                       if result_tuple[1] is not None]
