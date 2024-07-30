@@ -93,8 +93,9 @@ class EntrezQuery:
             found = {k: v for result_tuple in results_list for k, v 
                      in result_tuple[0].items() if result_tuple[1] is None}
             # get those with failed entrez requests
-            errors = [(e, chunk) for result_tuple in results_list if result_tuple[1] 
-                      is not None for e, chunk in result_tuple[1]]
+            errors = [(result_tuple[1][0], result_tuple[1][1]) 
+                      for result_tuple in results_list 
+                      if result_tuple[1] is not None]
  
         # log errors if desired
         failed_request_ids = []
