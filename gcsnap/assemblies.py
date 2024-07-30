@@ -269,14 +269,19 @@ class Assemblies:
         genomic_context_block = self.extract_genomic_context_block(ncbi_code, lines)
         return self.parse_genomic_context_block(ncbi_code, genomic_context_block)
 
-    def extract_genomic_context_block(self, ncbi_code: str, lines: list) -> list:
+    def extract_genomic_context_block(self, target_ncbi_code: str, lines: list) -> list:
         """
         Extract first all lines belonging to the scaffold containing the target gene.
         Then extract the genomic context block (n_flanking5 on 5' end and 
         n_flanking3 on 3' end based on the direction of the target) from that scaffold.
+        One line of the genomic context block looks like this:
+            JQ926483.1	Genbank	CDS	1	668	.	+	0
+            ID=cds-AFI40896.1;Parent=gene-VP1;Dbxref=NCBI_GP:AFI40896.1;
+            Name=AFI40896.1;end_range=668,.;gbkey=CDS;gene=VP1;partial=true;
+            product=RNA-dependent RNA polymerase;protein_id=AFI40896.1;start_range=.,1
 
         Args:
-            ncbi_code (str): The NCBI code of the target gene.
+            target_ncbi_code (str): The NCBI code of the target gene.
             lines (list): The content of the assembly file.
 
         Returns:
@@ -287,10 +292,10 @@ class Assemblies:
                             val.startswith('##sequence-region')] + [len(lines)]   
              
         # line number of target
-        target_position = [index for index, val in enumerate(lines) if ncbi_code in val]
+        target_position = [index for index, val in enumerate(lines) if target_ncbi_code in val]
         
         if not target_position:
-            raise WarningToLog('{} not found in'.format(ncbi_code))
+            raise WarningToLog('{} not found in'.format(target_ncbi_code))
 
         # select scaffold region with target
         region_start_end = [(scaffold_positions[i], scaffold_positions[i + 1]) for i in 
@@ -303,8 +308,10 @@ class Assemblies:
         
         # target position in scaffold
         index_of_target = [index for index, val in enumerate(scaffold) 
-                           if ncbi_code in val][0]
-        
+                           if 'ID=cds-{}'.format(target_ncbi_code) in val or
+                           'Name={}'.format(target_ncbi_code) in val or
+                           'protein_id={}'.format(target_ncbi_code) in val][0]
+                
         # need to know direction to define what flanking genes to extract
         direction_of_target = scaffold[index_of_target].split('\t')[6]
         
@@ -326,7 +333,7 @@ class Assemblies:
         
         # exclude partials if desired
         if self.exclude_partial and len(genomic_context_block) < (self.n_flanking5 + self.n_flanking3 + 1):
-            raise WarningToLog('Partial genomic block for {} excluded!'.format(ncbi_code))
+            raise WarningToLog('Partial genomic block for {} excluded!'.format(target_ncbi_code))
         
         return genomic_context_block
 
@@ -385,7 +392,7 @@ class Assemblies:
                 flanking_genes['starts'].append(start)
                 flanking_genes['ends'].append(end)
                 flanking_genes['directions'].append(direction)
-
+        
         # index of target in flanking genes
         index_of_target = flanking_genes['ncbi_codes'].index(target_ncbi_code)
 
