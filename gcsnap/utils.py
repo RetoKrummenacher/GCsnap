@@ -91,6 +91,15 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import as_completed
 
+import os
+# supress warning about depracted omp command
+# OMP: Info #276: omp_set_nested routine deprecated, please use omp_set_max_active_levels instead
+# the reasons for this remains unclear, as omp should be up to date as we added gcc=14.1
+# it is for sure caused by multiprocessing, but it is not a problem for the code
+# Moreover, it only shows on certain macOS systems, with the new AMD M1 chip
+# but we won't to avoid the warning as useres can't do anything about it
+os.environ['OMP_DISPLAY_ENV'] = 'FALSE'
+
 def sequential_wrapper(parallel_args: list[tuple], func: Callable) -> list:
     """
     Apply a function to a list of arguments sequentially. The arguments are passed as tuples
