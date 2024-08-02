@@ -181,7 +181,7 @@ class RichConsole():
         Args:
             message (str): The information message to print.
         """        
-        message = 'Analysis stipped'
+        message = 'Analysis stopped'
         self.console.print(Text('{}'.format(message), style=self.color_blue))  
         logger.info(f'{message}')              
 

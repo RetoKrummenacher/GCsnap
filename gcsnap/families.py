@@ -67,7 +67,7 @@ class Families:
         """        
 
         if len(self.syntenies.keys()) < 2:
-            self.console.print_warning('Found assembly for only one target')
+            self.console.print_warning('Found assembly for only one target. Continue is not possible.')
             self.console.print_stop()
             exit(1)
 
