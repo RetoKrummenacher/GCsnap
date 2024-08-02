@@ -417,7 +417,7 @@ class SequenceMapping:
         no_ncbi = df.loc[df['ncbi_code'].isna(), 'target'].to_list()
         no_ncbi = list(set(no_ncbi).difference(set(no_uniprot)))
         if len(no_ncbi) > 0:
-            message = '{} ids mapped to UniProtKB-AC but not to NCBI-Code.'.format(len(no_ncbi))
+            message = '{} ids not mapped to any NCBI-Code (RefSeq or EMBL-CDS).'.format(len(no_ncbi))
             self.console.print_warning(message)
             for id in no_ncbi:
                 logger.warning(f'Target sequence {id}')          
