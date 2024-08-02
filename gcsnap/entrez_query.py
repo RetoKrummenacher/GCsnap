@@ -13,7 +13,7 @@ from gcsnap.utils import processpool_wrapper
 from gcsnap.utils import WarningToLog
 
 import logging
-logger = logging.getLogger(__name__) # inherits configuration from main logger
+logger = logging.getLogger('iteration')
 
 class EntrezQuery:
     """

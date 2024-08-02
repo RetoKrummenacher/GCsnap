@@ -5,9 +5,9 @@ from rich.console import Console
 from rich.text import Text
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
 from contextlib import contextmanager
+from gcsnap.utils import CustomLogger
 
 import logging
-logger = logging.getLogger(__name__) # inherits configuration from main logger
 
 class RichConsole():    
     """
@@ -21,13 +21,22 @@ class RichConsole():
         color_gold (str): Color for gold messages.
         color_red (str): Color for red messages.
         color_green (str): Color for green messages.
+        out_label (str): Output label for the task.
+        logger (logging.Logger): Current logger object from logging module.
     """    
+    # outlable set for each task, shared among all instances of the class
+    out_label = ''  # output label
 
-    def __init__(self):
+    def __init__(self, logger_name : str = 'iteration') -> None:
         """
         Initialize the RichConsole object with the console object and colors to use.
+
+        Args:
+            logger_name (str): The name of the logger object ('base' or 'iteration'). 
+                               Defaults to 'iteration'.
         """            
         self.console = Console()
+        self.logger = logging.getLogger(logger_name)
 
         # colors to use
         self.color_grey = 'gray78'
@@ -58,7 +67,17 @@ class RichConsole():
             state (dict): The state of the object.
         """        
         self.__dict__.update(state)
-        self.console = Console()  # Recreate the Console object        
+        self.console = Console()  # Recreate the Console object      
+
+    @classmethod
+    def set_out_label(cls, out_label: str) -> None:
+        """
+        Sets the out_label attribute to the specified value.
+
+        Args:
+            out_label (str): The value to set the out_label attribute to.
+        """        
+        cls.out_label = out_label
 
     def print_title(self) -> None:
         """
@@ -72,7 +91,7 @@ class RichConsole():
                         style=color))
         self.console.print(Text('Thanks for using it!  💙', style=color))        
         self.print_line(color)  
-        logger.info('GCsnap started')
+        self.logger.info('GCsnap started')
 
     def print_final(self) -> None:
         """
@@ -82,7 +101,7 @@ class RichConsole():
         self.print_line(color)
         self.console.print(Text('🏁  GCsnap finished successfully! 🥳🎆💫', style=color))
         self.print_line(color)  
-        logger.info('GCsnap finished successfully')                            
+        CustomLogger.log_to_base('GCsnap finished successfully')                         
 
     def print_line(self, color: str) -> None:
         """
@@ -101,7 +120,7 @@ class RichConsole():
             message (str): The error message to print.
         """        
         self.console.print(Text('❌  Error {}.'.format(message), style=self.color_red))   
-        logger.error(f'{message}')
+        self.logger.error(f'{message}')
 
     def print_warning(self, message: str) -> None:
         """
@@ -110,8 +129,8 @@ class RichConsole():
         Args:
             message (str): The warning message to print.
         """        
-        self.console.print(Text('  ⚠️  {} Check gcsnap.log'.format(message), style=self.color_gold))   
-        logger.warning(f'{message}')        
+        self.console.print(Text('  ⚠️  {} Check gcsnap_{}.log'.format(message, self.out_label), style=self.color_gold))   
+        self.logger.warning(f'{message}')        
 
     def print_skipped_step(self, message: str) -> None:
         """
@@ -121,7 +140,7 @@ class RichConsole():
             message (str): The message to print.
         """        
         self.console.print(Text(message, style=self.color_grey))
-        logger.info(f'{message}')
+        self.logger.info(f'{message}')
 
     def print_step(self, message: str) -> None:
         """
@@ -131,7 +150,7 @@ class RichConsole():
             message (str): The message to print.
         """        
         self.console.print(Text('  {}'.format(message), style=self.color_grey))
-        logger.info(f'{message}')        
+        self.logger.info(f'{message}')        
 
     def print_working_on(self, message: str) -> None:
         """
@@ -141,7 +160,7 @@ class RichConsole():
             message (str): The message to print.
         """        
         self.console.print(Text('🔨 Working on {}'.format(message), style=self.color_grey))   
-        logger.info(f'Working on {message}')
+        self.logger.info(f'Working on {message}')
 
     def print_info(self, message: str) -> None:
         """
@@ -151,7 +170,7 @@ class RichConsole():
             message (str): The information message to print.
         """        
         self.console.print(Text('\t{}'.format(message), style=self.color_grey))  
-        logger.info(f'{message}')        
+        self.logger.info(f'{message}')        
          
     def print_hint(self, message: str) -> None:
         """
@@ -161,7 +180,7 @@ class RichConsole():
             message (str): The hint message to print.
         """        
         self.console.print(Text('  💡  {}'.format(message), style=self.color_gold))   
-        logger.warning(f'{message}')          
+        self.logger.warning(f'{message}')          
 
     def print_done(self, message: str) -> None:
         """
@@ -173,18 +192,36 @@ class RichConsole():
         # print done message, make first character of message lowercase            
         self.console.print(Text('✅  Done {}'.format(message[0].lower() + 
                                                       message[1:]), style=self.color_green))     
-        logger.info(f'Done {message}')   
+        self.logger.info(f'Done {message}')   
 
     def print_stop(self) -> None:
         """
-        Prints an information message in the console.
+        Prints stop message in the console.
+        """        
+        message = 'Analysis stopped. Check partial output and log file in {}'.format(os.getcwd())
+        self.console.print(Text('⏹️  {}'.format(message), style=self.color_blue))  
+        self.logger.info(f'{message}')       
+
+    def stop_execution(self, msg: str = None) -> None:
+        """
+        Stop the execution of the program and logs message to both loggers. 
+        If no message is provided, it only logs a default message and stops the execution.
 
         Args:
-            message (str): The information message to print.
-        """        
-        message = 'Analysis stopped. Check partial output in {}'.format(os.getcwd())
-        self.console.print(Text('{}'.format(message), style=self.color_blue))  
-        logger.info(f'{message}')              
+            msg (str): The message to print/log. Defaults to None.
+        """    
+        if msg is not None:
+            # log to iteration log
+            self.logger.info(msg)
+            self.logger.info('Analysis stopped.')
+            # print to console and log to base
+            self.logger = logging.getLogger('base')
+            self.print_warning(msg)
+            self.print_stop()            
+        else:
+            msg = 'Aborted due to error'
+            CustomLogger.log_to_base(msg)
+        exit(1)     
 
     @contextmanager
     def status(self, message: str):
@@ -198,7 +235,7 @@ class RichConsole():
         Yields:
             None: Yields nothing.
         """        
-        logger.info(f'{message}')  
+        self.logger.info(f'{message}')  
         with self.console.status(Text('{} ...'.format(message), style=self.color_grey)):
             yield  
         self.print_done(message)
@@ -216,7 +253,7 @@ class RichConsole():
             progress (Progress): The progress object to update the progress bar.
             task_id (int): The task id associated with the progress bar.
         """          
-        logger.info(f'{message}')  
+        self.logger.info(f'{message}')  
         with Progress(
             TextColumn("{task.description}"),
             BarColumn(),

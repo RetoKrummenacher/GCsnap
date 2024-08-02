@@ -12,7 +12,7 @@ from gcsnap.uniprot_api import get_id_mapping_results_link
 from gcsnap.uniprot_api import get_id_mapping_results_search
 
 import logging
-logger = logging.getLogger(__name__) # inherits configuration from main logger
+logger = logging.getLogger('iteration')
 
 class SequenceMapping:
     """ 

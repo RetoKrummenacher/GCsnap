@@ -298,23 +298,76 @@ class CustomFormatter(logging.Formatter):
         """        
         record.name = record.name.split('.')[-1]
         return super().format(record)
+    
+class CustomLogger():    
+    # Configure the initial logger for steps 1 and 2
 
-logging.basicConfig(
-    filename='gcsnap.log',
-    filemode='w',
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+    @classmethod
+    def configure_loggers(cls) -> None:
 
-# Create a custom formatter
-formatter = CustomFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        # Base logger configuration
+        logger_base = logging.getLogger('base')
+        logger_base.setLevel(logging.INFO)
 
-# Set a higher logging level for specific loggers
-logging.getLogger('asyncio').setLevel(logging.WARNING)
-logger = logging.getLogger()
+        # Define the new log file name for the current iteration
+        base_log_file = os.path.join(os.getcwd(), 'gcsnap.log')
 
-# Update handlers to use the custom formatter
-for handler in logger.handlers:
-    handler.setFormatter(formatter)
+        base_handler = logging.FileHandler(base_log_file, mode = 'w')  # Base log file
+        formatter = CustomFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        base_handler.setFormatter(formatter)
+        logger_base.addHandler(base_handler)
+
+        # Iteration logger configuration
+        logger_iteration = logging.getLogger('iteration')
+        logger_iteration.setLevel(logging.INFO)
+
+        # We won't set the iteration handler here; it should be set in the context of its use
+        # so each iteration can have a different file or configuration as needed.
+
+        # Set a higher logging level for specific loggers if needed
+        logging.getLogger('asyncio').setLevel(logging.WARNING)
+
+    @classmethod
+    def configure_iteration_logger(cls, out_label: str, starting_directory: str) -> None:
+        """
+        Configure the iteration logger for a specific iteration.
+        """
+        logger_iteration = logging.getLogger('iteration')
+
+        # Define the new log file name for the current iteration
+        iteration_log_file = os.path.join(os.getcwd(), f'gcsnap_{out_label}.log')
+        base_log_file = os.path.join(starting_directory, 'gcsnap.log')
+
+        # Copy the base log content to the iteration log file if needed
+        cls.copy_log_content(base_log_file, iteration_log_file)
+
+        # Remove existing iteration handlers
+        for handler in logger_iteration.handlers[:]:
+            logger_iteration.removeHandler(handler)
+
+        # Add a new handler for the iteration log file
+        iteration_handler = logging.FileHandler(iteration_log_file, mode = 'a')
+        formatter = CustomFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        iteration_handler.setFormatter(formatter)
+        logger_iteration.addHandler(iteration_handler)
+
+    # Copy the log file content to ensure all data is saved
+    @classmethod
+    def copy_log_content(cls, base_log_file: str, iteration_log_file: str) -> None:
+        # Read the contents of the base log file
+        with open(base_log_file, 'r') as base_log:
+            log_content = base_log.read()
+        # Write the contents to the iteration log file
+        with open(iteration_log_file, 'w') as iter_log:
+            iter_log.write(log_content)
+
+    @classmethod
+    def log_to_base(cls, msg: str) -> None:
+        logger = logging.getLogger('base')
+        logger.info(msg)
+
+    @classmethod
+    def log_to_iteration(cls, msg: str) -> None:
+        logger = logging.getLogger('iteration')
+        logger.info(msg)        
 # ------------------------------------------------------
-

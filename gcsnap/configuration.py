@@ -33,7 +33,7 @@ class CustomArgumentParser(argparse.ArgumentParser):
             epilog (str, optional): The epilog message discribing the program's epilog. Defaults to None.
         """   
         super().__init__(usage=usage, epilog=epilog, add_help=False)
-        self.console = RichConsole()
+        self.console = RichConsole('base')
 
     def add_argument_from_config(self, config: dict) -> None:
         """
@@ -65,7 +65,7 @@ class CustomArgumentParser(argparse.ArgumentParser):
         """        
         self.console.print_error(f'{message}')
         self.console.print_hint('Use --help to see all supported arguments.')
-        exit(1)
+        self.console.stop_execution()
 
     
     # @staticmethod: Used when you need a method inside a class but don't need to access or modify the instance (self) or class (cls) state.
@@ -153,7 +153,7 @@ class Configuration:
         """
         Initialize the Configuration object.
         """                      
-        self.console = RichConsole()
+        self.console = RichConsole('base')
 
         # path to the configuration file
         self.set_configuration_path()
@@ -318,7 +318,7 @@ class Configuration:
         # Ensure --targets argument is present
         if args.targets is None:
             self.console.print_error('The following argument is required: --targets')
-            exit(1) 
+            self.console.stop_execution()
 
         # Update self.arguments dictionary with parsed values
         for arg in vars(args):

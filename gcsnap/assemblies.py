@@ -9,11 +9,12 @@ from gcsnap.assembly_links import AssemblyLinks
 from gcsnap.entrez_query import EntrezQuery
 from gcsnap.genomic_context import GenomicContext
 
+from gcsnap.utils import CustomLogger
 from gcsnap.utils import processpool_wrapper
 from gcsnap.utils import WarningToLog
 
 import logging
-logger = logging.getLogger(__name__) # inherits configuration from main logger
+logger = logging.getLogger('iteration')
 
 class Assemblies:    
     """
@@ -87,6 +88,10 @@ class Assemblies:
                          if v.get('flanking_genes') is None}
         if not_found:
             self.log_not_found(not_found)
+
+        if not self.flanking_genes: 
+            msg = 'No flanking genes found for any target sequence. Continuing is not possible.'
+            self.console.stop_execution(msg = msg)
 
     def run_each(self, args: tuple[str,str]) -> dict[str, dict]:
         """

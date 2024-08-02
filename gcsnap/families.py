@@ -67,9 +67,8 @@ class Families:
         """        
 
         if len(self.syntenies.keys()) < 2:
-            self.console.print_warning('Found assembly for only one target. Continue is not possible.')
-            self.console.print_stop()
-            exit(1)
+            msg = 'Found assembly for only one target. Continue is not possible'
+            self.console.stop_execution(msg)
 
         # MMseqsCluster creates the directory
         self.find_cluster()

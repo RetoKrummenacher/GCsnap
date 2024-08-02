@@ -28,7 +28,7 @@ from gcsnap.figure import Figure
 from gcsnap.rich_console import RichConsole
 
 import logging
-logger = logging.getLogger(__name__) # inherits configuration from main logger
+logger = logging.getLogger('iteration')
 
 class InteractiveFigure:
     """
@@ -113,15 +113,19 @@ class InteractiveFigure:
             except ValueError as e:
                 self.console.print_warning('No co-occurrence detected returning empty figure.')
                 message = 'No co-occurrence detected'
-            except Exception as e:
-                self.console.print_warning('Error creating gene co-occurrence or adjacency network figure.')
-                logger.warning(e) 
-                message = 'Error creating gene co-occurrence or adjacency network figure'
-            finally:
                 coocurrence_figure = self.create_empty_graph_figure(**kwargs, 
                                                                     mode = 'coocurrence', fig_message = message)
                 adjacency_figure = self.create_empty_graph_figure(**kwargs, 
                                                                   mode = 'adjacency',fig_message = message)
+            except Exception as e:
+                self.console.print_warning('Error creating gene co-occurrence or adjacency network figure.')
+                logger.warning(e) 
+                message = 'Error creating gene co-occurrence or adjacency network figure'
+                coocurrence_figure = self.create_empty_graph_figure(**kwargs, 
+                                                                    mode = 'coocurrence', fig_message = message)
+                adjacency_figure = self.create_empty_graph_figure(**kwargs, 
+                                                                  mode = 'adjacency',fig_message = message)                
+
 
             # Work on dendogram for the genomic context block
             syn_dendogram, syn_den_data = Figure.make_dendogram_figure(show_leafs = False,                                                                        
