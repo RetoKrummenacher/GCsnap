@@ -172,7 +172,18 @@ class RichConsole():
         # print done message, make first character of message lowercase            
         self.console.print(Text('✅  Done {}'.format(message[0].lower() + 
                                                       message[1:]), style=self.color_green))     
-        logger.info(f'Done {message}')        
+        logger.info(f'Done {message}')   
+
+    def print_stop(self) -> None:
+        """
+        Prints an information message in the console.
+
+        Args:
+            message (str): The information message to print.
+        """        
+        message = 'Analysis stipped'
+        self.console.print(Text('{}'.format(message), style=self.color_blue))  
+        logger.info(f'{message}')              
 
     @contextmanager
     def status(self, message: str):

@@ -43,6 +43,7 @@ class Families:
         self.out_dir = os.path.join(os.getcwd(), f'{out_label}_all_against_all_searches')     
         self.gc = gc
         self.syntenies = gc.get_syntenies()
+        self.families_adapted = {}
 
         self.console = RichConsole()
 
@@ -62,7 +63,14 @@ class Families:
             - Assign the families to the flanking genes.
             - Adapt the families where its outside possible ranges of the clusters.
         Uses parallel processing with processpool_wrapper from utils.py.
+        Only done when more than one target gene is present.
         """        
+
+        if len(self.syntenies.keys()) < 2:
+            self.console.print_warning('Found assembly for only one target')
+            self.console.print_stop()
+            exit(1)
+
         # MMseqsCluster creates the directory
         self.find_cluster()
 
