@@ -1,3 +1,4 @@
+import os
 import argparse
 # pip install rich
 from rich.console import Console
@@ -181,7 +182,7 @@ class RichConsole():
         Args:
             message (str): The information message to print.
         """        
-        message = 'Analysis stopped'
+        message = 'Analysis stopped. Check partial output in {}'.format(os.getcwd())
         self.console.print(Text('{}'.format(message), style=self.color_blue))  
         logger.info(f'{message}')              
 
