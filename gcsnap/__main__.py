@@ -26,9 +26,6 @@ from gcsnap.tm_segments import TMsegments
 from gcsnap.figures import Figures
 from gcsnap.utils import CustomLogger
 
-# create conda env on sciCore:
-# conda create -n gcsnap2 -c conda-forge -c bioconda gcc_linux-64 gxx_linux-64  python=3.11 mmseqs2
-
 def main():
     """
     Main function to run the GCsnap pipeline:
@@ -53,9 +50,10 @@ def main():
     """    
 
     starting_directory = os.getcwd()
+    # Initial logging configuration
+    CustomLogger.configure_loggers()
 
-
-    console = RichConsole()
+    console = RichConsole('base')
     console.print_title()
 
     # A. Parse configuration and arguments
@@ -83,7 +81,11 @@ def main():
         if not os.path.isdir(working_dir):
             os.mkdir(working_dir)
         os.chdir(working_dir)
+        # Configure logger for the current iteration
+        CustomLogger.configure_iteration_logger(out_label, starting_directory)
         targets_list = targets.get_targets_dict().get(out_label)
+        # set outlabel in console for printing
+        RichConsole.set_out_label(out_label)
         if len(targets_list) < 2:
             console.print_warning('GCsnap was asked to analyze only one target')
             console.print_skipped_step('Skipping target {}'.format(out_label))
@@ -195,18 +197,22 @@ def main():
 
             # TODO: For debugging
             with open('gc.pkl', 'wb') as file:
-                pickle.dump(gc, file)         
-        
+                pickle.dump(gc, file)       
+
         else:
             console.print_skipped_step('GCsnap was asked to collect genomic context only. Will not proceed further.')
             t_output = timing.timer('Step 10: Write output')
 
         # 7. Wrap up
         gc.write_syntenies_to_json('all_syntenies.json')
+        # log to both loggers (one part of console, one via method)
+        CustomLogger.log_to_iteration('Successfully finished task {} with {} targets.'.format(
+            out_label,len(targets_list))) 
+        console.print_done('Task {} with {} targets'.format(out_label,len(targets_list)))
         t_output.stop()
 
-        # copy log file to working direcotry
-        shutil.copy(os.path.join(starting_directory,'gcsnap.log'), os.getcwd())
+        # # copy log file to working direcotry
+        # shutil.copy(os.path.join(starting_directory,'gcsnap.log'), os.getcwd())
 
     t_all.stop()
     timing.to_csv('timing.csv')

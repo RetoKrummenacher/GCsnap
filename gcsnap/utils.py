@@ -95,6 +95,14 @@ import dask
 from dask.distributed import Client
 
 from gcsnap.slurm_control import SLURMcontrol
+import os
+# supress warning about depracted omp command
+# OMP: Info #276: omp_set_nested routine deprecated, please use omp_set_max_active_levels instead
+# the reasons for this remains unclear, as omp should be up to date as we added gcc=14.1
+# it is for sure caused by multiprocessing, but it is not a problem for the code
+# Moreover, it only shows on certain macOS systems, with the new AMD M1 chip
+# but we won't to avoid the warning as useres can't do anything about it
+os.environ['OMP_DISPLAY_ENV'] = 'FALSE'
 
 def sequential_wrapper(parallel_args: list[tuple], func: Callable) -> list:
     """
@@ -337,16 +345,13 @@ Loggin messages are formatted as follows:
 """
 import logging # already sets the loggin process
 
-# loggin never done in parallel:
+# logging never done in parallel:
 # The reason is that logging from several processes is not that easy
 # https://docs.python.org/3/howto/logging-cookbook.html#logging-to-a-single-file-from-multiple-processes
 
 class CustomFormatter(logging.Formatter):
     """
     Custom formatter for logging messages.
-
-    Attributes:
-        message (str): The message to log.
     """    
     def format(self, record: str) -> str:
         """
@@ -360,23 +365,109 @@ class CustomFormatter(logging.Formatter):
         """        
         record.name = record.name.split('.')[-1]
         return super().format(record)
+    
+class CustomLogger():    
+    """
+    Custom logger for the GCsnap pipeline.
+    There are two loggers:
+        - 'base': The base logger for the entire pipeline.
+        - 'iteration': The logger for a specific task, as there can be multiple 
+                        tasks in one run.
+    """ 
+    # Configure the initial logger for steps 1 and 2
 
-logging.basicConfig(
-    filename='gcsnap.log',
-    filemode='w',
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+    @classmethod
+    def configure_loggers(cls) -> None:
+        """
+        Configure the base and iteration loggers.
+        """
 
-# Create a custom formatter
-formatter = CustomFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        # Base logger configuration
+        logger_base = logging.getLogger('base')
+        logger_base.setLevel(logging.INFO)
 
-# Set a higher logging level for specific loggers
-logging.getLogger('asyncio').setLevel(logging.WARNING)
-logger = logging.getLogger()
+        # Define the new log file name for the current iteration
+        base_log_file = os.path.join(os.getcwd(), 'gcsnap.log')
 
-# Update handlers to use the custom formatter
-for handler in logger.handlers:
-    handler.setFormatter(formatter)
+        base_handler = logging.FileHandler(base_log_file, mode = 'w')  # Base log file
+        formatter = CustomFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        base_handler.setFormatter(formatter)
+        logger_base.addHandler(base_handler)
+
+        # Iteration logger configuration
+        logger_iteration = logging.getLogger('iteration')
+        logger_iteration.setLevel(logging.INFO)
+
+        # We won't set the iteration handler here; it should be set in the context of its use
+        # so each iteration can have a different file or configuration as needed.
+
+        # Set a higher logging level for specific loggers if needed
+        logging.getLogger('asyncio').setLevel(logging.WARNING)
+
+    @classmethod
+    def configure_iteration_logger(cls, out_label: str, starting_directory: str) -> None:
+        """
+        Configure the iteration logger for a specific iteration.
+
+        Args:
+            out_label (str): The label of the task equal to the folder in which the output is stored.
+            starting_directory (str): The starting directory of the pipeline.
+        """
+        logger_iteration = logging.getLogger('iteration')
+
+        # Define the new log file name for the current iteration
+        iteration_log_file = os.path.join(os.getcwd(), f'gcsnap_{out_label}.log')
+        base_log_file = os.path.join(starting_directory, 'gcsnap.log')
+
+        # Copy the base log content to the iteration log file if needed
+        cls.copy_log_content(base_log_file, iteration_log_file)
+
+        # Remove existing iteration handlers
+        for handler in logger_iteration.handlers[:]:
+            logger_iteration.removeHandler(handler)
+
+        # Add a new handler for the iteration log file
+        iteration_handler = logging.FileHandler(iteration_log_file, mode = 'a')
+        formatter = CustomFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        iteration_handler.setFormatter(formatter)
+        logger_iteration.addHandler(iteration_handler)
+
+    # Copy the log file content to ensure all data is saved
+    @classmethod
+    def copy_log_content(cls, base_log_file: str, iteration_log_file: str) -> None:
+        """
+        Copy the contents of the base log file to the iteration log file.
+
+        Args:
+            base_log_file (str): The path to the base log file.
+            iteration_log_file (str): The path to the iteration log file.
+        """        
+        # Read the contents of the base log file
+        with open(base_log_file, 'r') as base_log:
+            log_content = base_log.read()
+        # Write the contents to the iteration log file
+        with open(iteration_log_file, 'w') as iter_log:
+            iter_log.write(log_content)
+
+    @classmethod
+    def log_to_base(cls, msg: str) -> None:
+        """
+        Log a message to the base logger.
+
+        Args:
+            msg (str): The message to log.
+        """        
+        logger = logging.getLogger('base')
+        logger.info(msg)
+
+    @classmethod
+    def log_to_iteration(cls, msg: str) -> None:
+        """
+        Log a message to the iteration logger.
+
+        Args:
+            msg (str): The message to log.
+        """        
+        logger = logging.getLogger('iteration')
+        logger.info(msg)        
 # ------------------------------------------------------
-

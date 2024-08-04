@@ -43,6 +43,7 @@ class Families:
         self.out_dir = os.path.join(os.getcwd(), f'{out_label}_all_against_all_searches')     
         self.gc = gc
         self.syntenies = gc.get_syntenies()
+        self.families_adapted = {}
 
         self.console = RichConsole()
 
@@ -62,7 +63,13 @@ class Families:
             - Assign the families to the flanking genes.
             - Adapt the families where its outside possible ranges of the clusters.
         Uses parallel processing with processpool_wrapper from utils.py.
+        Only done when more than one target gene is present.
         """        
+
+        if len(self.syntenies.keys()) < 2:
+            msg = 'Found assembly for only one target. Continue is not possible'
+            self.console.stop_execution(msg)
+
         # MMseqsCluster creates the directory
         self.find_cluster()
 
@@ -79,7 +86,8 @@ class Families:
             curr_numbers = [num for tup in result_list for num in tup[1]]
             # sort the curr_numbers and remove -1
             curr_numbers = sorted(list(set(curr_numbers)))
-            curr_numbers.remove(-1)
+            if -1 in curr_numbers:
+                curr_numbers.remove(-1)
 
             # 2. adapt the families where its outside possible ranges
             parallel_args = [(sub_dict, curr_numbers) 

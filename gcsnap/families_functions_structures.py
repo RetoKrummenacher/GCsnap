@@ -33,6 +33,7 @@ class FamiliesFunctionsStructures:
         self.cores = config.arguments['n_cpu']['value']
         self.get_pdb = config.arguments['get_pdb']['value']
         self.get_annotations = config.arguments['get_functional_annotations']['value']
+        self.annotations_and_structures = {}
 
         # set parameters
         self.families = gc.get_families()
@@ -54,9 +55,13 @@ class FamiliesFunctionsStructures:
             - Map every family member to UniProtKB-AC.
             - Request all annotation information from EbiAPI in parallel.
             - Extract the functional annotations and structures for each family in parallel.
-        Usese parallel processing with the processpool_wrapper from utils.py
+        Usese parallel processing with the processpool_wrapper from utils.py.
+        Only done when conserved families were found.
         """        
-        if self.get_pdb or self.get_annotations:
+        if (list(self.families.keys()) == [0] or list(self.families.keys()) == [1] or
+                    list(self.families.keys()) == [-1, 0]):
+            self.console.print_warning('No conserved family found and no functional annotation possible')
+        elif self.get_pdb or self.get_annotations:
             self.console.print_step('Functional annotation needs mapping first')
             # find all family members
             # always exclude non-conserved families and pseudogenes as uniprot mapping
@@ -105,7 +110,6 @@ class FamiliesFunctionsStructures:
                 # combine results
                 self.annotations_and_structures = {k: v for dict_ in result_list for k, v in dict_.items()}
         else:
-            self.annotations_and_structures = {}
             self.console.print_skipped_step('No annotations or structures retrieval requested')
 
     def run_each(self, args: tuple[dict,dict,dict,bool,bool]) -> dict:

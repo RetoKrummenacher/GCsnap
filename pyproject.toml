@@ -27,6 +27,7 @@ dependencies = [
     "pypdl==1.4.2",
     'dask[dataframe]==2024.7.1',
     "dask-jobqueue==0.8.5"
+    "psutil==5.9.8"
 ]
 requires-python = ">=3.11,<3.12"
 readme = "README.md"

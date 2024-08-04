@@ -27,6 +27,9 @@ from gcsnap.genomic_context import GenomicContext
 from gcsnap.figure import Figure
 from gcsnap.rich_console import RichConsole
 
+import logging
+logger = logging.getLogger('iteration')
+
 class InteractiveFigure:
     """
     Methods to create the interactive genomic context figures.
@@ -96,16 +99,34 @@ class InteractiveFigure:
 
             # Work on most conserved genomic context figure        
             most_common_gc_figure = Figure.create_most_common_genomic_features_figure(**kwargs) 
-            # Work on gene co-occurence figure        
-            coocurrence_figure, graph_coord = self.create_graph_figure(
+            # Work on gene co-occurence figure    
+            try:    
+                coocurrence_figure, graph_coord = self.create_graph_figure(
                                                     most_common_gc_figure = most_common_gc_figure, 
                                                     graph_coord = {},
                                                     mode = 'coocurrence',
                                                     previous_net = '',
                                                     **kwargs) 
-            adjacency_figure, graph_coord = self.create_graph_figure(mode = 'adjacency', 
+                adjacency_figure, graph_coord = self.create_graph_figure(mode = 'adjacency', 
                                                             graph_coord=graph_coord, 
                                                             previous_net=coocurrence_figure, **kwargs)
+            except ValueError as e:
+                self.console.print_warning('No co-occurrence detected returning empty figure.')
+                message = 'No co-occurrence detected'
+                coocurrence_figure = self.create_empty_graph_figure(**kwargs, 
+                                                                    mode = 'coocurrence', fig_message = message)
+                adjacency_figure = self.create_empty_graph_figure(**kwargs, 
+                                                                  mode = 'adjacency',fig_message = message)
+            except Exception as e:
+                self.console.print_warning('Error creating gene co-occurrence or adjacency network figure.')
+                logger.warning(e) 
+                message = 'Error creating gene co-occurrence or adjacency network figure'
+                coocurrence_figure = self.create_empty_graph_figure(**kwargs, 
+                                                                    mode = 'coocurrence', fig_message = message)
+                adjacency_figure = self.create_empty_graph_figure(**kwargs, 
+                                                                  mode = 'adjacency',fig_message = message)                
+
+
             # Work on dendogram for the genomic context block
             syn_dendogram, syn_den_data = Figure.make_dendogram_figure(show_leafs = False,                                                                        
                                                                 height_factor = 25*1.2, 
@@ -141,7 +162,33 @@ class InteractiveFigure:
             save(grid)
         self.console.print_info('Genomic context visualization created in {}'.format(f_name))
 
-    def create_graph_figure(self, **kwargs) -> tuple[nx.Graph, dict]:
+    def create_empty_graph_figure(self, **kwargs) -> figure:
+        """
+        Create an empty gene co-occurrence or adjacency network figure.
+
+        Returns:
+            tuple[figure,dict]: The Bokeh figure and the dictionary with the node coordinates.
+        """        
+        # set attributes from kwargs, it updates any keywords that are passed to method
+        self._set_attributes(**kwargs)
+
+        if self.mode == 'coocurrence':
+            title = 'Gene co-occurrence network'
+        elif self.mode == 'adjacency':
+            title = 'Gene adjcency network'
+
+        g = figure(plot_width = self.most_common_gc_figure.plot_width, 
+                   plot_height = self.most_common_gc_figure.plot_height, 
+                   title = title)
+        g.text(x=[0.5], y=[0.5], text=[self.fig_message], text_align='center', text_baseline='middle', 
+                text_font_size='12pt')
+        g.xaxis.visible = False
+        g.yaxis.visible = False
+        g.grid.visible = False        
+        
+        return g
+
+    def create_graph_figure(self, **kwargs) -> tuple[figure, dict]:
         """
         Create the gene co-occurrence or adjacency network figure.
 
@@ -165,7 +212,7 @@ class InteractiveFigure:
             title = 'Gene adjcency network'
         
         if len(self.graph_coord) == 0:
-            self.graph_coord = nx.spring_layout(graph)
+            self.graph_coord = nx.spring_layout(graph)         
         
         node_data, node_tooltips = self.create_node_features(node_graph_coords=self.graph_coord, 
                                                              graph=graph, **kwargs)
@@ -242,7 +289,10 @@ class InteractiveFigure:
 
 
         matrix = np.array(matrix)
-        matrix = matrix/np.amax(matrix)
+        # normalize the matrix if its not empty
+        if np.amax(matrix) == 0:
+            raise ValueError('Maximum value in the co-occurrence matrix is zero')
+        matrix = matrix/np.amax(matrix)          
         matrix = np.where(matrix < self.min_coocc, 0, matrix)
         matrix = np.where(matrix!=0, (np.exp(matrix*2)-1)*1, matrix)
 

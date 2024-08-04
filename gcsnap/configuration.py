@@ -1,12 +1,15 @@
 import os
+import importlib.util
 import argparse
+import psutil
 
 # pip install rich
 from rich.console import Console
 # pip install pyyaml
 import yaml
 # pip install ruamel.yaml
-from ruamel.yaml.main import round_trip_dump as yaml_dump
+from ruamel.yaml import YAML
+from ruamel.yaml.constructor import ConstructorError
 
 from gcsnap.rich_console import RichConsole 
 
@@ -30,7 +33,7 @@ class CustomArgumentParser(argparse.ArgumentParser):
             epilog (str, optional): The epilog message discribing the program's epilog. Defaults to None.
         """   
         super().__init__(usage=usage, epilog=epilog, add_help=False)
-        self.console = RichConsole()
+        self.console = RichConsole('base')
 
     def add_argument_from_config(self, config: dict) -> None:
         """
@@ -62,7 +65,7 @@ class CustomArgumentParser(argparse.ArgumentParser):
         """        
         self.console.print_error(f'{message}')
         self.console.print_hint('Use --help to see all supported arguments.')
-        exit(1)
+        self.console.stop_execution()
 
     
     # @staticmethod: Used when you need a method inside a class but don't need to access or modify the instance (self) or class (cls) state.
@@ -150,8 +153,10 @@ class Configuration:
         """
         Initialize the Configuration object.
         """                      
-        self.path = os.path.join(os.getcwd(),'gcsnap')
-        self.console = RichConsole()
+        self.console = RichConsole('base')
+
+        # path to the configuration file
+        self.set_configuration_path()
 
         # in case config.yaml is not found, use default configuration
         # and by default write to file after all parsing
@@ -206,24 +211,63 @@ class Configuration:
         Returns:
             str: String with hyphens.
         """        
-        return argument.replace('_', '-')        
+        return argument.replace('_', '-') 
+
+    def set_configuration_path(self) -> None:
+        """
+        Set the path to the configuration file.
+        If GCsnap is executed from a different directory, the path is updated.
+        In that case, the configuration file is not likely to be not found
+        and a default configuration is created.
+        """        
+        # Locate the GCsnap package directory
+        spec = importlib.util.find_spec('gcsnap')
+        if spec is None or spec.origin is None:
+            self.console.print_error('GCsnap package seems not to be installed')
+            self.console.print_hint('Please install GCsnap package and try again')
+        package_dir = os.path.dirname(spec.origin)   
+
+        # Check if GCsnap is executed from a different directory
+        if os.path.samefile(package_dir, os.getcwd()):
+            self.path = package_dir
+        else:
+            self.path = os.getcwd()
         
     def read_configuration_yaml(self) -> None:  
         """
         Read the configuration file and load the arguments from it.
         If the file is not found, create a default configuration and set
         boolean statement to write it to file at the end.
+        Additional check for an empty configuration file.
         """         
+        self.is_yaml_valid()
+
         if not os.path.isfile(os.path.join(self.path,'config.yaml')):
             self.console.print_warning('Configuration file config.yaml not found')
             self.arguments_hyphen = self.get_default_configuration()
             # set default write to True to write the default configuration to file
             self.default_write = True
             self.console.print_done('Default config.yaml created')
-            return
-        with open(os.path.join(self.path,'config.yaml'), 'r') as file:
-            self.arguments_hyphen = yaml.load(file, Loader=yaml.FullLoader)
-        self.console.print_done('Configuration file config.yaml loaded')
+        else:
+            with open(os.path.join(self.path,'config.yaml'), 'r') as file:
+                self.arguments_hyphen = yaml.load(file, Loader=yaml.FullLoader)
+            self.console.print_done('Configuration file config.yaml loaded')
+
+    def is_yaml_valid(self) -> None:
+        """
+        Check if a YAML file is valid and not empty. If not, delete the broken file
+        and return False.
+        """
+        yaml = YAML()
+        try:
+            with open(os.path.join(self.path,'config.yaml'), 'r') as file:
+                data = yaml.load(file)
+                if data is None:
+                    raise Exception
+        except FileNotFoundError:
+            pass                
+        except (ConstructorError, Exception):
+            os.remove(os.path.join(self.path,'config.yaml'))
             
     def write_configuration_yaml(self) -> None:
         """
@@ -239,7 +283,9 @@ class Configuration:
         with open(os.path.join(self.path,'config.yaml'), 'w') as file:
             file.write('# ' + header_comment.replace('\n', '\n# ') + '\n')
             # 4 is the indentation space
-            yaml_dump(out, default_flow_style=False, indent=4, block_seq_indent=4)
+            yaml = YAML()
+            yaml.indent(mapping=4, sequence=4, offset=2)  # Set indent and block sequence indent
+            yaml.dump(out, file)
 
     def write_configuration_yaml_log(self, file_name: str, file_path: str = None) -> None:
         """
@@ -272,7 +318,7 @@ class Configuration:
         # Ensure --targets argument is present
         if args.targets is None:
             self.console.print_error('The following argument is required: --targets')
-            exit(1) 
+            self.console.stop_execution()
 
         # Update self.arguments dictionary with parsed values
         for arg in vars(args):
@@ -295,7 +341,7 @@ class Configuration:
         Create the argument parser with usage and epilog messages.
         """        
         usage = 'GCsnap --targets <targets> [Optional arguments]'
-        epilog = 'Example: GCsnap --targets PHOL_ECOLI A0A0U4VKN7_9PSED A0'
+        epilog = 'Example: GCsnap --targets PHOL_ECOLI A0A0U4VKN7_9PSED'
         
         self.parser = CustomArgumentParser(usage=usage, epilog=epilog)
 
@@ -320,9 +366,7 @@ class Configuration:
     def handle_special_arguments(self) -> None:
         """
         Handle special arguments that require additional processing.
-        """        
-        # handle special arguments that require additional processing
-        
+        """               
         # clanse file
         targets = self.targets
         clans_file = self.arguments['clans_file']['value']
@@ -332,6 +376,13 @@ class Configuration:
             clans_file = os.path.abspath(clans_file)
 
         self.arguments['clans_file']['value'] = clans_file
+
+        # cpu count
+        physical_cpus = psutil.cpu_count(logical=False)
+        if self.arguments['n_cpu']['value'] > physical_cpus:
+            self.console.print_warning('More CPU cores requested than available. --n-cpu set to {}'.format(
+                physical_cpus))
+            self.arguments['n_cpu']['value'] = physical_cpus
 
     def get_default_configuration(self) -> dict:
         """
@@ -347,6 +398,11 @@ class Configuration:
                 "value": "default",
                 "type": "str",
                 "help": "Name of output directory. If default, name of the input file."
+            },
+            "tmp-mmseqs-folder": {
+                "value": None,
+                "type": "str",
+                "help": "The temporary folder to store mmseqs files. May be changed so that intermediary mmseqs files are saved somewhere else then the automatic 'out-label' directory."
             },
             "collect-only": {
                 "value": False,
@@ -367,6 +423,11 @@ class Configuration:
                 "value": None,
                 "type": "str",
                 "help": "Used only for advanced interactive output representation (Clans file if the input is a clans file and -operon_cluster_advanced is set to True)."
+            },
+            "ncbi-user-email": {
+                "value": None,
+                "type": "str",
+                "help": "Email address of the user. May be required to access NCBI databases and is not used for anything else."
             },
             "ncbi-api-key": {
                 "value": None,

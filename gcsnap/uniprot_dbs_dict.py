@@ -47,7 +47,7 @@ class UniprotDict:
                 self.uniprot_dbs['UniProtKB-AC']['targets'].append(target)  
 
         # get list of target types
-        self.target_types = self.get_target_types()                             
+        self.target_types = self.get_target_types()                        
 
     def create_empty_uniprot_dbs_dict(self) -> None:
         """
@@ -202,17 +202,17 @@ class UniprotDict:
                                             'to_dbs' : None, 
                                             'dtype' : str,
                                             'supported': False,
-                                            'keep_in_df': False}} 
+                                            'keep_in_df': False}}  
         
     def get_supported_databases(self) -> list:
-        """
-        Get the list of supported databases.
+            """
+            Get the list of supported databases.
 
-        Returns:
-            list: The list of supported databases.
-        """        
-        return [key for key in self.uniprot_dbs if self.uniprot_dbs[key]['supported'] == True]
-    
+            Returns:
+                list: The list of supported databases.
+            """        
+            return [key for key in self.uniprot_dbs if self.uniprot_dbs[key]['supported'] == True]
+        
     def get_target_types(self) -> list:
         """
         Get the list of id standards of the provided targets.

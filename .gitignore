@@ -7,6 +7,9 @@ __pycache__/
 data/*
 # results folder
 target*/
+# debugging folder
+debugging/*
+debugging_test/*
 
 # C extensions
 *.so

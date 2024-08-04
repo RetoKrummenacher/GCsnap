@@ -24,7 +24,7 @@ class Target():
         """        
         self.arguments = configuration.arguments
         self.targets = configuration.targets
-        self.console = RichConsole()
+        self.console = RichConsole('base')
 
         # empty dictionary to store the targets
         self.targets_dict = {}
@@ -73,7 +73,7 @@ class Target():
             elif target.endswith('.fasta') or target.endswith('.txt') or target.endswith('.clans'):
                 # the error case when file path was missspelled, hence file not found
                 self.console.print_error('Target file {} does not exist, maybe the path is misspelled?'.format(target))
-                exit(1)
+                self.console.stop_execution()
             else:
                 # target is a list of ids
                 # the name of this list (the label) by default is 'default' 

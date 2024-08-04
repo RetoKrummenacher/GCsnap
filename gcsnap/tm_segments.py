@@ -12,7 +12,7 @@ from gcsnap.utils import processpool_wrapper
 from gcsnap.utils import split_list_chunks
 
 import logging
-logger = logging.getLogger(__name__) # inherits configuration from main logger
+logger = logging.getLogger('iteration')
 
 class TMsegments:
     """ 
@@ -109,7 +109,7 @@ class TMsegments:
                 msg =  'Check file is at speciefed path {} ans run GCsnap by specifying --annotation-TM-file.'. \
                         format(self.annotate_file)
                 self.console.print_hint(msg)
-                exit(1)                   
+                self.console.stop_execution()             
         
         # at this point, the file might not exist when no phobius or tmhmm installation was found
         if os.path.isfile(self.annotation_out_file):

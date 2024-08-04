@@ -13,7 +13,7 @@ from gcsnap.utils import processpool_wrapper
 from gcsnap.utils import WarningToLog
 
 import logging
-logger = logging.getLogger(__name__) # inherits configuration from main logger
+logger = logging.getLogger('iteration')
 
 class EntrezQuery:
     """
@@ -92,9 +92,10 @@ class EntrezQuery:
             # combine all dictionaries
             found = {k: v for result_tuple in results_list for k, v 
                      in result_tuple[0].items() if result_tuple[1] is None}
-            # get those with failed entrez requests
-            errors = [(e, chunk) for result_tuple in results_list if result_tuple[1] 
-                      is not None for e, chunk in result_tuple[1]]
+            # get those with failed entrez requests:[(error, chunk)]
+            errors = [(result_tuple[1][0], result_tuple[1][1]) 
+                      for result_tuple in results_list 
+                      if result_tuple[1] is not None]
  
         # log errors if desired
         failed_request_ids = []

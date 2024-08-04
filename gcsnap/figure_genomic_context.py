@@ -6,7 +6,7 @@ from gcsnap.rich_console import RichConsole
 from gcsnap.genomic_context import GenomicContext
 
 import logging
-logger = logging.getLogger(__name__) # inherits configuration from main logger
+logger = logging.getLogger('iteration')
 
 class GenomicContextFigure:
     """ 
