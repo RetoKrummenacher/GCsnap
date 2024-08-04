@@ -275,16 +275,13 @@ Loggin messages are formatted as follows:
 """
 import logging # already sets the loggin process
 
-# loggin never done in parallel:
+# logging never done in parallel:
 # The reason is that logging from several processes is not that easy
 # https://docs.python.org/3/howto/logging-cookbook.html#logging-to-a-single-file-from-multiple-processes
 
 class CustomFormatter(logging.Formatter):
     """
     Custom formatter for logging messages.
-
-    Attributes:
-        message (str): The message to log.
     """    
     def format(self, record: str) -> str:
         """
@@ -300,10 +297,20 @@ class CustomFormatter(logging.Formatter):
         return super().format(record)
     
 class CustomLogger():    
+    """
+    Custom logger for the GCsnap pipeline.
+    There are two loggers:
+        - 'base': The base logger for the entire pipeline.
+        - 'iteration': The logger for a specific task, as there can be multiple 
+                        tasks in one run.
+    """ 
     # Configure the initial logger for steps 1 and 2
 
     @classmethod
     def configure_loggers(cls) -> None:
+        """
+        Configure the base and iteration loggers.
+        """
 
         # Base logger configuration
         logger_base = logging.getLogger('base')
@@ -331,6 +338,10 @@ class CustomLogger():
     def configure_iteration_logger(cls, out_label: str, starting_directory: str) -> None:
         """
         Configure the iteration logger for a specific iteration.
+
+        Args:
+            out_label (str): The label of the task equal to the folder in which the output is stored.
+            starting_directory (str): The starting directory of the pipeline.
         """
         logger_iteration = logging.getLogger('iteration')
 
@@ -354,6 +365,13 @@ class CustomLogger():
     # Copy the log file content to ensure all data is saved
     @classmethod
     def copy_log_content(cls, base_log_file: str, iteration_log_file: str) -> None:
+        """
+        Copy the contents of the base log file to the iteration log file.
+
+        Args:
+            base_log_file (str): The path to the base log file.
+            iteration_log_file (str): The path to the iteration log file.
+        """        
         # Read the contents of the base log file
         with open(base_log_file, 'r') as base_log:
             log_content = base_log.read()
@@ -363,11 +381,23 @@ class CustomLogger():
 
     @classmethod
     def log_to_base(cls, msg: str) -> None:
+        """
+        Log a message to the base logger.
+
+        Args:
+            msg (str): The message to log.
+        """        
         logger = logging.getLogger('base')
         logger.info(msg)
 
     @classmethod
     def log_to_iteration(cls, msg: str) -> None:
+        """
+        Log a message to the iteration logger.
+
+        Args:
+            msg (str): The message to log.
+        """        
         logger = logging.getLogger('iteration')
         logger.info(msg)        
 # ------------------------------------------------------
