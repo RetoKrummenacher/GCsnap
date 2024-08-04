@@ -91,6 +91,11 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import as_completed
 
+import dask
+from dask.distributed import Client
+
+from gcsnap.slurm_control import SLURMcontrol
+
 def sequential_wrapper(parallel_args: list[tuple], func: Callable) -> list:
     """
     Apply a function to a list of arguments sequentially. The arguments are passed as tuples
@@ -248,6 +253,72 @@ def futures_process_wrapper(n_processes: int, parallel_args: list[tuple], func: 
         futures = [executor.submit(func, arg) for arg in parallel_args]
         result_list = [future.result() for future in as_completed(futures)]
 
+    return result_list
+
+def daskthread_wrapper(n_threads: int, parallel_args: list[tuple], func: Callable) -> list:  
+    """
+    Apply a function to a list of arguments using Dask with threads. The arguments are passed as tuples
+    and are unpacked within the function. Dask is executed asynchronusly, but with the order of the results guaranteed.
+
+    Args:
+        n_threads (int): The number of threads to use.
+        parallel_args (list[tuple]): A list of tuples, where each tuple contains the arguments for the function.
+        func (Callable): The function to apply to the arguments.
+
+    Returns:
+        list: A list of results from the function applied to the arguments in the order they are provided.
+    """      
+    # n_workers: number of processes (Defaults to 1)
+    # threads_per_worker: threads in each process (Defaults to None)
+        # i.e. it uses all available cores.        
+
+    # list of delayed objects to compute
+    delayed_results = [dask.delayed(func)(*arg) for arg in parallel_args]
+
+    # dask.compute, Dask will automatically wait for all tasks to finish before returning the results   
+    # even though a delayed object is usesd, the computation starts right away when using copmpute() 
+    with Client(threads_per_worker=n_threads,n_workers=1) as client:
+        futures = client.compute(delayed_results)  # Start computation in the background
+        result_list = client.gather(futures)  # Block until all results are ready
+    
+    return result_list
+
+def daskprocess_wrapper(n_processes: int, parallel_args: list[tuple], func: Callable) -> list: 
+    """
+    Apply a function to a list of arguments using Dask with processes. The arguments are passed as tuples
+    and are unpacked within the function. Dask is executed asynchronusly, but with the order of the results guaranteed.
+
+    Args:
+        n_processes (int): The number of processes to use.
+        parallel_args (list[tuple]): A list of tuples, where each tuple contains the arguments for the function.
+        func (Callable): The function to apply to the arguments.
+
+    Returns:
+        list: A list of results from the function applied to the arguments in the order they are provided.
+    """      
+    # For a Dask Local Cluster on one machine:
+    # n_workers: number of processes (Defaults to 1)
+    # threads_per_worker: threads in each process (Defaults to None)
+        # i.e. it uses all available cores.    
+        #  with Client(n_workers=n_processes, threads_per_worker=1) as client:
+            # futures = client.compute(delayed_results)  # Start computation in the background
+            # result_list = client.gather(futures)  # Block until all results are ready    
+
+    # list of delayed objects to compute
+    delayed_results = [dask.delayed(func)(*arg) for arg in parallel_args]
+
+    # Create Slurm Cluster
+    cluster = SLURMcontrol(n_processes)
+
+    # dask.compute, Dask will automatically wait for all tasks to finish before returning the results   
+    # even though a delayed object is usesd, the computation starts right away when using copmpute() 
+    with Client(cluster) as client:
+        futures = client.compute(delayed_results)  # Start computation in the background
+        result_list = client.gather(futures)  # Block until all results are ready
+
+    # Close the cluser (client is closed in with statement)
+    cluster.close()
+    
     return result_list
 # ------------------------------------------------------
    
