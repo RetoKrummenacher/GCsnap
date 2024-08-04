@@ -14,7 +14,7 @@ class UniprotDict:
         Initialize the UniprotDict object.
         """        
         # create empty dictionary with mapping information
-        self.get_empty_uniprot_dbs_dict()
+        self.create_empty_uniprot_dbs_dict()
         # get list of supported databases
         self.supported = self.get_supported_databases()
 
@@ -47,9 +47,9 @@ class UniprotDict:
                 self.uniprot_dbs['UniProtKB-AC']['targets'].append(target)  
 
         # get list of target types
-        self.get_target_types()                             
+        self.target_types = self.get_target_types()                             
 
-    def get_empty_uniprot_dbs_dict(self) -> None:
+    def create_empty_uniprot_dbs_dict(self) -> None:
         """
         Create an empty dictionary with the database information.
         Keys in the dictionary are the different identifier standards.
@@ -75,112 +75,134 @@ class UniprotDict:
                                         'from_dbs' : 'UniProtKB_AC-ID',
                                         'to_dbs' : 'UniProtKB',
                                         'dtype' : str,
-                                        'supported': True},
+                                        'supported': True,
+                                        'keep_in_df': True},
                     'UniProtKB-ID': {'targets' : [], 
                                         'from_dbs' : 'UniProtKB_AC-ID',
                                         'to_dbs' : 'UniProtKB-Swiss-Prot',
                                         'dtype' : str,
-                                        'supported': True},
+                                        'supported': True,
+                                        'keep_in_df': True},
                     'GeneID': {'targets' : [], #EntrezID
                                 'from_dbs' : 'GeneID',
                                 'to_dbs' : 'GeneID',
                                 'dtype' : str,
-                                'supported': True},
+                                'supported': True,
+                                'keep_in_df': True},
                     'RefSeq': {'targets' : [], 
                                 'from_dbs' : 'RefSeq_Protein',
                                 'to_dbs' : 'RefSeq_Protein', 
                                 'dtype' : str,
-                                'supported': True},
+                                'supported': True,
+                                'keep_in_df': True},
                     'GI': {'targets' : [],
                             'from_dbs' : 'GI_number',
                             'to_dbs' : 'GI_number', 
                             'dtype' : str,
-                            'supported': False},
+                            'supported': False,
+                            'keep_in_df': False},
                     'PDB': {'targets' : [],
                             'from_dbs' : 'PDB', 
                             'to_dbs' : 'PDB', 
                             'dtype' : str,
-                            'supported': False},
+                            'supported': False,
+                            'keep_in_df': True},
                     'GO': {'targets' : [],
                             'from_dbs' : '', 
                             'to_dbs' : '', 
                             'dtype' : str,
-                            'supported': False},
+                            'supported': False,
+                            'keep_in_df': False},
                     'UniRef100': {'targets' : [],
                                     'from_dbs' : 'UniRef100', 
                                     'to_dbs' : 'UniRef100', 
                                     'dtype' : str,
-                                    'supported': False},
+                                    'supported': False,
+                                    'keep_in_df': False},
                     'UniRef90': {'targets' : [],
                                     'from_dbs' : 'UniRef90', 
                                     'to_dbs' : 'UniRef90', 
                                     'dtype' : str,
-                                    'supported': False},
+                                    'supported': False,
+                                    'keep_in_df': False},
                     'UniRef50': {'targets' : [],
                                     'from_dbs' : 'UniRef50',
                                     'to_dbs' : 'UniRef50',
                                     'dtype' : str,
-                                    'supported': False},
+                                    'supported': False,
+                                    'keep_in_df': False},
                     'UniParc': {'targets' : [],
                                 'from_dbs' : 'UniParc', 
                                 'to_dbs' : 'UniParc', 
                                 'dtype' : str,
-                                'supported': True},
+                                'supported': True,
+                                'keep_in_df': True},
                     'PIR': {'targets' : [],
                             'from_dbs' : 'PIR', 
                             'to_dbs' : 'PIR', 
                             'dtype' : str,
-                            'supported': False},
+                            'supported': False,
+                            'keep_in_df': False},
                     'NCBI-taxon': {'targets' : [],
                                     'from_dbs' : None, 
                                     'to_dbs' : None, 
                                     'dtype' : str,
-                                    'supported': False},
+                                    'supported': False,
+                                    'keep_in_df': True},
                     'MIM': {'targets' : [],
                             'from_dbs' : 'MIM', 
                             'to_dbs' : 'MIM', 
                             'dtype' : str,
-                            'supported': False},
+                            'supported': False,
+                            'keep_in_df': False},
                     'UniGene': {'targets' : [],
                                 'from_dbs' : '', 
                                 'to_dbs' : '', 
                                 'dtype' : str,
-                                'supported': False},
+                                'supported': False,
+                                'keep_in_df': False},
                     'PubMed': {'targets' : [], # https://pubmed.ncbi.nlm.nih.gov/10840038/
                                 'from_dbs' : None, 
                                 'to_dbs' : None, 
                                 'dtype' : str,
-                                'supported': False},
+                                'supported': False,
+                                'keep_in_df': False},
                     'EMBL': {'targets' : [],
                                 'from_dbs' : 'EMBL-GenBank-DDBJ', 
                                 'to_dbs' : 'EMBL-GenBank-DDBJ', 
                                 'dtype' : str,
-                                'supported': False},
+                                'supported': False,
+                                'keep_in_df': False},
                     'EMBL-CDS': {'targets' : [],
                                     'from_dbs' : 'EMBL-GenBank-DDBJ_CDS', 
                                     'to_dbs' : 'EMBL-GenBank-DDBJ_CDS', 
                                     'dtype' : str,
-                                    'supported': True},
+                                    'supported': True,
+                                    'keep_in_df': True},
                     'Ensembl': {'targets' : [],
                                 'from_dbs' : 'Ensembl',
                                 'to_dbs' : 'Ensembl',
                                 'dtype' : str,
-                                'supported': True},
+                                'supported': True,
+                                'keep_in_df': True},
                     'Ensembl_TRS': {'targets' : [],
                                     'from_dbs' : 'Ensembl_Transcript', 
                                     'to_dbs' : 'Ensembl_Transcript', 
                                     'dtype' : str,
-                                    'supported': False},
+                                    'supported': False,
+                                    'keep_in_df': False},
                     'Ensembl_PRO': {'targets' : [],
                                     'from_dbs' : 'Ensembl_Protein', 
                                     'to_dbs' : 'Ensembl_Protein',
                                     'dtype' : str,
-                                    'supported': False},
+                                    'supported': False,
+                                    'keep_in_df': False},
                     'Additional PubMed': {'targets' : [], # https://pubmed.ncbi.nlm.nih.gov/10840038/
                                             'from_dbs' : None,
                                             'to_dbs' : None, 
                                             'dtype' : str,
-                                            'supported': False}} 
+                                            'supported': False,
+                                            'keep_in_df': False}} 
         
     def get_supported_databases(self) -> list:
         """
@@ -198,4 +220,31 @@ class UniprotDict:
         Returns:
             list: The list of id standards.
         """        
-        self.target_types = [key for key in self.uniprot_dbs if len(self.uniprot_dbs[key]['targets']) > 0]
+        return [key for key in self.uniprot_dbs if len(self.uniprot_dbs[key]['targets']) > 0]
+
+    def get_all_types(self) -> dict:
+        """
+        Get the dictionary with the id standards and their data types.
+
+        Returns:
+            dict: The dictionary with the id standards and their data types.
+        """        
+        return {key: values['dtype'] for key, values in self.uniprot_dbs.items()}
+    
+    def get_columns_to_keep(self) -> list:
+        """
+        Get the list of columns to keep in the final dataframe.
+
+        Returns:
+            list: The list of columns to keep.
+        """        
+        return [key for key in self.uniprot_dbs if self.uniprot_dbs[key]['keep_in_df'] == True]
+    
+    def get_uniprot_dict(self) -> dict:
+        """
+        Getter of the dictionary with the database information.
+
+        Returns:
+            dict: The dictionary with the database information.
+        """        
+        return self.uniprot_dbs
