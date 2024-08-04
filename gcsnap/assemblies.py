@@ -5,11 +5,11 @@ import time
 
 from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole
-from gcsnap.assembly_links import AssemblyLinks
-from gcsnap.entrez_query import EntrezQuery
 from gcsnap.genomic_context import GenomicContext
+from gcsnap.db_handler_assemblies import AssembliesDBHandler
 
-from gcsnap.utils import processpool_wrapper
+from gcsnap.utils import daskprocess_wrapper
+from gcsnap.utils import split_list_chunks
 from gcsnap.utils import WarningToLog
 
 import logging
@@ -31,7 +31,7 @@ class Assemblies:
         accessions (dict): Dictionary with ncbi codes and assembly accessions.
     """
 
-    def __init__(self, config: Configuration, mappings: list[tuple[str,str]]):                     
+    def __init__(self, config: Configuration, mappings: list[tuple[str,str]], data_path: str) -> None:                     
         """
         Initialize the Assemblies object.
 
@@ -45,6 +45,8 @@ class Assemblies:
         self.n_flanking3 = config.arguments['n_flanking3']['value']
         self.exclude_partial = config.arguments['exclude_partial']['value'] 
         self.config = config
+
+        self.data_path = '/scicore/home/schwede/GROUP/gcsnap_db/'
 
         self.console = RichConsole()
 
@@ -67,19 +69,17 @@ class Assemblies:
     
     def run(self) -> None:
         """
-        Run the process to download and extract flanking genes for the targets:
-            - Find the assembly accessions for the given NCBI codes.
-            - Download and extract flanking genes for each target in parallel.
-        Uses parallel processing with the processpool_wrapper from utils.py
+        Run the process to query information from DB and extract flanking genes for the targets:
+            - Split into chunks and start parallel execution.
+        Uses parallel processing with the daskprocess_wrapper from utils.py
         """        
-        # download and parse the assembly summary files
-        self.load_summaries()
-        # find the assembly accessions
-        ncbi_codes = [target[1] for target in self.targets_and_ncbi_codes]
-        self.find_accessions(ncbi_codes)
+        # split input into chunks
+        # we don't want to have only as many chunks as processes to have better load
+        # balance as the assembly files are very different in size
+        parallel_args = split_list_chunks(self.targets_and_ncbi_codes, self.cores * 5)
 
         with self.console.status('Download assemblies and extract flanking genes'):
-            dict_list = processpool_wrapper(self.cores, self.targets_and_ncbi_codes, self.run_each)
+            dict_list = daskprocess_wrapper(self.cores, self.targets_and_ncbi_codes, self.run_each)
             # combine results
             self.flanking_genes = {k: v for d in dict_list for k, v in d.items() 
                                    if v.get('flanking_genes') is not None}
@@ -88,34 +88,33 @@ class Assemblies:
         if not_found:
             self.log_not_found(not_found)
 
-    def run_each(self, args: tuple[str,str]) -> dict[str, dict]:
+    def run_each(self, args: list[tuple[str,str]]) -> dict[str, dict]:
         """
-        Run the process to download and extract flanking genes for a single target
-        used in the parallel processing.
+        Called in parallel and is doing:
+            - Get assembly accessions from database.
+            - Get assembly urls, species and tax ID from database.
+            - Extract flanking genes from files.
 
         Args:
-            args (tuple[str,str]): Contains the target and its ncbi code.
+            args (list[tuple[str,str]]): List of tuples with the target and its ncbi code.
 
         Returns:
-            dict[str, dict]: The flanking genes and assembly information.
+            dict[str, dict]: The flanking genes information for the targets.
         """        
-        # TODO: What to do if no accession/url is found?
-        # adapt the two getter functions to return.
-        # right now, it raises an exception which returns None for flanking genes
-        # those are exluded from the flanking_genes dict and logged at the end.
-        target, ncbi_code = args
-        try:
-            accession = self.get_assembly_accession(ncbi_code)
-            assembly_url = self.get_assembly_url(accession)
-            assembly_file, lines = self.download_and_read_gz_file(assembly_url)
-            flanking_genes = self.parse_assembly(ncbi_code, lines)
-            return {target: {'flanking_genes': flanking_genes,
-                             'assembly_id':  [ncbi_code, accession, assembly_url]}}   
-        except WarningToLog as e:
-            # return None for flanking genes and message, logged later
-            return {target: {'flanking_genes': None,
-                             'msg': str(e)}}
-        
+        target_tuples = args
+        # get the assembly accessions
+        target_tuples = self.get_assembly_accessions(target_tuples)
+
+        # get the assembly urls
+        # the result is a list of tuples with (target, ncbi_code, accession, url, taxid, species)
+        target_tuples = self.get_assembly_info(target_tuples)
+
+        # loop over all targets and download and extract flanking genes
+        flanking_genes = {}
+        for element in target_tuples:
+            # merge them to results
+            flanking_genes |= self.read_and_parse_assembly(element)
+
     def create_folder(self) -> None:        
         """
         Create the folder to store the assembly summaries.
@@ -123,116 +122,94 @@ class Assemblies:
         if not os.path.exists(self.assembly_dir):
             os.makedirs(self.assembly_dir)
 
-    def load_summaries(self) -> None:
+    def read_and_parse_assembly(self, element: tuple[str,str,str,str,str,str]) -> dict:
         """
-        Load the assembly summaries.
-        """        
-        # get file with assembly links
-        assembly_links = AssemblyLinks(self.config)
-        assembly_links.run()
-        self.links = assembly_links.get()   
-
-    def find_accessions(self, ncbi_codes: list) -> None:
-        """
-        Find the assembly accessions for the given NCBI codes using the EntrezQuery class.
+        Wrapper to read and parse the assembly file.
 
         Args:
-            ncbi_codes (list): The list of NCBI codes.
-        """        
-        # get file with assembly links, no logging as its done after run()
-        entrez = EntrezQuery(self.config, ncbi_codes, db='protein', rettype='ipg', 
-                             retmode='xml', logging=False)
-        self.accessions = entrez.run()
-
-    def get_assembly_accession(self, ncbi_code: str) -> str:
-        """
-        Get the assembly accession for a given NCBI code.
-
-        Args:
-            ncbi_code (str): The NCBI code.
-
-        Raises:
-            WarningToLog: If no assembly accession is found.
+            element (tuple[str,str,str,str,str,str]): Tuple with target, ncbi code, accession, url, taxid, species. 
 
         Returns:
-            str: The assembly accession.
+            dict: The flanking genes information for the target.
         """        
-        accession = self.accessions.get(ncbi_code, 'unk')
-        if accession == 'unk':
-            raise WarningToLog('No assembly accession found for {}'.format(ncbi_code))
-        return accession
-
-    def get_assembly_url(self, assembly_accession: str) -> str:
-        """
-        Get the assembly URL for a given assembly accession.
-
-        Args:
-            assembly_accession (str): The assembly accession.
-
-        Raises:
-            WarningToLog: If no URL is found.
-
-        Returns:
-            str: The assembly URL.
-        """        
-        url = self.links.get(assembly_accession, 'unk')   
-        if url == 'unk':
-            raise WarningToLog('No url found for accession {}'.format(assembly_accession))
-        return url      
-        
-    def download_and_read_gz_file(self, url: str, retries: int = 3) -> tuple:
-        """
-        Wrapper to download and read the assembly file in .gz format.
-
-        Args:
-            url (str): The URL of the assembly file.
-            retries (int, optional): The number of retries of download. Defaults to 3.
-
-        Raises:
-            WarningToLog: If the file was not downloaded properly.
-
-        Returns:
-            tuple: The full path of the downloaded file and the content of the file.
-        """        
+        target, ncbi_code, accession, url, taxid, species = element
         try:
-            full_path = self.download_gz_file(url)
-            content = self.read_gz_file(full_path)
-        except (urllib.error.URLError, EOFError) as e:        
-            if retries > 0:     
-                time.sleep(1)
-                full_path, content = self.download_and_read_gz_file(url, retries - 1)
-            else:
-                raise WarningToLog('Download failed for {} with error {}'.format(url, e))
+            assembly_path = self.get_gz_path(url)
+            lines = self.read_gz_file(assembly_path)
+            flanking_genes = self.parse_assembly(ncbi_code, lines)
+            # add species and taxid to flanking genes
+            flanking_genes['species'] = species
+            flanking_genes['taxID'] = taxid
+            return {target: {'flanking_genes': flanking_genes,
+                             'assembly_id':  [ncbi_code, accession, url]}}   
+        except WarningToLog as e:
+            # return None for flanking genes and message, logged later
+            return {target: {'flanking_genes': None,
+                             'msg': str(e)}}
 
-        return full_path, content
-
-    def download_gz_file(self, url: str) -> str:
+    def get_assembly_accessions(self, target_tuples : list[tuple[str,str]]) -> list[tuple[str,str,str]]:
         """
-        Download the .gz file and save it without uncompressing.
+        Query the assembly accession for the ncbi codes from the database.
 
         Args:
-            url (str): The URL of the assembly file.
+            target_tuples (list[tuple[str,str]]): List of tuples with the target and its ncbi code.
 
         Returns:
-            str: The full path of the downloaded file.
+            list[tuple[str,str,str]]: List of tuples with the target, ncbi code and assembly accession.
         """        
-        assembly_label = url.split('/')[-1]  # e.g., GCF_000260135.1_ASM26013v1
-        assembly_file_gz = '{}_genomic.gff.gz'.format(assembly_label)
-        full_path = os.path.join(self.assembly_dir, assembly_file_gz)
+        # all ncbi_codes
+        ncbi_codes = [element[1] for element in target_tuples]
 
-        # TODO: Skip this for experiments and developpment
-        # Idea: At a time check and redownload if older then certain time, like assembly_summaries
-        # Check if file already exists
-        # if os.path.exists(full_path):
-        #     return full_path
+        # select from database
+        assembly_db = AssembliesDBHandler(os.path.join(self.data_path,'ncbi_db'))
+        # get the assemblies accession for the ncbi codes (from default table 'mapping')
+        result_tuples = assembly_db.select(ncbi_codes)
 
-        # Download the .gz file and save it without uncompressing
-        with urllib.request.urlopen(url + '/' + assembly_file_gz) as response:
-            with open(full_path, 'wb') as out_file:
-                out_file.write(response.read())
+        # combine the targets, the ncbi_codes and the acessions
+        return [(target, ncbi, accession) for target, ncbi in target_tuples 
+                            for result_ncbi, accession in result_tuples if ncbi == result_ncbi]
+    
+    def get_assembly_info(self, target_tuples: list[tuple[str,str,str]]) -> list[tuple]:
+        """
+        Query the assembly urls, taxid and species for the assembly accessions from the database.
 
-        return full_path
+        Args:
+            target_tuples (list[tuple[str,str,str]]): List of tuples with the target, ncbi code and assembly accession.
 
+        Returns:
+            list[tuple]: List of tuples with the target, ncbi code, assembly accession, url, taxid and species.
+        """        
+        assembly_accessions = [element[2] for element in target_tuples]
+
+        assembly_db = AssembliesDBHandler(os.path.join(self.data_path,'ncbi_db'))
+        # get the url and taxid and the species name for the assembly accessions
+        result_tuples = assembly_db.select(assembly_accessions, table = 'assemblies')
+
+        # combine the targets, the ncbi_codes and the acessions
+        return [(target, ncbi, accession, url, taxid, species) 
+                            for target, ncbi, accession in target_tuples 
+                            for result_accession, url, taxid, species in result_tuples 
+                            if accession == result_accession]
+    
+    def get_gz_path(self, url: str) -> str:
+        """
+        Determin the path on the cluster to the assembly file.
+
+        Args:
+            url (str): The url of the assembly file as stored in the database.
+
+        Returns:
+            str: The path to the assembly file on the cluster.
+        """        
+        ass_file = os.path.basename(url) + '_genomic.gff.gz'
+
+        # search the file
+        if ass_file.startswith('GCA'):
+            db = 'genbank'
+        else:
+            db = 'refseq'
+        return os.path.join('/scicore/home/schwede/GROUP/gcsnap_db/',db,'data')
+   
     def read_gz_file(self, file_path: str) -> list:
         """
         Read the content of a .gz file.
@@ -242,10 +219,13 @@ class Assemblies:
 
         Returns:
             list: The content of the file as a list of lines.
-        """        
-        with gzip.open(file_path, 'rt', encoding='utf-8') as file:
-            content = file.read()
-        return content.splitlines()                
+        """      
+        try:  
+            with gzip.open(file_path, 'rt', encoding='utf-8') as file:
+                content = file.read()
+            return content.splitlines()   
+        except FileNotFoundError:
+            raise WarningToLog('File {} not found'.format(file_path))             
                 
     def delete_assemblies(self) -> None:
         """
