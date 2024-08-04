@@ -14,7 +14,7 @@ from gcsnap.rich_console import RichConsole
 from gcsnap.configuration import Configuration 
 from gcsnap.timing import Timing
 from gcsnap.targets import Target 
-from gcsnap.sequence_mapping import SequenceMapping
+from gcsnap.mapping import SequenceMapping
 from gcsnap.assemblies import Assemblies
 from gcsnap.genomic_context import GenomicContext
 from gcsnap.sequences import Sequences
@@ -24,6 +24,10 @@ from gcsnap.operons import Operons
 from gcsnap.taxonomy import Taxonomy
 from gcsnap.tm_segments import TMsegments
 from gcsnap.figures import Figures
+from gcsnap.utils import CustomLogger
+
+# create conda env on sciCore:
+# conda create -n gcsnap2 -c conda-forge -c bioconda gcc_linux-64 gxx_linux-64  python=3.11 mmseqs2
 
 def main():
     """
@@ -49,6 +53,7 @@ def main():
     """    
 
     starting_directory = os.getcwd()
+
 
     console = RichConsole()
     console.print_title()
@@ -96,27 +101,19 @@ def main():
 
         #  2. Block 'Collect'
         t_collect = timing.timer('Step 1: Collecting the genomic contexts')
-
         # a) Map sequences to UniProtKB-AC and NCBI EMBL-CDS
         t_mapping = timing.timer('Step 1a: Mapping')
         # Map all targets to UniProtKB-AC
-        mappingA = SequenceMapping(config, targets_list, 'UniProtKB-AC')
-        mappingA.run()
-        # Map all to RefSeq
-        mappingB = SequenceMapping(config, mappingA.get_codes(), 'RefSeq')
-        mappingB.run()
-        # merge them to mappingA
-        mappingA.merge_mapping_dfs(mappingB.mapping_df, columns_to_merge=['RefSeq'])
-
-        # Map all targets to NCBI EMBL-CDS
-        mappingC = SequenceMapping(config, mappingA.get_codes(), 'EMBL-CDS')
-        mappingC.run()
-        # merge the two mapping results dataframes
-        mappingA.merge_mapping_dfs(mappingC.mapping_df)
-        # create targets and ncbi_columns and log not found targets
-        mappingA.finalize()
-        targets_and_ncbi_codes = mappingA.get_targets_and_ncbi_codes()  
+        mapping = SequenceMapping(config, targets_list, 'UniProtKB-AC')
+        mapping.run()
+        targets_and_ncbi_codes = mapping.get_targets_and_ncbi_codes()  
         t_mapping.stop()
+
+        # TODO: For debugging
+        with open('gc.pkl', 'wb') as file:
+            pickle.dump(gc, file) 
+
+        exit(1)
 
         # b). Find assembly accession, download and parse assemblies
         t_assemblies = timing.timer('Step 1b: Assemblies')
