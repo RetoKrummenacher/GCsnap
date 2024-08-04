@@ -32,41 +32,41 @@ Helper modules than are usable standalone as well:
 
 """
 
-# Import classes and functions from various modules of the pipeline in __main__.py
-from .rich_console import RichConsole 
-from .configuration import Configuration 
-from .timing import Timing
-from .targets import Target 
-from .sequence_mapping import SequenceMapping
-from .assemblies import Assemblies
-from .genomic_context import GenomicContext
-from .sequences import Sequences
-from .families import Families
-from .families_functions_structures import FamiliesFunctionsStructures
-from .operons import Operons
-from .taxonomy import Taxonomy
-from .tm_segments import TMsegments
-from .figures import Figures
+# # Import classes and functions from various modules of the pipeline in __main__.py
+# from .rich_console import RichConsole 
+# from .configuration import Configuration 
+# from .timing import Timing
+# from .targets import Target 
+# from .sequence_mapping import SequenceMapping
+# from .assemblies import Assemblies
+# from .genomic_context import GenomicContext
+# from .sequences import Sequences
+# from .families import Families
+# from .families_functions_structures import FamiliesFunctionsStructures
+# from .operons import Operons
+# from .taxonomy import Taxonomy
+# from .tm_segments import TMsegments
+# from .figures import Figures
 
-# import helper classes and function
-from .utils import processpool_wrapper, split_dict_chunks, split_list_chunks
-from .entrez_query import EntrezQuery
-from .mmseqs_cluster import MMseqsCluster
-from .uniprot_api import submit_id_mapping
-from .uniprot_api import check_id_mapping_results_ready
-from .uniprot_api import get_id_mapping_results_link
-from .uniprot_api import get_id_mapping_results_search
-from .uniprot_dbs_dict import UniprotDict
-from .apis import SwissProtAPI, AlphaFoldAPI, EbiAPI
-from .assembly_links import AssemblyLinks
+# # import helper classes and function
+# from .utils import processpool_wrapper, split_dict_chunks, split_list_chunks
+# from .entrez_query import EntrezQuery
+# from .mmseqs_cluster import MMseqsCluster
+# from .uniprot_api import submit_id_mapping
+# from .uniprot_api import check_id_mapping_results_ready
+# from .uniprot_api import get_id_mapping_results_link
+# from .uniprot_api import get_id_mapping_results_search
+# from .uniprot_dbs_dict import UniprotDict
+# from .apis import SwissProtAPI, AlphaFoldAPI, EbiAPI
+# from .assembly_links import AssemblyLinks
 
 
-# using from GCsnap import *, only the names included in __all__ will be imported.
-__all__ = [
-    'RichConsole', 'Configuration', 'Timing', 'Target', 'SequenceMapping', 'Assemblies',
-    'GenomicContext', 'Sequences', 'Families', 'FamiliesFunctionsStructures',
-    'Operons', 'Taxonomy', 'TMsegments', 'Figures', 'processpool_wrapper', 'split_dict_chunks',
-    'split_list_chunks', 'EntrezQuery', 'MMseqsCluster', 'UniprotDict',
-    'SwissProtAPI', 'AlphaFoldAPI', 'EbiAPI', 'AssemblyLinks', 'submit_id_mapping',
-    'check_id_mapping_results_ready', 'get_id_mapping_results_link', 'get_id_mapping_results_search'
-]
+# # using from GCsnap import *, only the names included in __all__ will be imported.
+# __all__ = [
+#     'RichConsole', 'Configuration', 'Timing', 'Target', 'SequenceMapping', 'Assemblies',
+#     'GenomicContext', 'Sequences', 'Families', 'FamiliesFunctionsStructures',
+#     'Operons', 'Taxonomy', 'TMsegments', 'Figures', 'processpool_wrapper', 'split_dict_chunks',
+#     'split_list_chunks', 'EntrezQuery', 'MMseqsCluster', 'UniprotDict',
+#     'SwissProtAPI', 'AlphaFoldAPI', 'EbiAPI', 'AssemblyLinks', 'submit_id_mapping',
+#     'check_id_mapping_results_ready', 'get_id_mapping_results_link', 'get_id_mapping_results_search'
+# ]
