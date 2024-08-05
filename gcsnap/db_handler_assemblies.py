@@ -146,6 +146,7 @@ class AssembliesDBHandler:
             raise ValueError(f'Unknown table {table}')
 
         # which records based on ncbi_codes
+        # the query contains ?,?,?,?, with the cursor.execute(query, codes) the values are inserted
         records = f"({','.join(['?']*len(codes))})" # (?,?,?,?) for each entry in ncbi_code       
         query = 'SELECT {} FROM {} WHERE {} IN {}'.format(select_fields,table,column,records)
         
