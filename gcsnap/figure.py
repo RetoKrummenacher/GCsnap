@@ -139,7 +139,7 @@ class Figure:
         Figure.set_class_attributes(Figure, **kwargs)
 
         if Figure.starting_directory not in Figure.in_tree:
-            Figure.in_tree = os.path.join(os.getcwd(),'{}'.format(Figure.in_tree))
+            Figure.in_tree = os.path.join(Figure.starting_directory,'{}'.format(Figure.in_tree))
 
         tree = Phylo.read(Figure.in_tree, Figure.in_tree_format)  
 
@@ -781,7 +781,10 @@ class Figure:
         y_step = Figure.syn_den_data['y'][1] - Figure.syn_den_data['y'][0]
         y_half_height = y_step/4
         
+        print(Figure.operons)
+
         for i, current_target in enumerate(Figure.syn_den_data['leaf_label']):
+            print(current_target)
             operon = [operon for operon in Figure.operons if current_target in Figure.operons[operon]['target_members']][0]
             current_assembly = Figure.syntenies[current_target]['assembly_id'][1]
             current_species = Figure.syntenies[current_target]['species']
