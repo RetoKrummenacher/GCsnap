@@ -63,14 +63,15 @@ class InteractiveFigure:
             'family_colors': family_colors,
             'starting_directory': starting_directory            
         })
+
+        # Set all attributes
+        self._set_attributes(**kwargs)
+
         # change sort_mode and input targets if needed
         if kwargs['in_tree'] is not None:
             kwargs['sort_mode'] = 'tree'    
             kwargs['input_targets'] = [target for operon in self.operons 
                                        for target in self.operons[operon]['target_members']]                
-
-        # Set all attributes
-        self._set_attributes(**kwargs)
 
         self.console = RichConsole()
 
