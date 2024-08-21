@@ -25,6 +25,7 @@ from gcsnap.taxonomy import Taxonomy
 from gcsnap.tm_segments import TMsegments
 from gcsnap.figures import Figures
 from gcsnap.utils import CustomLogger
+from gcsnap.parallel_tools import ParallelTools
 
 def main():
     """
@@ -70,6 +71,9 @@ def main():
     targets.run()
     t_parse.stop()
 
+    # Start parallel processing
+    parallel = ParallelTools(config)
+
     # C. Iterate over each element in target list
     # each element is a dictionary with the label as key and the list of targets as value
     for out_label in targets.get_targets_dict():
@@ -98,7 +102,7 @@ def main():
         # Datastructure to store all information
         gc = GenomicContext(config, out_label)
         # add targets to genomic context
-        gc.targets = targets_list        
+        gc.curr_targets = targets_list        
 
 
         #  2. Block 'Collect'

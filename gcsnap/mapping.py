@@ -13,9 +13,9 @@ from dask_jobqueue import SLURMCluster
 
 from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole
-from gcsnap.utils import daskprocess_wrapper
+from gcsnap.utils import process_wrapper
 from gcsnap.uniprot_dbs_dict import UniprotDict
-from gcsnap.slurm_control import SLURMcontrol
+from gcsnap.db_handler_uniprot_mappings import UniprotMappingsDBHandler
 
 
 import logging

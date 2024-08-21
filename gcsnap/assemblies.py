@@ -275,7 +275,7 @@ class Assemblies:
         """        
          # line numbers where different scaffolds (sequence regions) start
         scaffold_positions = [0] + [index for index, val in enumerate(lines) if 
-                            val.startswith('##sequence-region')] + [len(lines)]   
+                            val.startswith('##sequence-region')] + [len(lines)-1]   
              
         # line number of target
         target_position = [index for index, val in enumerate(lines) if target_ncbi_code in val]
