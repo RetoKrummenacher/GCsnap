@@ -46,7 +46,7 @@ cd GCsnap
 git checkout gcsnap2desktop
 
 # To install
-conda create -n GCsnap -c conda-forge -c bioconda gcc=14.1 python=3.11 mmseqs2
+conda create -n GCsnap -c conda-forge -c bioconda gcc=14.1 mpich=4.2.2 python=3.11 mmseqs2
 conda activate GCsnap
 pip install .
 ```

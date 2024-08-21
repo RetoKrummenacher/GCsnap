@@ -71,7 +71,7 @@ def main():
     targets.run()
     t_parse.stop()
 
-    # Start parallel processing
+    # Initialize parallel processes. When Dask is requested, the cluster is set up here.
     parallel = ParallelTools(config)
 
     # C. Iterate over each element in target list
