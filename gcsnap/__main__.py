@@ -216,6 +216,7 @@ def main():
         # # copy log file to working direcotry
         # shutil.copy(os.path.join(starting_directory,'gcsnap.log'), os.getcwd())
 
+    parallel.close_cluster()
     t_all.stop()
     timing.to_csv('timing.csv')
     console.print_final()
