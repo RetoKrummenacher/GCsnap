@@ -46,7 +46,6 @@ class Operons:
             out_label (str): The label of the output.
         """        
         self.config = config
-        self.cores = config.arguments['n_cpu']['value']
         self.advanced = config.arguments['operon_cluster_advanced']['value']
         self.max_freq = config.arguments['max_family_freq']['value']
         self.min_freq = config.arguments['min_family_freq']['value']
