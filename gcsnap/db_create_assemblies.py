@@ -57,9 +57,7 @@ def print_assemblies(assemblies: list[str]) -> None:
 
 def create_dbs(path: str, n_processes: int) -> None:    
     # where to create the databases
-    db_dir = os.path.join(path, 'ncbi_db')        
-    if not os.path.isdir(db_dir):
-        os.mkdir(db_dir)
+    db_dir = os.path.join(path, 'db')        
         
     # open assembly database handler and create tables
     asse_db_handler = AssembliesDBHandler(db_dir, 'assemblies.db')
@@ -137,12 +135,8 @@ if __name__ == "__main__":
    
     n_processes = int(sys.argv[1])
     # n_processes = 10
-    
-    # set out path
-    if os.name == 'nt':  # Windows
-        path = r'C:\MT\data'
-    else:  # Linux sciCORE
-        path = '/scicore/home/schwede/GROUP/gcsnap_db'
+
+    path = '/scicore/home/schwede/GROUP/gcsnap_db'
             
     st = time.time()
     n_assemblies, n_sequences, n_unique = create_dbs(path, n_processes)

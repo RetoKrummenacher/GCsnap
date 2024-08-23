@@ -1,17 +1,13 @@
 import os
 import gzip # to work with .gz
-import urllib.request
-import time
 
 from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole
 from gcsnap.genomic_context import GenomicContext
 from gcsnap.db_handler_assemblies import AssembliesDBHandler
+from gcsnap.parallel_tools import ParallelTools
 
-from gcsnap.utils import daskprocess_wrapper
 from gcsnap.utils import split_list_chunks
-from gcsnap.utils import CustomLogger
-from gcsnap.utils import processpool_wrapper
 from gcsnap.utils import WarningToLog
 
 import logging
@@ -19,21 +15,36 @@ logger = logging.getLogger('iteration')
 
 class Assemblies:    
     """
-    Methods and attributes to download and parse flanking genes given NCBI codes.
+    Methods and attributes to query assembly accession and infos from database
+    and parse flanking genes.
+    They are stored in a structure like:
+        data-path as defined in config.yaml or via CLI
+        ├── genbank
+        │   └── data
+        │       └── GCA_000001405.15_genomic.gff.gz
+        ├── refseq
+        │   └── data
+        │       └── GCF_000001405.38_genomic.gff.gz
+        ├── db
+        │   └── assemblies.db
+        │   └── mappings.db
+        │   └── sequences.db
 
     Attributes:
-        cores (int): Number of cores to use for parallel processing.
+        n_nodes (int): Number of nodes to use for parallel processing.
+        n_cpu (int): Number of CPUs per node to use for parallel processing.
+        n_work_chunks (int): Number of chunks to split the work into.
         n_flanking5 (int): Number of flanking genes to extract at the 5' end of target.
         n_flanking3 (int): Number of flanking genes to extract at the 3' end of target.
         exclude_partial (bool): Exclude partial genomic blocks.
+        database_path (str): Path to directory containing the database.
+        data_path (str): Path to the parent directory with the assembly files folders for genbank and refseq.
         config (Configuration): Configuration object.
         console (RichConsole): Console object.
-        assembly_dir (str): Path to store assembly summaries.
         targets_and_ncbi_codes (list): List of tuples with target and ncbi code.
-        accessions (dict): Dictionary with ncbi codes and assembly accessions.
     """
 
-    def __init__(self, config: Configuration, mappings: list[tuple[str,str]], data_path: str) -> None:                     
+    def __init__(self, config: Configuration, mappings: list[tuple[str,str]]) -> None:                     
         """
         Initialize the Assemblies object.
 
@@ -42,20 +53,17 @@ class Assemblies:
             mappings (list[tuple[str,str]]): Contains the target and its ncbi code.
         """        
         # get necessary configuration arguments        
-        self.cores = config.arguments['n_cpu']['value'] 
+        self.n_nodes = config.arguments['n_nodes']['value']
+        self.n_cpu = config.arguments['n_cpu_per_node']['value']
+        self.n_work_chunks = config.arguments['n_work_chunks']['value']
         self.n_flanking5 = config.arguments['n_flanking5']['value']  
         self.n_flanking3 = config.arguments['n_flanking3']['value']
-        self.exclude_partial = config.arguments['exclude_partial']['value'] 
+        self.exclude_partial = config.arguments['exclude_partial']['value']
+        self.database_path = os.path.join(config.arguments['data_path']['value'],'db') 
+        self.data_path = os.path.join(config.arguments['data_path']['value']) 
         self.config = config
 
-        self.data_path = '/scicore/home/schwede/GROUP/gcsnap_db/'
-
         self.console = RichConsole()
-
-        # set path to store assembly summaries
-        parent_path = os.path.dirname(os.getcwd())
-        self.assembly_dir = os.path.join(parent_path,'data','assemblies')
-        self.create_folder()
 
         # input list with [(target, ncbi_code)]
         self.targets_and_ncbi_codes = mappings
@@ -73,15 +81,16 @@ class Assemblies:
         """
         Run the process to query information from DB and extract flanking genes for the targets:
             - Split into chunks and start parallel execution.
-        Uses parallel processing with the daskprocess_wrapper from utils.py
+        Uses parallel processing with the parallel_wrapper from ParallelTools. 
         """        
         # split input into chunks
         # we don't want to have only as many chunks as processes to have better load
         # balance as the assembly files are very different in size
-        parallel_args = split_list_chunks(self.targets_and_ncbi_codes, self.cores * 5)
+        # this is acutally set arbitrarily
+        parallel_args = split_list_chunks(self.targets_and_ncbi_codes, self.n_work_chunks)
 
         with self.console.status('Download assemblies and extract flanking genes'):
-            dict_list = daskprocess_wrapper(self.cores, self.targets_and_ncbi_codes, self.run_each)
+            dict_list = ParallelTools.parallel_wrapper(parallel_args, self.run_each)
             # combine results
             self.flanking_genes = {k: v for d in dict_list for k, v in d.items() 
                                    if v.get('flanking_genes') is not None}
@@ -94,12 +103,12 @@ class Assemblies:
             msg = 'No flanking genes found for any target sequence. Continuing is not possible.'
             self.console.stop_execution(msg = msg)
 
-    def run_each(self, args: tuple[str,str]) -> dict[str, dict]:
+    def run_each(self, args: list[tuple[str,str]]) -> dict[str, dict]:
         """
         Called in parallel and is doing:
             - Get assembly accessions from database.
             - Get assembly urls, species and tax ID from database.
-            - Extract flanking genes from files.
+            - Extract flanking genes from files.           
 
         Args:
             args (list[tuple[str,str]]): List of tuples with the target and its ncbi code.
@@ -121,12 +130,7 @@ class Assemblies:
             # merge them to results
             flanking_genes |= self.read_and_parse_assembly(element)
 
-    def create_folder(self) -> None:        
-        """
-        Create the folder to store the assembly summaries.
-        """          
-        if not os.path.exists(self.assembly_dir):
-            os.makedirs(self.assembly_dir)
+        return flanking_genes
 
     def read_and_parse_assembly(self, element: tuple[str,str,str,str,str,str]) -> dict:
         """
@@ -139,23 +143,28 @@ class Assemblies:
             dict: The flanking genes information for the target.
         """        
         target, ncbi_code, accession, url, taxid, species = element
+        
         try:
             assembly_path = self.get_gz_path(url)
             lines = self.read_gz_file(assembly_path)
             flanking_genes = self.parse_assembly(ncbi_code, lines)
+
             # add species and taxid to flanking genes
             flanking_genes['species'] = species
             flanking_genes['taxID'] = taxid
+            # add spicies again to syntenies
             return {target: {'flanking_genes': flanking_genes,
-                             'assembly_id':  [ncbi_code, accession, url]}}   
+                             'assembly_id':  [ncbi_code, accession, url],
+                             'species': species}}   
         except WarningToLog as e:
             # return None for flanking genes and message, logged later
             return {target: {'flanking_genes': None,
                              'msg': str(e)}}
-
+    
     def get_assembly_accessions(self, target_tuples : list[tuple[str,str]]) -> list[tuple[str,str,str]]:
         """
         Query the assembly accession for the ncbi codes from the database.
+        Those are added to each input tuples.
 
         Args:
             target_tuples (list[tuple[str,str]]): List of tuples with the target and its ncbi code.
@@ -167,7 +176,7 @@ class Assemblies:
         ncbi_codes = [element[1] for element in target_tuples]
 
         # select from database
-        assembly_db = AssembliesDBHandler(os.path.join(self.data_path,'ncbi_db'))
+        assembly_db = AssembliesDBHandler(os.path.join(self.database_path))
         # get the assemblies accession for the ncbi codes (from default table 'mapping')
         result_tuples = assembly_db.select(ncbi_codes)
 
@@ -175,19 +184,20 @@ class Assemblies:
         return [(target, ncbi, accession) for target, ncbi in target_tuples 
                             for result_ncbi, accession in result_tuples if ncbi == result_ncbi]
     
-    def get_assembly_info(self, target_tuples: list[tuple[str,str,str]]) -> list[tuple]:
+    def get_assembly_info(self, target_tuples: list[tuple[str,str,str]]) -> list[tuple[str,str,str,str,str,str]]:
         """
         Query the assembly urls, taxid and species for the assembly accessions from the database.
+        Those are added to each input tuples.
 
         Args:
             target_tuples (list[tuple[str,str,str]]): List of tuples with the target, ncbi code and assembly accession.
 
         Returns:
-            list[tuple]: List of tuples with the target, ncbi code, assembly accession, url, taxid and species.
+            list[tuple[str,str,str,str,str,str]]: List of tuples with the target, ncbi code, assembly accession, url, taxid and species.
         """        
         assembly_accessions = [element[2] for element in target_tuples]
 
-        assembly_db = AssembliesDBHandler(os.path.join(self.data_path,'ncbi_db'))
+        assembly_db = AssembliesDBHandler(os.path.join(self.database_path))
         # get the url and taxid and the species name for the assembly accessions
         result_tuples = assembly_db.select(assembly_accessions, table = 'assemblies')
 
@@ -199,7 +209,7 @@ class Assemblies:
     
     def get_gz_path(self, url: str) -> str:
         """
-        Determin the path on the cluster to the assembly file.
+        Determin the path to the assembly files.
 
         Args:
             url (str): The url of the assembly file as stored in the database.
@@ -214,7 +224,7 @@ class Assemblies:
             db = 'genbank'
         else:
             db = 'refseq'
-        return os.path.join('/scicore/home/schwede/GROUP/gcsnap_db/',db,'data')
+        return os.path.join(self.data_path, db, 'data', ass_file)
    
     def read_gz_file(self, file_path: str) -> list:
         """
@@ -232,14 +242,6 @@ class Assemblies:
             return content.splitlines()   
         except FileNotFoundError:
             raise WarningToLog('File {} not found'.format(file_path))             
-                
-    def delete_assemblies(self) -> None:
-        """
-        Delete the assembly files in the assembly directory.
-        """        
-        for filename in os.listdir(self.assembly_dir):
-            file_path = os.path.join(self.assembly_dir, filename)
-            os.remove(file_path)
 
     def parse_assembly(self, ncbi_code: str, lines: list) -> dict:
         """

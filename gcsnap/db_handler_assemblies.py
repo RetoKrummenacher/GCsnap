@@ -2,7 +2,7 @@ import os
 import sqlite3
 
 class AssembliesDBHandler:
-    def __init__(self, db_path: str ,db_name: str ='assemblies.db'):
+    def __init__(self, db_path: str ,db_name: str = 'assemblies.db'):
         self.db = os.path.join(db_path, db_name)
         self.db_name = db_name
         
