@@ -1,19 +1,31 @@
-from gcsnap.sequence_mapping import SequenceMapping
+import json
+import os
+import requests
+
+from gcsnap.mapping import SequenceMapping
 from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole
 from gcsnap.genomic_context import GenomicContext
-from gcsnap.apis import SwissProtAPI, AlphaFoldAPI, EbiAPI
+from gcsnap.parallel_tools import ParallelTools
 
-from gcsnap.utils import processpool_wrapper
 from gcsnap.utils import split_dict_chunks, split_list_chunks
 
 class FamiliesFunctionsStructures:
     """ 
     Methods and attributes to get the functional annotations and structures of the families.
+    Here we do not have data locally. Hence, the annotations are taken from a specified File.
+   
+    Out idea is to create those via the EBI API, but this is not executed yet.
+    Each annotation file contains 1 uniprot annotations and is named with the uniprot accession!
+    The code to get all the files is at the bottom based on the EBI API from GCsnap2.0 Desktop
+    Once all files or many are downloade, we use those files to get the functional annotations.
+
+    For the 3D strucutre, we just combine the SWISS-MODEL URL with the UniProt Code.
+    There is no verification, that the model exists!!
     
     Attributes:
         config (Configuration): The Configuration object containing the arguments.
-        cores (int): The number of CPU cores to use.
+        n_work_chunks (int): The number of work chunks for parallel processing.
         get_pdb (bool): The flag to get the PDB structures.
         get_annotations (bool): The flag to get the functional annotations.
         families (dict): The dictionary with the families and their members.
@@ -30,10 +42,15 @@ class FamiliesFunctionsStructures:
             gc (GenomicContext): The GenomicContext object containing all genomic context information.
         """        
         self.config = config
-        self.cores = config.arguments['n_cpu']['value']
+        self.n_work_chunks = config.arguments['n_work_chunks']['value']
         self.get_pdb = config.arguments['get_pdb']['value']
-        self.get_annotations = config.arguments['get_functional_annotations']['value']
+        self.annotation_files_path = config.arguments['functional_annotation_file_path']['value']        
         self.annotations_and_structures = {}
+
+        if self.annotation_files_path is not None:
+            self.get_annotation = True
+        else:
+            self.get_annotation = False
 
         # set parameters
         self.families = gc.get_families()
@@ -48,20 +65,21 @@ class FamiliesFunctionsStructures:
             dict: The dictionary with the functional annotations and structures.
         """        
         return self.annotations_and_structures
-    
+
+
     def run(self) -> None:
         """
         Run the retrieval of the functional annotations and structures:
             - Map every family member to UniProtKB-AC.
             - Request all annotation information from EbiAPI in parallel.
             - Extract the functional annotations and structures for each family in parallel.
-        Usese parallel processing with the processpool_wrapper from utils.py.
+        Uses parallel processing with the parallel_wrapper from ParallelTools. 
         Only done when conserved families were found.
         """        
         if (list(self.families.keys()) == [0] or list(self.families.keys()) == [1] or
                     list(self.families.keys()) == [-1, 0]):
             self.console.print_warning('No conserved family found and no functional annotation possible')
-        elif self.get_pdb or self.get_annotations:
+        elif self.get_pdb or self.get_annotation:
             self.console.print_step('Functional annotation needs mapping first')
             # find all family members
             # always exclude non-conserved families and pseudogenes as uniprot mapping
@@ -70,49 +88,26 @@ class FamiliesFunctionsStructures:
                            if 0 < family]
             
             # map all members to UniProtKB-AC
-            mapping = SequenceMapping(self.config, all_members, 
-                                            'UniProtKB-AC', 'family members')
+            mapping = SequenceMapping(self.config, all_members)
             mapping.run()
-            mapping_dict = mapping.get_target_to_result_dict()
+            mapping_dict = mapping.get_target_to_result_dict('UniProtKB-AC')
             mapping.log_failed()
 
-            # request all annotation information from EbiAPI for all members with uniprot code
-            uniprot_codes = [mapping_dict.get(member,'nan') for member in all_members]
-            
-            # split them into chunks of at most 90 (limit is at most 100)
-            n_chunks = len(uniprot_codes) // 90 + 1
-            parallel_args = split_list_chunks(uniprot_codes, n_chunks)
-            with self.console.status('Get functional annotation from EBI'):
-                result_list = processpool_wrapper(self.cores, parallel_args, self.run_get_functional_annotations)
-                # combine results
-                all_uniprot_data = {k: v for dict_ in result_list for k, v in dict_.items()}
+            # get all found uniprot codes
+            split_families = split_dict_chunks(self.families, self.n_work_chunks)
 
-            # TODO: Ask what we actually report in plots (ressources meaning cores)
-            # As GCsnap1 uses threads (mostly as many as there are targets)
-            # GCsnap2.0 uses processes sometimes more than families like here Version2
-            # but for mapping as manny as there are sequence ID standards
-
-            # # Version 1: Parallel processing with chunks
-            # # split the dictionary into chunks
-            # dict_list = split_dict_chunks(self.families, self.cores)
-            # # create parallel arguments
-            # parallel_args = [(dict_, mapping_dict, all_uniprot_data, self.get_pdb, self.get_annotations) 
-            #                  for dict_ in dict_list]
-            
-            # Version 2: Parallel processing each family
-            # As this relieas on APIs, we try to minimies load imbalance not
-            # know apriori how long each family will take (as depends on the number of members)
-            parallel_args = [({k: v}, mapping_dict, all_uniprot_data, self.get_pdb, self.get_annotations)
-                             for k,v in self.families.items()]
+            # create parallel args with 4 items
+            parallel_args = [(family, mapping_dict , self.get_pdb, self.get_annotation) 
+                             for family in split_families],
 
             with self.console.status('Get functional annotations and structures'):
-                result_list = processpool_wrapper(self.cores, parallel_args, self.run_each)
+                result_list = ParallelTools.parallel_wrapper(parallel_args, self.run_each)
                 # combine results
                 self.annotations_and_structures = {k: v for dict_ in result_list for k, v in dict_.items()}
         else:
             self.console.print_skipped_step('No annotations or structures retrieval requested')
 
-    def run_each(self, args: tuple[dict,dict,dict,bool,bool]) -> dict:
+    def run_each(self, args: tuple[dict,dict,bool,bool]) -> dict:
         """
         Run the retrieval of the functional annotations and structures for each family
         used in parallel processing.
@@ -121,14 +116,13 @@ class FamiliesFunctionsStructures:
             args (tuple[dict,dict,dict,bool,bool]): The arguments for the retrieval.
                 First element is a dictionary with the family and its members.
                 Second element is a dictionary with the mapping of the members to UniProtKB-AC.
-                Third element is a dictionary with the UniProtKB-AC codes and their annotations.
-                Fourth element is a flag to get the PDB structures.
-                Fifth element is a flag to get the functional annotations.
+                Third element is a flag to get the PDB structures.
+                Fourth element is a flag to get the functional annotations.
 
         Returns:
             dict: The dictionary with the family and its members with the functional annotations and structures.
         """        
-        families, mapping_dict, all_uniprot_data, get_pdb, get_annotations = args
+        families, mapping_dict, get_pdb, get_annotations = args
 
         # all families that are not pseudogenes
         # a list of tuples (family, member)
@@ -165,11 +159,16 @@ class FamiliesFunctionsStructures:
                     if (family_uniprot_code == '' or family_structure == '' or 
                         (family_function == '' or family_function['Function_description'] == '')):
                     
-                        if get_pdb and family_structure == '':
+                        if get_pdb and family_structure == '' and uniprot_code != 'nan':
+                            
+                            # this part is the first problem without API access
+                            # it is not possible to check if the model exists
+                            # we just combine the URL with the UniProt code if that exists
+
                             # check either in SwissModel or AlphaFold
-                            curr_pdb = SwissProtAPI.find_uniprot_in_swissmodel(uniprot_code)
+                            curr_pdb = 'https://swissmodel.expasy.org/repository/uniprot/{}'.format(uniprot_code)
                             if 'nan' in curr_pdb:
-                                curr_pdb = AlphaFoldAPI.find_uniprot_in_alphafold_database(uniprot_code)
+                                curr_pdb = 'https://alphafold.ebi.ac.uk/entry/{}'.format(uniprot_code)
 
                             if 'nan' not in curr_pdb:
                                 family_structure = curr_pdb
@@ -180,10 +179,12 @@ class FamiliesFunctionsStructures:
 
                         if (get_annotations and (family_function == {} 
                                                  or family_function['Function_description'] == '')):        
+                            
                             # get functional annotations
                             uniprot_accession = uniprot_code.split('_')[0]
-                            uniprot_data = all_uniprot_data.get(uniprot_accession, {})
-                            curr_uniprot_annotations = EbiAPI.parse_uniprot_data(uniprot_data, 
+                            uniprot_data = self.load_annotation_file(os.path.join(self.annotation_files_path, 
+                                                                                '{}.json'.format(uniprot_accession)))
+                            curr_uniprot_annotations = self.parse_uniprot_data(uniprot_data, 
                                                                     previous_annotations = family_function)
                             if curr_uniprot_annotations != 'nan':
                                 family_function = curr_uniprot_annotations
@@ -200,16 +201,105 @@ class FamiliesFunctionsStructures:
             families[family]['model_state'] = family_model_state
 
         return families
-    
-    def run_get_functional_annotations(self, uniprot_codes: list) -> dict:
-        """
-        Run the retrieval of the functional annotations for a list of UniProtKB-AC codes
-        used in parallel processing.
 
-        Args:
-            uniprot_codes (list): The list of UniProtKB-AC codes.
+    def load_annotation_file(self, file_name: str) -> dict:
+        """
+        Load the annotation file containing the functional annotations and structures.
 
         Returns:
-            dict: The dictionary with the UniProtKB-AC codes and their annotations.
+            dict: The dictionary with the functional annotations and structures.
         """        
-        return EbiAPI.get_uniprot_annotations_batch(uniprot_codes)
+        try:
+            with open(os.path.join(self.annotation_files_path, file_name), 'r') as file:
+                return json.load(file)
+        except FileNotFoundError:
+            return {}
+        
+    def parse_uniprot_data(self, uniprot_data: dict, previous_annotations: dict = {}) -> dict:
+        """
+        Parse the data of a protein from the EBI database and extract annotations.
+
+        Args:
+            uniprot_data (dict): The data of the protein.
+            previous_annotations (dict, optional): Previously found annotations of the protein. Defaults to {}.
+
+        Returns:
+            dict: The annotations of the protein.
+        """        
+        if previous_annotations == {}:
+            uniprot_annotations = {'TM_topology': '', 'GO_terms': [], 'Keywords': [],
+                                   'Function_description': ''}
+        else:
+            uniprot_annotations = previous_annotations
+
+        if 'features' in uniprot_data:
+            for feature in uniprot_data['features']:
+                if feature['type'] == 'TRANSMEM' and uniprot_annotations['TM_topology'] == '':
+                    tm_topology = feature['description']
+
+                    if 'Helical' in tm_topology:
+                        tm_topology = 'alpha-helical'
+                    elif 'Beta' in tm_topology:
+                        tm_topology = 'beta-stranded'
+                    else:
+                        tm_topology = 'transmembrane'
+
+                    uniprot_annotations['TM_topology'] = tm_topology
+
+        if 'dbReferences' in uniprot_data:
+            for dbReference in uniprot_data['dbReferences']:
+                if dbReference['type'] == 'GO':
+                    go_term = dbReference['properties']['term']
+                    if go_term not in uniprot_annotations['GO_terms']:
+                        uniprot_annotations['GO_terms'].append(go_term)
+
+        if 'keywords' in uniprot_data:
+            for keyword in uniprot_data['keywords']:
+                keyword_term = keyword['value']
+                if (keyword_term not in uniprot_annotations['Keywords'] 
+                    and keyword_term != 'Reference proteome'):
+                    uniprot_annotations['Keywords'].append(keyword_term)
+
+        if 'comments' in uniprot_data:
+            for comment in uniprot_data['comments']:
+                if comment['type'] == 'FUNCTION' and uniprot_annotations['Function_description'] == '':
+                    uniprot_annotations['Function_description'] = comment['text'][0]['value']
+
+        return uniprot_annotations            
+    
+    def get_uniprot_annotations_batch(self, uniprot_codes: list):
+        """
+        Template code to get the annotations from the EBI API and store them in files.
+
+        Args:
+            uniprot_codes (list): The list of uniprot codes of the proteins.
+
+        Returns:
+            dict: The annotations of the proteins, either parsed or not.
+        """        
+        uniprot_annotations = {}
+        uniprot_accessions = [code.split('_')[0] for code in uniprot_codes if code != 'nan']
+        # separator is %2C: https://www.ebi.ac.uk/proteins/api/doc/#!/proteins/search
+        # the maximum number of accessions per is 100
+        uniprot_accession_str = '%2C'.join(uniprot_accessions)
+        
+        if uniprot_accession_str:
+            uniprot_link = 'https://www.ebi.ac.uk/proteins/api/proteins?accession={}'.format(uniprot_accession_str)
+            try:
+                # returns a list of results
+                uniprot_req = requests.get(uniprot_link, headers={ "Accept" : "application/json"})
+                if uniprot_req.ok:
+                    uniprot_data = uniprot_req.json()
+                    for data in uniprot_data:
+                        # combine all data without parsing
+                        accession = data.get('accession')
+                        with open(os.path.join(self.annotation_files_path, '{}.json'.format(accession)), 'w') as file:
+                            json.dump(data, file)
+                else:
+                    pass
+            except:
+                pass
+        else:
+            pass
+
+        

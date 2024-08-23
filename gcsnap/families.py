@@ -5,7 +5,7 @@ from gcsnap.rich_console import RichConsole
 from gcsnap.genomic_context import GenomicContext
 from gcsnap.mmseqs_cluster import MMseqsCluster
 
-from gcsnap.utils import processpool_wrapper
+from gcsnap.parallel_tools import ParallelTools
 from gcsnap.utils import split_dict_chunks
 
 class Families:
@@ -14,7 +14,9 @@ class Families:
 
     Attributes:
         config (Configuration): The Configuration object containing the arguments.
-        cores (int): The number of CPU cores to use.
+        n_nodes (int): The number of nodes to use for parallel processing.
+        n_cpu (int): The number of CPUs to use for parallel processing.
+        n_work_chunks (int): The number of chunks to split the workload into.
         out_label (str): The label of the output.
         out_dir (str): The path to store the output.
         gc (GenomicContext): The GenomicContext object containing all genomic context information.
@@ -36,7 +38,9 @@ class Families:
             out_label (str): The label of the output.
         """        
         self.config = config
-        self.cores = config.arguments['n_cpu']['value']
+        self.n_nodes = config.arguments['n_nodes']['value']
+        self.n_cpu = config.arguments['n_cpu_per_node']['value']
+        self.n_work_chunks = config.arguments['n_work_chunks']['value']
 
         # set arguments
         self.out_label = out_label
@@ -78,9 +82,9 @@ class Families:
             # 1. Add the family to the flanking genes
             # do in parallel, however, each needs the self.cluster_list and self.cluster_order
             # is this might be large, we use as many batches as there are cores
-            parallel_args = split_dict_chunks(self.syntenies, self.cores)  
+            parallel_args = split_dict_chunks(self.syntenies, self.n_work_chunks)  
             # a list of tuple[dict, list] is returned
-            result_list = processpool_wrapper(self.cores, parallel_args, self.assign_families)
+            result_list = ParallelTools.parallel_wrapper_wrapper(parallel_args, self.assign_families)
             # combine results
             self.families = {k: v for tup in result_list for k, v in tup[0].items()}
             curr_numbers = [num for tup in result_list for num in tup[1]]
@@ -91,8 +95,8 @@ class Families:
 
             # 2. adapt the families where its outside possible ranges
             parallel_args = [(sub_dict, curr_numbers) 
-                             for sub_dict in split_dict_chunks(self.families, self.cores)] 
-            dict_list = processpool_wrapper(self.cores, parallel_args, self.adapt_families)
+                             for sub_dict in split_dict_chunks(self.families, self.n_work_chunks)] 
+            dict_list = ParallelTools.parallel_wrapper(self.cores, parallel_args, self.adapt_families)
             # combine results
             self.families_adapted = {k: v for sub_dict in dict_list for k, v in sub_dict.items()}  
 
