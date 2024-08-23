@@ -70,6 +70,62 @@ def split_list_chunks(input_list: list, n_chunks: int) -> list[list]:
 
 # ------------------------------------------------------
 """ 
+Various parallelization methods to apply a function to a list of argument tuples in parallel.
+including:
+    - processpool_wrapper: Apply a function to a list of arguments using a process pool.
+"""
+
+from typing import Callable
+from multiprocessing import Pool as ProcessPool
+
+import os
+# supress warning about depracted omp command
+# OMP: Info #276: omp_set_nested routine deprecated, please use omp_set_max_active_levels instead
+# the reasons for this remains unclear, as omp should be up to date as we added gcc=14.1
+# it is for sure caused by multiprocessing, but it is not a problem for the code
+# Moreover, it only shows on certain macOS systems, with the new AMD M1 chip
+# but we won't to avoid the warning as useres can't do anything about it
+os.environ['OMP_DISPLAY_ENV'] = 'FALSE'
+
+def processpool_wrapper(n_processes: int, parallel_args: list[tuple], func: Callable) -> list:       
+    """
+    Apply a function to a list of arguments using a process pool. The arguments are passed as tuples
+    and are unpacked within the function, meaning the function takes only one argument, but a tuple.
+    This allows the use of the map function of the pool which takes only one argument.
+    They are asynchronus, meaning the order of the results is not guaranteed.
+
+    Args:
+        n_processes (int): The number of processes to use.
+        parallel_args (list[tuple]): A list of tuples, where each tuple contains the arguments for the function.
+        func (Callable): The function to apply to the arguments.
+
+    Returns:
+        list: A list of results from the function applied to the arguments in the order they finish.
+    """        
+    pool = ProcessPool(processes = n_processes)
+    
+    # imap and map take just one argument, hence unpacking within function
+    # imap is the lazy version of map,
+    # _unordered is without controlling the result order. (map_async)
+    # multiple arguments use startmap(),
+    # but starmap() and map() may be inefficient with large lists:
+        # https://docs.python.org/3/library/multiprocessing.html#multiprocessing.pool.Pool.map
+    # great explanation about:
+        # https://stackoverflow.com/questions/26520781/multiprocessing-pool-whats-the-difference-between-map-async-and-imap
+        
+    results = pool.map_async(func, parallel_args)
+    
+    pool.close() # close pool for further processes
+    pool.join() # wait until all have finished.
+    
+    result_list = results.get()
+
+    return result_list
+# ------------------------------------------------------
+
+
+# ------------------------------------------------------
+""" 
 Logging within the GCsnap pipeline.
 
 Log desired information to gcnap.log file. The log file is created in the working directory.
