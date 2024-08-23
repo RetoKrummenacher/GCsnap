@@ -3,9 +3,10 @@ import gzip
 import sqlite3
 
 class SequenceDBHandler:
-    def __init__(self, db_path: str ,db_name: str):
+    def __init__(self, db_path: str , db_name: str = 'sequences.db'):
         self.db = os.path.join(db_path, db_name)
         self.db_name = db_name
+        print(self.db)
         
     def create_table(self) -> None:
         self.create_sequence_table()
@@ -64,6 +65,19 @@ class SequenceDBHandler:
         conn.commit()
         conn.close()         
 
+    def batch_update_sequences(self, sequences: list[tuple[str,str]]) -> None:
+        # we need (new_sequence, ncbi_code)   
+        updates = [(sequence[1], sequence[0]) for sequence in sequences]        
+        conn = sqlite3.connect(self.db)
+        cursor = conn.cursor()
+        conn.execute('PRAGMA synchronous = OFF')
+        conn.execute('PRAGMA journal_mode = WAL')
+        # Perform the bulk update using executemany
+        sql = 'UPDATE sequences SET sequence = ? WHERE ncbi_code = ?'
+        cursor.executemany(sql, updates)        
+        conn.commit()
+        conn.close()         
+
     def read_gzip_file(self, file_path: str) -> str:
         with gzip.open(file_path, 'rt', encoding='utf-8') as file:
             content = file.read()
@@ -78,7 +92,8 @@ class SequenceDBHandler:
         sequence_list = []  
         mapping_list = []
         for file_path in file_paths:
-            # accession taken from file name
+            # accession taken from file name: GCF_000247695.1_HetGla_female_1.0_protein.faa.gz
+            # the first two are the accession
             assembly_accession = '_'.join(os.path.basename(file_path).split('_')[:2])
                     
             # read the file in once
@@ -88,8 +103,9 @@ class SequenceDBHandler:
                 lines = self.read_txt_file(file_path)
             
             # parse the lines, the challange, the sequence can be several lines long
-            # make one string of it
-            content = ''.join(lines)
+            # make one string of it with a splitabe character
+            content = '$%'.join(lines)
+            #ORIGINAL WORNG: content = ''.join(lines) --> can't be splitted anymore and the sequence is empty
             # split that string to extract each sequence id
             # EFB12766.1 hypothetical protein PANDA_022614, partial [Ailuropoda melanoleuca]WSDGHLIYYDDQTRQSVEDKVHMPVDCINIRTGHECRGT
             # the first is an empty result
@@ -97,7 +113,7 @@ class SequenceDBHandler:
             
             for entry in entries:
                 # split the info from the acutal sequence str
-                entry_split = entry.split('\n')
+                entry_split = entry.split('$%')
                 sequence = ''.join(entry_split[1:])
                 # split the organism name in []
                 info_split = entry_split[0].split('[') 
@@ -131,7 +147,7 @@ class SequenceDBHandler:
 
         # which records based on ncbi_codes
         records = f"({','.join(['?']*len(ncbi_codes))})" # (?,?,?,?) for each entry in ncbi_code       
-        query = 'SELECT {} FROM sequences WHERE ncbi_code IN {}'.format(select_fields,records)
+        query = 'SELECT {} FROM sequences WHERE ncbi_code IN {}'.format(select_fields, records)
         
         # execute query
         conn = sqlite3.connect(self.db)
@@ -151,6 +167,11 @@ class SequenceDBHandler:
         
         return result
     
+    def select_as_dict(self, ncbi_codes: list[str], return_fields: list[str] = None) -> dict:
+        # get the result as a dictionary
+        result = self.select(ncbi_codes, return_fields)
+        return {record[0]: record[1] for record in result}
+
     def select_number_of_entries(self) -> int:
         conn = sqlite3.connect(self.db)
         cursor = conn.cursor()

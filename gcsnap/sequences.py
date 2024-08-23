@@ -1,23 +1,40 @@
-
+import os
 import json
 
 from gcsnap.rich_console import RichConsole
 from gcsnap.configuration import Configuration
-from gcsnap.entrez_query import EntrezQuery
 from gcsnap.genomic_context import GenomicContext
+from gcsnap.db_handler_sequences import SequenceDBHandler
+from gcsnap.parallel_tools import ParallelTools
+from gcsnap.utils import split_dict_chunks
 
-from gcsnap.utils import processpool_wrapper
 
 class Sequences:
     """ 
     Methods and attributes to get the sequences for the flanking genes of the target genes.
+    They are stored in a structure like:
+        data-path as defined in config.yaml or via CLI
+        ├── genbank
+        │   └── data
+        │       └── GCA_000001405.15_genomic.gff.gz
+        ├── refseq
+        │   └── data
+        │       └── GCF_000001405.38_genomic.gff.gz
+        ├── db
+        │   └── assemblies.db
+        │   └── mappings.db
+        │   └── sequences.db
 
     Attributes:
         config (Configuration): The Configuration object containing the arguments.
-        cores (int): The number of CPU cores to use.
+        n_nodes (int): The number of nodes to use for parallel processing.
+        n_cpu (int): The number of CPUs to use for parallel processing.
+        n_work_chunks (int): The number of chunks to split the workload into.
+        database_path (str): The path to the database.
         gc (GenomicContext): The GenomicContext object containing all genomic context information.
-        sequences (dict): The dictionary with the sequences of the flanking genes.
+        sequences_dict (dict): The dictionary with the sequences of the flanking genes.
         console (RichConsole): The RichConsole object to print messages.
+        sequences (dict): The results dictionary with the flanking genes and their sequences.
     """
 
     def __init__(self, config: Configuration, gc: GenomicContext):
@@ -30,10 +47,15 @@ class Sequences:
         """        
         self.config = config
         # get necessary configuration arguments        
-        self.cores = config.arguments['n_cpu']['value'] 
-
-        # set arguments
+        self.n_nodes = config.arguments['n_nodes']['value']
+        self.n_cpu = config.arguments['n_cpu_per_node']['value']
+        self.n_work_chunks = config.arguments['n_work_chunks']['value']
+        self.database_path = os.path.join(config.arguments['data_path']['value'],'db') 
         self.gc = gc
+
+        # in how many sizes to split the workload
+        # 1 reserved for the main process
+        self.work_split = ((self.n_nodes * self.n_cpu) - 1) * 2
 
         self.console = RichConsole()
 
@@ -44,54 +66,58 @@ class Sequences:
         Returns:
             dict: The dictionary with flanking genes and their sequences.
         """        
-        return self.genomic_context        
+        return self.sequences        
 
     def run(self) -> None:
         """
         Run the assignment of sequences to the flanking genes.
             - Find sequences for all flanking genes.
             - Add sequences, tax id and species name to flanking genes.
-        Uses parallel processing with the processpool_wrapper from utils.py.
+        Uses parallel processing with the parallel_wrapper from ParallelTools.
         """        
-        # Find sequnces for all ncbi codes
-        self.find_sequences(self.gc.get_all_ncbi_codes())
+        # Get syntenies
+        syntneies = self.gc.get_syntenies()
 
-        # Prepare a list of tuples (target, dict_for_target)
-        # here each process gets one target: {} combination
-        # henve we have many different processes
-        parallel_args = self.gc.get_syntenies_key_value_list()
+        # extract target and neeeded flanking genes ncbi codes
+        part_syntenies = {k: v['flanking_genes']['ncbi_codes'] for k, v in syntneies.items()}
+        # split into chunks
+        parallel_args = split_dict_chunks(part_syntenies , self.n_work_chunks)
 
         with self.console.status('Add sequences, tax id and species name to flanking genes'):
-            dict_list = processpool_wrapper(self.cores, parallel_args, self.run_each)
+            dict_list = ParallelTools.parallel_wrapper(parallel_args, self.run_each)
             # combine results
-            self.genomic_context = {k: v for d in dict_list for k, v in d.items()}
+            self.sequences = {k: v for d in dict_list for k, v in d.items()}
 
-    def run_each(self, args: tuple[str,dict]) -> dict:
+    def run_each(self, args: list[dict]) -> dict:
         """
         Run the assignment of sequences to the flanking genes for one target used
         in parallel processing.
 
         Args:
-            args (tuple[str,dict]): The arguments for the sequence assignment.
-                First element is the target gene.
-                Second element is the dictionary with the flanking genes of the target gene.
+            args (tuple[dict]): The arguments for the sequence assignment.
+                The dictionary with the flanking gene information
 
         Returns:
             dict: The dictionary with the flanking genes and their sequences.
         """        
-        target, content_dict = args
-        # update flanking genes with sequence
-        sequences = [self.get_sequence(ncbi_code) for ncbi_code in content_dict['flanking_genes']['ncbi_codes']]
-        content_dict['flanking_genes']['sequences'] = sequences
+        part_syntenies = args
 
-        # add species and taxid for target_ncbi code (first one in the list)
-        target_ncbi = content_dict['assembly_id'][0]
-        # species in contained twice in the dict
-        content_dict['flanking_genes']['species'] = self.get_species(target_ncbi)
-        content_dict['species'] = content_dict['flanking_genes']['species']
-        content_dict['flanking_genes']['taxID'] = self.get_taxid(target_ncbi)
+        # get all ncbi codes
+        ncbi_codes = [ncbi_code for content_dict in part_syntenies.values() 
+                      for ncbi_code in content_dict['flanking_genes']['ncbi_codes']]
 
-        return {target: content_dict}
+        # get from database
+        self.find_sequences(ncbi_codes)
+
+        # adapt syntenies
+        for target, content_dict in part_syntenies.items():
+            # update flanking genes with sequence
+            # update flanking genes with sequence
+            sequence_list = [self.get_sequence(ncbi_code) for ncbi_code in content_dict['flanking_genes']['ncbi_codes']]
+            content_dict['flanking_genes']['sequences'] = sequence_list
+            part_syntenies |= {target: content_dict}
+
+        return part_syntenies
 
     def find_sequences(self, ncbi_codes: list) -> None:
         """
@@ -100,12 +126,9 @@ class Sequences:
         Args:
             ncbi_codes (list): The list of NCBI codes to find sequences for.
         """        
-        # get the information for all ncbi codes
-        # Noteworthy: While for accessions there were at most as many series as targets
-        # here it is done for all flanking genes (1 + n_flanking_3 + n_flanking_5)
-        entrez = EntrezQuery(self.config, ncbi_codes, db='protein', rettype='fasta', 
-                             retmode='xml', logging=True)
-        self.sequences = entrez.run()
+        # select from database
+        sequences_db = SequenceDBHandler(os.path.join(self.database_path))
+        self.sequences_dict = sequences_db.select_as_dict(ncbi_codes)
 
     def get_sequence(self, ncbi_code: str) -> str:
         """
@@ -118,32 +141,7 @@ class Sequences:
         Returns:
             str: The sequence for the NCBI code.
         """        
-        entry = self.sequences.get(ncbi_code, {})        
+        entry = self.sequences_dict.get(ncbi_code, {})        
         return entry.get('seq', 'FAKESEQUENCEFAKESEQUENCEFAKESEQUENCEFAKESEQUENCE')
 
-    def get_taxid(self, ncbi_code: str) -> str:
-        """
-        Get the tax id for a ncbi code.
-
-        Args:
-            ncbi_code (str): The NCBI code.
-
-        Returns:
-            str: The tax id for the NCBI code.
-        """        
-        entry = self.sequences.get(ncbi_code, {})        
-        return entry.get('taxid','')
-    
-    def get_species(self, ncbi_code: str) -> str:
-        """
-        Get the species name for a ncbi code.
-
-        Args:
-            ncbi_code (str): The NCBI code.
-
-        Returns:
-            str: The species name for the NCBI code.
-        """        
-        entry = self.sequences.get(ncbi_code, {})        
-        return entry.get('species','')    
     
