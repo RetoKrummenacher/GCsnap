@@ -56,9 +56,23 @@ class UniprotMappingsDBHandler:
         self.enable_indices()        
         conn = sqlite3.connect(self.db)
         cursor = conn.cursor()
-        cursor.execute('REINDEX mappings')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_UniProtKB_AC ON mappings (UniProtKB_AC)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_UniProtKB_ID ON mappings (UniProtKB_ID)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_GeneID ON mappings (GeneID)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_RefSeq ON mappings (RefSeq)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_UniParc ON mappings (UniParc)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_EMBL_CDS ON mappings (EMBL_CDS)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_Ensembl ON mappings (Ensembl)')
         conn.commit()
         conn.close()       
+
+    def reindex_column(self, field: str) -> None:
+        self.enable_indices()        
+        conn = sqlite3.connect(self.db)
+        cursor = conn.cursor()
+        cursor.execute(f'CREATE INDEX IF NOT EXISTS idx_{field} ON mappings ({field})')
+        conn.commit()
+        conn.close()
 
     def batch_insert_mappings(self, mappings: list[tuple[str]]) -> None:
         self.disable_indices()

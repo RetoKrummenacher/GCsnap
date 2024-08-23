@@ -43,18 +43,13 @@ def create_dbs(path: str) -> None:
     print('Creating Uniprot mappings database...')
     sys.stdout.flush()  # Flush stdout to ensure output is captured
 
-    st1 = time.time()
-    # where to create the databases
-    db_dir = os.path.join(path, 'mappings')        
-    if not os.path.isdir(db_dir):
-        os.mkdir(db_dir)
-        
+    st1 = time.time()        
     # open database handler and create tables
-    mapping_db_handler = UniprotMappingsDBHandler(db_dir, 'uniprot_mappings.db')
+    mapping_db_handler = UniprotMappingsDBHandler(path, 'db', 'uniprot_mappings.db')
     mapping_db_handler.create_tables()
     
     # read raw file
-    mappings_df = read_uniprot_mappings(os.path.join(db_dir,'idmapping_selected.tab'))
+    mappings_df = read_uniprot_mappings(os.path.join(path, 'mappings','idmapping_selected.tab'))
 
     elapsed_time = time.time() - st1
     formatted_time = str(datetime.timedelta(seconds=round(elapsed_time)))    
@@ -99,12 +94,7 @@ def create_dbs(path: str) -> None:
     print('Index created in {}'.format(formatted_time))        
 
 if __name__ == "__main__":    
-   
-    # set out path
-    if os.name == 'nt':  # Windows
-        path = r'C:\MT\data'
-    else:  # Linux sciCORE
-        path = '/scicore/home/schwede/GROUP/gcsnap_db'
+    path = '/scicore/home/schwede/GROUP/gcsnap_db'
             
     st = time.time()
     create_dbs(path)

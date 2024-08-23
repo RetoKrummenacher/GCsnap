@@ -1,31 +1,33 @@
 import pandas as pd
 import numpy as np
 import os
-import glob
-# pip install pypdl
-from pypdl import Pypdl
-import gzip
-import shutil
-
-import dask.dataframe as dd
-from dask.distributed import LocalCluster, Client
-from dask_jobqueue import SLURMCluster
 
 from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole
-from gcsnap.parallel_tools import parallel_wrapper
+from gcsnap.parallel_tools import ParallelTools
 from gcsnap.uniprot_dbs_dict import UniprotDict
 from gcsnap.db_handler_uniprot_mappings import UniprotMappingsDBHandler
 
-
 import logging
-logger = logging.getLogger(__name__) # inherits configuration from main logger
+logger = logging.getLogger('iteration')
 
 class SequenceMapping:
     """ 
     Methods and attributes to extract the target sequences from the mapping database.
     The resulting DataFrame is the base to map targets to other types and also
     retrieve the Taxonomy ID and the PDB ID.
+        They are stored in a structure like:
+        data-path as defined in config.yaml or via CLI
+        ├── genbank
+        │   └── data
+        │       └── GCA_000001405.15_genomic.gff.gz
+        ├── refseq
+        │   └── data
+        │       └── GCF_000001405.38_genomic.gff.gz
+        ├── db
+        │   └── assemblies.db
+        │   └── mappings.db
+        │   └── sequences.db
 
     Attributes:
         config (Configuration): The Configuration object containing the arguments.
@@ -34,6 +36,8 @@ class SequenceMapping:
         console (RichConsole): The RichConsole object to print messages.
         uniprot_dict (dict): The dictionary with the identifiers standard information and the target sequences.
         mapping_df (pd.DataFrame): The DataFrame with the mapping results.
+        supported (list): The list of supported databases.
+        target_types (list): The list of target types.
     """
 
     def __init__(self, config: Configuration, target_list: list):
@@ -50,7 +54,7 @@ class SequenceMapping:
         self.config = config
 
         # extract needed values from config
-        self.data_path = config.arguments['data_path']['value']        
+        self.database_path = os.path.join(config.arguments['data_path']['value'],'db')        
         self.console = RichConsole()
 
     def run(self):
@@ -60,16 +64,16 @@ class SequenceMapping:
             - Create the parallel input for the mapping.
             - Run the mapping.
             - Finalize the mapping.
-        Uses parallel processing with processpool_wrapper from utils.py.
+        Uses parallel processing with the parallel_wrapper from ParallelTools. 
         """        
         with self.console.status('Mapping'):
             self.create_uniprot_dbs_with_targets()
             parallel_args = self.create_parallel_input()
-            mapping_df_list = processpool_wrapper(self.cores, parallel_args, self.do_mapping)
+            mapping_df_list = ParallelTools.parallel_wrapper(parallel_args, self.do_mapping)
             # concatenate all mapping dfs to one
             self.mapping_df = pd.concat(mapping_df_list, ignore_index=True)
             # add target column
-            self.add_target_column()
+            self.finalize()
 
     def finalize(self): 
         """
@@ -84,10 +88,9 @@ class SequenceMapping:
         self.log_failed_finalize()
 
         # write dataframe to csv file
-        self.mapping_df.to_csv('mapping.csv', index=False) 
-        self.console.print_done('All mapping done. Table saved to mapping.csv')
+        #self.mapping_df.to_csv('mapping.csv', index=False) 
     
-    def get_codes(self, id_type: str = None) -> list:
+    def get_codes(self, id_type: str) -> list:
         """
         Get the list of codes from the mapping DataFrame.
 
@@ -96,21 +99,8 @@ class SequenceMapping:
 
         Returns:
             list: The list of codes.
-        """        
-        if id_type is None:
-            id_type = self.to_type        
+        """           
         return self.mapping_df[id_type].dropna().tolist()
-    
-    def get_target_to_result_dict(self) -> dict:
-        """
-        Get a dictionary with the target sequences as keys and the mapped results as values.
-
-        Returns:
-            dict: The dictionary with the target sequences and the mapped results.
-        """        
-        df = self.mapping_df[(self.mapping_df['target'].notna()) &
-                              (self.mapping_df[self.to_type].notna())] 
-        return df.set_index('target')[self.to_type].to_dict()
     
     def get_targets_and_ncbi_codes(self) -> list[tuple]:
         """
@@ -123,6 +113,17 @@ class SequenceMapping:
         df = self.mapping_df[(self.mapping_df['target'].notna()) &
                               (self.mapping_df['ncbi_code'].notna())]        
         return list(zip(df['target'], df['ncbi_code']))
+    
+    def get_target_to_result_dict(self, id_type: str) -> dict:
+        """
+        Get a dictionary with the target sequences as keys and the mapped results as values.
+
+        Returns:
+            dict: The dictionary with the target sequences and the mapped results.
+        """        
+        df = self.mapping_df[(self.mapping_df['target'].notna()) &
+                              (self.mapping_df[id_type].notna())] 
+        return df.set_index('target')[id_type].to_dict()    
            
     def create_uniprot_dbs_with_targets(self) -> None:
         """
@@ -135,12 +136,10 @@ class SequenceMapping:
         self.target_types = uniprot_dict.get_target_types()
         self.uniprot_dict = uniprot_dict.get_uniprot_dict()
 
-    def create_parallel_input(self, api_limit: int = 1000) -> list[tuple]:
+    def create_parallel_input(self, api_limit: int = 5000) -> list[tuple]:
         """
-        Create the parallel input for the mapping of target sequences to the specified database.
-
-        Args:
-            api_limit (int, optional): The API limit for the number of IDs to map. Defaults to 1000.
+        Create the parallel input for the mapping of target sequences from the
+        correct database column.
 
         Returns:
             list[tuple]: The list of tuples with the parallel input arguments.
@@ -148,28 +147,26 @@ class SequenceMapping:
         parallel_input_args = []
 
         # 1. Create a parallel workload for each uniprot type
-        # This assures that we can do all of the same type with one request
+        # This assures that we can do all of the same type with one query
         for key, values in self.uniprot_dict.items():
             if len(values['targets']) != 0:
-                from_type = key
+                # we used underscores in the database names, but the keys are with dashes
+                key = key.replace('-', '_')
                 ids = values['targets']
-                from_db = values['from_dbs']
-                to_db = self.uniprot_dict[self.to_type]['to_dbs']
                 
-                parallel_input_args.append((ids, from_db, to_db, from_type, self.to_type))
-                
+                parallel_input_args.append((ids, key))
+
         # 2. Split the ids into sublists of more than api_limit
         # This assures that we do not exceed the api limit
         refinded_parallel_input_args = []
         additions = []
         ids_sublists = []
         for parallel_arg in parallel_input_args:
-            ids, from_db, to_db, from_type, _ = parallel_arg    
+            ids , key = parallel_arg    
 
             if len(ids) > api_limit:
                 ids_sublists += self.split_recursive(ids, api_limit)
-                additions += [(sublist, from_db, to_db, from_type, self.to_type)
-                                        for sublist in ids_sublists]
+                additions += [(sublist, key) for sublist in ids_sublists]
             else:
                 refinded_parallel_input_args.append(parallel_arg)
 
@@ -195,133 +192,47 @@ class SequenceMapping:
         
         # Recursive case: split ids into two halves and recursively split each half
         mid = len(ids) // 2
-        return self.split_recursive(ids[:mid], api_limit) + self.split_recursive(ids[mid:], api_limit)         
+        return self.split_recursive(ids[:mid], api_limit) + self.split_recursive(ids[mid:], api_limit)  
 
-    def do_mapping(self, arg: tuple[list,str,str,str,str]) -> pd.DataFrame:
+    def do_mapping(self, arg: tuple[list,str]) -> pd.DataFrame:
         """
         Do the mapping of target sequences to the specified database used
         in the parallel processing:
-            - Run the mapping API.
-            - Extract the mapping from the API results.
-            - Create the mapping DataFrame.
-            - Make the mapping DataFrame unique.
+            - Get mapping from DB
+            - Make the mapping DataFrame unique.         
 
         Args:
-            arg (tuple[list,str,str,str,str]): The tuple with the arguments.
+            arg (tuple[list,str]): The tuple with the arguments.
                 First element is the list of IDs to map.
-                Second element is the database of the id standard to map from.
-                Third element is the database of the id standard to map to.
-                Fourth element is the database id standard to map from.
-                Fifth element is the database id standard to map to.
+                Second element is the field in the mapping database to query.
 
         Returns:
             pd.DataFrame: The DataFrame with the unique mapping results.
         """ 
-        ids, from_db, to_db, from_type, to_type = arg
-        
-        api_results = self.run_mapping_api(ids, from_db, to_db)
-        mapping_extracted = self.extract_mapping_from_api_results(ids, api_results, from_type, to_type)
-        mapping_df = self.create_mapping_df(mapping_extracted)
-        unique_mapping_df = self.make_unique(mapping_df, [from_type], to_type)
+        ids, field = arg
+        mapping_df = self.query_mapping_db(ids, field) 
+        unique_mapping_df = self.make_unique(mapping_df, [field])
         
         return unique_mapping_df
 
-    def run_mapping_api(self, ids: list, from_db: str, to_db: str) -> list:  
+    def query_mapping_db(self, ids: list, field: str) -> pd.DataFrame:
         """
-        Run the mapping of target sequences to the specified database using the UniProt
-        API in uniprot_api.py.
+        Query the mapping database for the target sequences and the specified id standard.
 
         Args:
-            ids (list): The list of IDs to map.
-            from_db (str): The database of the id standard to map from.
-            to_db (str): The database of the id standard to map to.
-
-        Returns:
-            list: The list of mapping results.
-        """        
-        #ids, from_db, to_db, from_type, to_type = arg
-        # call methods from gcsnap.uniprot_api.py
-        job_id = submit_id_mapping(from_db=from_db, to_db=to_db, ids=ids)
-        
-        if check_id_mapping_results_ready(job_id):
-            link = get_id_mapping_results_link(job_id)
-            results = get_id_mapping_results_search(link)['results']
-
-        if isinstance(results, list):
-            return results
-        else:           
-            return None
-
-    def extract_mapping_from_api_results(self, ids: list,  results: list, from_type: str , to_type: str) -> dict:
-        """
-        Extract the mapping results from the API results.
-
-        Args:
-            ids (list): The list of IDs to map.
-            results (list): The list of mapping results.
-            from_type (str): The database of the id standard to map from.
-            to_type (str): The database of the id standard to map to.
-
-        Returns:
-            dict: _description_
-        """        
-        # the UniProt Rest API returns different formats depending on what db is searched
-        # for instance when mapping to EMBL-Genbank, the results is a list with 1 level dict:
-            # [{'from': 'A0A0E3MFP2', 'to': 'AKA75089.1'},
-            # {'from': 'A0A0E3MFP2', 'to': 'AKA77782.1'}]
-        # mapping to UniProtKB returns a list with nested dict:
-            # [{'from': 'P05067', 'to': {'entryType': 'UniProtKB reviewed (Swiss-Prot)', 'primaryAccession': 'P05067', 
-            
-        extracted = {'from_type': from_type,
-                    'to_type': to_type,
-                    'from_id': [],
-                    'to_id': []}
-        
-        if results is None:
-            extracted['from_id'] += ids
-            extracted['to_id'] += [pd.NA] * len(ids)
-            return extracted
-                
-        for result in results:
-            extracted['from_id'].append(result['from'])
-            # get result_id
-            if isinstance(results[0]['to'], dict):
-                extracted['to_id'].append(result['to']['primaryAccession'])
-            else:
-                extracted['to_id'].append(result['to'])
-
-        # fill not found ids with nan
-        not_found_ids = list(set(ids).difference(set(extracted['from_id'])))
-        extracted['from_id'] += not_found_ids
-        extracted['to_id'] += [pd.NA] * len(not_found_ids)
-            
-        return extracted    
-        
-    def create_mapping_df(self, mapping_dict: dict) -> pd.DataFrame:     
-        """
-        Create a DataFrame from the mapping dictionary.
-
-        Args:
-            mapping_dict (dict): The mapping dictionary.
+            ids (list): The list of target sequences.
+            field (str): The database id standard to map from.
 
         Returns:
             pd.DataFrame: The DataFrame with the mapping results.
-        """           
-        id_types =  self.supported
-        mappings = {id_type: [] for id_type in id_types}
-        
-        from_type = mapping_dict['from_type']
-        mappings[from_type] = mapping_dict['from_id']
-        to_type = mapping_dict['to_type']
-        mappings[to_type] = mapping_dict['to_id']
-        
-        # fill all cols with nan
-        for id_type in list(set(id_types).difference(set([from_type,to_type]))):
-            mappings[id_type] += [pd.NA] * len(mapping_dict['from_id'])
-                
-        return pd.DataFrame.from_dict(mappings)
+        """        
+        # get mapping from database
+        db_handler = UniprotMappingsDBHandler(self.database_path)
+        # no return fields specified, so all fields are returned
+        mapping_df = db_handler.fetch_records_as_dataframe(ids, field)
+        return mapping_df
 
-    def make_unique(self, mapping_df: pd.DataFrame, from_type: list, to_type: str) -> pd.DataFrame:
+    def make_unique(self, mapping_df: pd.DataFrame, from_type: list) -> pd.DataFrame:
         """
         Make the mapping DataFrame unique by removing duplicates. If there is a tie of same duplicates,
         select the one with the shorter 'to_type' id.
@@ -336,6 +247,8 @@ class SequenceMapping:
         """        
         # make copy before handling data frame
         df = mapping_df.copy()
+        # tie criterion is shorter UniProtKB-AC
+        to_type = 'UniProtKB_AC'
 
         # add length colum for sorting
         # Rule of thumb, just take the first one for UniParc.            
@@ -371,6 +284,7 @@ class SequenceMapping:
         self.mapping_df['target'] = pd.NA
         for key in self.target_types:
             targets = self.uniprot_dict[key]['targets']
+            key = key.replace('-', '_')            
             # Update the 'target' column with the value from 'key' column where 'key' is in targets
             self.mapping_df.loc[self.mapping_df[key].isin(targets), 'target'] = self.mapping_df[key]
 
@@ -383,7 +297,7 @@ class SequenceMapping:
         # Update 'ncbi_code' with values from 'RefSeq' if not NA, otherwise from 'EMBL-CDS'
         # np.where(condition, x, y) returns x if condition is True, otherwise y
         self.mapping_df['ncbi_code'] = np.where(self.mapping_df['RefSeq'].notna(), 
-                                                self.mapping_df['RefSeq'], self.mapping_df['EMBL-CDS'])
+                                                self.mapping_df['RefSeq'], self.mapping_df['EMBL_CDS'])
 
     def log_failed_finalize(self) -> None:
         """
@@ -392,7 +306,7 @@ class SequenceMapping:
         df = self.mapping_df.copy()
 
         # RefSeqs where no UniProtKB-AC was found
-        ref_no_uniprot = df.loc[(df['RefSeq'].notna()) & (df['UniProtKB-AC'].isna()) ,'target'].to_list()
+        ref_no_uniprot = df.loc[(df['RefSeq'].notna()) & (df['UniProtKB_AC'].isna()) ,'target'].to_list()
         if len(ref_no_uniprot) > 0:
             message = '{} RefSeq ids not mapped to UniProtKB-AC but included in NCBI-Code.'.format(len(ref_no_uniprot))
             self.console.print_warning(message)
@@ -400,10 +314,10 @@ class SequenceMapping:
                 logger.warning(f'Target sequence {id}') 
 
         # those where no UniProtKB-AC was found
-        no_uniprot = df.loc[df['UniProtKB-AC'].isna(), 'target'].to_list()
+        no_uniprot = df.loc[df['UniProtKB_AC'].isna(), 'target'].to_list()
         no_uniprot = list(set(no_uniprot).difference(set(ref_no_uniprot)))
         if len(no_uniprot) > 0:
-            message = '{} ids not mapped to UniProtKB-AC.'.format(len(no_uniprot))
+            message = '{} ids not mapped to UniProtKB_AC.'.format(len(no_uniprot))
             self.console.print_warning(message)
             for id in no_uniprot:
                 logger.warning(f'Target sequence {id}')   
@@ -415,40 +329,4 @@ class SequenceMapping:
             message = '{} ids not mapped to any NCBI-Code (RefSeq or EMBL-CDS).'.format(len(no_ncbi))
             self.console.print_warning(message)
             for id in no_ncbi:
-                logger.warning(f'Target sequence {id}')          
-
-    def log_failed(self) -> None:
-        """
-        Log the failed mappings of target sequences to the specified id standard.
-        """        
-        df = self.mapping_df.copy()
-        no_hits = df.loc[df[self.to_type].isna(), 'target'].to_list()
-        if len(no_hits) > 0:
-            message = '{} ids not mapped to {}.'.format(len(no_hits),self.to_type)
-            self.console.print_warning(message)
-            for id in no_hits:
-                logger.warning(f'Target sequence {id}')            
-
-    def merge_mapping_dfs(self, mapping_df: pd.DataFrame, key_column: str = 'UniProtKB-AC',
-                          columns_to_merge: list = ['EMBL-CDS']) -> pd.DataFrame:
-        """
-        Merge the mapping DataFrames on the key column and update the nan columns 
-        in the first DataFrame with values from the second DataFrame.
-
-        Args:
-            mapping_df (pd.DataFrame): The DataFrame to merge with.
-            key_column (str, optional): The key column to merge on. Defaults to 'UniProtKB-AC'.
-            columns_to_merge (list, optional): The columns to merge. Defaults to ['EMBL-CDS'].
-
-        Returns:
-            pd.DataFrame: The merged DataFrame with all mappings from all id standards.
-        """        
-        # Merge DataFrames on 'UniProtKB-AC'
-        merged_df = pd.merge(self.mapping_df, mapping_df[[key_column] + columns_to_merge], 
-                             on=key_column, how='left', suffixes=('', '_y'))
-        # Update nan columns in df1 with values from df2
-        for col in columns_to_merge:
-            merged_df[col] = merged_df[col].fillna(merged_df[f'{col}_y'])
-            # Drop the additional '_y' column
-            merged_df.drop(columns=[f'{col}_y'], inplace=True)
-        self.mapping_df = merged_df.copy()
+                logger.warning(f'Target sequence {id}')                 
