@@ -399,6 +399,42 @@ class Configuration:
                 "type": "str",
                 "help": "Name of output directory. If default, name of the input file."
             },
+            "n-nodes": {
+                "value": 1,
+                "type": "int",
+                "help": "Number of nodes to use."
+            },
+            "n-cpu-per-node": {
+                "value": 2,
+                "type": "int",
+                "help": "Number of cores per node to use."
+            },
+            "memory-per-node": {
+                "value": 16,
+                "type": "int",
+                "help": "Available memory per node in GB."
+            },
+            "n-worker-chunks": {
+                "value": 4,
+                "type": "int",
+                "help": "Number of work chunks to split the work into for the processes. If set to 1, the work is not split. Values much smaller than the number of cores times number of nodes may lead to inefficient parallelization."
+            },
+            "parallel-tool": {
+                "value": "dask_local",
+                "type": "str",
+                "help": "help: Tool to use for parallelization. Dask local only works on 1 node, but is more efficient than Dask distributed on 1 node. Dask distributed is more efficient on multiple nodes.",
+                "choices": ["dask", "mpi", "dask_local"]
+            },
+            "dask-scheduler": {
+                "value": None,
+                "type": "str",
+                "help": "Scheduler file (.json), to use in case Dask was set up handisch in job script. Ignored if Dask is not used."
+            },
+            "data-path": {
+                "value": "/scicore/home/schwede/GROUP/gcsnap_db/",
+                "type": "str",
+                "help": "Path to the data folder."
+            },
             "tmp-mmseqs-folder": {
                 "value": None,
                 "type": "str",
@@ -409,11 +445,6 @@ class Configuration:
                 "type": "bool",
                 "help": "Boolean statement to make GCsnap collect genomic contexts only, without comparing them."
             },
-            "n-cpu": {
-                "value": 4,
-                "type": "int",
-                "help": "Number of cores to use."
-            },
             "clans-patterns": {
                 "value": None,
                 "type": "str",
@@ -423,16 +454,6 @@ class Configuration:
                 "value": None,
                 "type": "str",
                 "help": "Used only for advanced interactive output representation (Clans file if the input is a clans file and -operon_cluster_advanced is set to True)."
-            },
-            "ncbi-user-email": {
-                "value": None,
-                "type": "str",
-                "help": "Email address of the user. May be required to access NCBI databases and is not used for anything else."
-            },
-            "ncbi-api-key": {
-                "value": None,
-                "type": "str",
-                "help": "The key for NCBI API, which allows for up to 10 queries per second to NCBI databases. Shall be obtained after obtaining an NCBI account."
             },
             "n-flanking5": {
                 "value": 4,
@@ -469,20 +490,15 @@ class Configuration:
                 "type": "int",
                 "help": "Number of iterations for all-against-all searches. Required to define protein families."
             },
-            "mmseqs-executable-path": {
-                "value": None,
-                "type": "str",
-                "help": "Path of MMseqs executable (i.e., mmseqs.bat) if not installed in Conda environment."
-            },
             "get-pdb": {
                 "value": True,
                 "type": "bool",
                 "help": "Get PDB information for representatives of the families found."
             },
-            "get-functional-annotations": {
-                "value": True,
-                "type": "bool",
-                "help": "Find functional annotations for representatives of the families found."
+            "functional-annotation-files-path": {
+                "value": None,
+                "type": "str",
+                "help": "Path to the functional annotation files.  If not specified, nothing annotated."
             },
             "operon-cluster-advanced": {
                 "value": False,
