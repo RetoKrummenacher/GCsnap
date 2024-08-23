@@ -37,19 +37,19 @@ class ParallelTools:
         self.config = config
         self.n_nodes = config.arguments['n_nodes']['value']
         self.n_cpu = config.arguments['n_cpu_per_node']['value']
-        self.tool = config.arguments['parallel-tool']['value']
+        self.tool = config.arguments['parallel_tool']['value']
         self.dask_scheduler = config.arguments['dask_scheduler']['value']
         self.memory_per_node = config.arguments['memory_per_node']['value']
         self.cluster = None
 
         # set up the cluster in case Dask is requested
-        if self.tool == 'dask' and self.dask_scheduler is None:
-            self.cluster = DaskSlurmCluster(self.n_nodes, self.memory_per_node, self.n_cpu, self.n_cpu)
+        if (self.tool == 'dask' or self.tool == 'dask_local') and self.dask_scheduler is None:
+            self.cluster = DaskSlurmCluster(self.n_nodes, self.memory_per_node, self.n_cpu, self.tool)
         elif self.tool == 'dask':
             self.cluster = self.dask_scheduler
         elif self.tool == 'mpi':
             # for mpi, we actually use - 1, as one is running the main thread
-            self.workers = (self.nodes * self.n_cpu) - 1
+            self.workers = (self.n_nodes * self.n_cpu) - 1
             
         self.console = RichConsole()
 
@@ -59,7 +59,7 @@ class ParallelTools:
         ParallelTools._instance = self
 
     @staticmethod
-    def process_wrapper(parallel_args: list[tuple], func: Callable) -> list:
+    def parallel_wrapper(parallel_args: list[tuple], func: Callable) -> list:
         """
         A static method that calls the process_wrapper method of the stored instance.
         This is called from the modules using parallel processing.
@@ -89,10 +89,8 @@ class ParallelTools:
         """
         if self.tool == 'mpi':
             result_list = self.mpiprocess_wrapper(parallel_args, func)
-        elif self.tool == 'dask':
-            result_list = self.daskprocess_wrapper(parallel_args, func)
         else:
-            self.console.print_error('Specified parallel tool {} not supported'.format(tool))
+            result_list = self.daskprocess_wrapper(parallel_args, func)
 
         return result_list
 

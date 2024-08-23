@@ -1,12 +1,15 @@
 import os
 
-from dask.distributed import LocalCluster, Client
+from dask.distributed import LocalCluster
 from dask_jobqueue import SLURMCluster
+
+from gcsnap.rich_console import RichConsole 
 
 class DaskSlurmCluster():
 
 
-    def __init__(self, nodes: int, memory_per_node: int, processes_per_node: int, identifier: str = None, result_path: str = None):
+    def __init__(self, nodes: int, memory_per_node: int, processes_per_node: int, 
+                 tool: str = 'dask', identifier: str = None, result_path: str = None):
         """
         Initialize the DaskSlurmCluster object.
 
@@ -14,13 +17,19 @@ class DaskSlurmCluster():
             nodes (int): Number of nodes to use.
             memory_per_node (int): Available memory per node in GB.
             processes_per_node (int): Processes per node.
+            tool (str, optional): The parallel processing tool to use. Defaults to 'dask'.
             identifier (str, optional): Identifier for the SLURM output. Defaults to None.
             result_path (str, optional): Where to store the SLURM job scripts and the output. Defaults to None.
         """        
         self.nodes = nodes
         self.memory_per_node = '{}GB'.format(memory_per_node)
         self.processes_per_node = processes_per_node
-        
+        self.tool = tool
+        self.identifier = identifier
+        self.result_path = result_path
+
+        self.console = RichConsole()
+
         # set output identifier for Dask workers (each produces its own out file)
         if identifier is None:
             self.identifier = 'dask_worker'
@@ -33,15 +42,18 @@ class DaskSlurmCluster():
         self.worker_out = os.path.join(self.result_path, 'dask_workers', self.identifier)
         
         # when using only one node, it would be possible to use LocalCluster
-        if self.nodes == 1:
+        if self.tool == 'dask_local':
             self.start_local_cluster()
-        else:
+        elif self.tool == 'dask':
             # read the configuration file
             self.cluster_kwargs = self.read_slurm_env_vars()
             
             # start and return the cluster object
             self.start_cluster()
-        
+        else:
+            self.console.print_error('The tool {} is not supported. Select from "dask, mpi, dask local"'.format(self.tool))
+            exit(1)
+
     def get_cluster(self) -> SLURMCluster:
         """
         Get the SLURM cluster object
