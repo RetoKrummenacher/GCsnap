@@ -73,7 +73,7 @@ def update_dbs(path: str, n_processes: int) -> None:
         # Directory containing the .ffa files
         faa_data_dir = os.path.join(path, db_type, 'data')
         # list of all files to parse      
-        file_paths = glob.glob(os.path.join(faa_data_dir,'*_protein.faa.gz'))[:10000]
+        file_paths = glob.glob(os.path.join(faa_data_dir,'*_protein.faa.gz'))[:20000]
                 
         # we loop over all those files in batches, each database takes 
         # indexing is switched off to speed up

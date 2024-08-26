@@ -25,7 +25,7 @@ class FamiliesFunctionsStructures:
     
     Attributes:
         config (Configuration): The Configuration object containing the arguments.
-        n_work_chunks (int): The number of work chunks for parallel processing.
+        n_worker_chunks (int): The number of work chunks for parallel processing.
         get_pdb (bool): The flag to get the PDB structures.
         get_annotations (bool): The flag to get the functional annotations.
         families (dict): The dictionary with the families and their members.
@@ -42,7 +42,7 @@ class FamiliesFunctionsStructures:
             gc (GenomicContext): The GenomicContext object containing all genomic context information.
         """        
         self.config = config
-        self.n_work_chunks = config.arguments['n_work_chunks']['value']
+        self.n_worker_chunks = config.arguments['n_worker_chunks']['value']
         self.get_pdb = config.arguments['get_pdb']['value']
         self.annotation_files_path = config.arguments['functional_annotation_file_path']['value']        
         self.annotations_and_structures = {}
@@ -94,7 +94,7 @@ class FamiliesFunctionsStructures:
             mapping.log_failed()
 
             # get all found uniprot codes
-            split_families = split_dict_chunks(self.families, self.n_work_chunks)
+            split_families = split_dict_chunks(self.families, self.n_worker_chunks)
 
             # create parallel args with 4 items
             parallel_args = [(family, mapping_dict , self.get_pdb, self.get_annotation) 

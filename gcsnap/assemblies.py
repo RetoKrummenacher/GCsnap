@@ -33,7 +33,7 @@ class Assemblies:
     Attributes:
         n_nodes (int): Number of nodes to use for parallel processing.
         n_cpu (int): Number of CPUs per node to use for parallel processing.
-        n_work_chunks (int): Number of chunks to split the work into.
+        n_worker_chunks (int): Number of chunks to split the work into.
         n_flanking5 (int): Number of flanking genes to extract at the 5' end of target.
         n_flanking3 (int): Number of flanking genes to extract at the 3' end of target.
         exclude_partial (bool): Exclude partial genomic blocks.
@@ -55,7 +55,7 @@ class Assemblies:
         # get necessary configuration arguments        
         self.n_nodes = config.arguments['n_nodes']['value']
         self.n_cpu = config.arguments['n_cpu_per_node']['value']
-        self.n_work_chunks = config.arguments['n_work_chunks']['value']
+        self.n_worker_chunks = config.arguments['n_worker_chunks']['value']
         self.n_flanking5 = config.arguments['n_flanking5']['value']  
         self.n_flanking3 = config.arguments['n_flanking3']['value']
         self.exclude_partial = config.arguments['exclude_partial']['value']
@@ -87,7 +87,7 @@ class Assemblies:
         # we don't want to have only as many chunks as processes to have better load
         # balance as the assembly files are very different in size
         # this is acutally set arbitrarily
-        parallel_args = split_list_chunks(self.targets_and_ncbi_codes, self.n_work_chunks)
+        parallel_args = split_list_chunks(self.targets_and_ncbi_codes, self.n_worker_chunks)
 
         with self.console.status('Download assemblies and extract flanking genes'):
             dict_list = ParallelTools.parallel_wrapper(parallel_args, self.run_each)
