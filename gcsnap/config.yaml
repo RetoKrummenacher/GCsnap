@@ -15,7 +15,7 @@ n-cpu-per-node:
     type: int
     help: Number of cores per node to use.
 n-work-chunks:
-    value: 4
+    value: 16
     type: int
     help: Number of work chunks to split the work into for the processes. If set to 1, the work is not split. Values much smaller than the number of cores times number of nodes may lead to inefficient parallelization.
 memory-per-node:
@@ -23,7 +23,7 @@ memory-per-node:
     type: int
     help: Available memory per node in GB.
 parallel-tool:
-    value: mpi
+    value: dask_local
     type: str
     help: Tool to use for parallelization. Dask local only works on 1 node, but is more efficient than Dask distributed on 1 node. Dask distributed is more efficient on multiple nodes.
     choices: [dask, mpi, dask_local]

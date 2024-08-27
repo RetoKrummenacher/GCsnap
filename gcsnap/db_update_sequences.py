@@ -55,51 +55,60 @@ def update_dbs(path: str, n_processes: int) -> None:
     db_dir = os.path.join(path, 'db')           
     # open assembly database handler and create tables
     seq_db_handler = SequenceDBHandler(db_dir)   
-    seq_db_handler.disable_indices() 
+    seq_db_handler.disable_indices()
     
     # number of files to write to in parallel
-    batch_size = n_processes * 1000
+    batch_size = n_processes * 500
     # keep track of sequences and assemblies
     n_assemblies = 0 
     n_sequences = 0
         
-    for loop_var in ['genbank','refseq']:    
+    #for loop_var in ['genbank','refseq']:    
                  
-        db_type = loop_var
+        #db_type = loop_var
 
-        # 1. Extract information from .faa files       
-        # a) (ncbi_code, sequence) go into sepearte databases (as this will get huge)
+    # 1. Extract information from .faa files       
+    # a) (ncbi_code, sequence) go into sepearte databases (as this will get huge)
 
-        # Directory containing the .ffa files
-        faa_data_dir = os.path.join(path, db_type, 'data')
-        # list of all files to parse      
-        file_paths = glob.glob(os.path.join(faa_data_dir,'*_protein.faa.gz'))[:20000]
+    # Directory containing the .ffa files
+    #faa_data_dir = os.path.join(path, db_type, 'data')
+    # list of all files to parse      
+    #file_paths = glob.glob(os.path.join(faa_data_dir,'*_protein.faa.gz'))
+
+    # read needed assembly files for experiments: file was created handisch with assemblies_for_cluster.ipynb
+    with open('/scicore/home/schwede/kruret00/MT/assemblies.txt', 'r') as file:
+        content = file.read()
+    lines = content.splitlines()
+    file_names = [line.strip() + '_protein.faa.gz' for line in lines]
+
+    # add path structer
+    file_paths =  [os.path.join(path, 'refseq', 'data', file_name) for file_name in file_names if file_name.startswith('GCF')]
+    file_paths += [os.path.join(path, 'genbank', 'data', file_name) for file_name in file_names if file_name.startswith('GCA')]
+            
+    # we loop over all those files in batches, each database takes 
+    # indexing is switched off to speed up
+    for batch in split_into_batches(file_paths, batch_size):
+        
+        # start the parsing for each handler, in parallel 
+        sequence_list = execute_handlers(seq_db_handler, batch, n_processes)
+        
+        # keep track of done things
+        n_sequences += len(sequence_list)
+        n_assemblies += len(batch)
                 
-        # we loop over all those files in batches, each database takes 
-        # indexing is switched off to speed up
-        for batch in split_into_batches(file_paths, batch_size):
-            
-            # start the parsing for each handler, in parallel 
-            sequence_list = execute_handlers(seq_db_handler, batch, n_processes)
-            
-            # keep track of done things
-            n_sequences += len(sequence_list)
-            n_assemblies += len(batch)
+        # add sequences
+        seq_db_handler.batch_update_sequences(sequence_list)      
                     
-            # add sequences
-            seq_db_handler.batch_update_sequences(sequence_list)      
-                        
-            # Format numbers with thousand separators
-            formatted_assemblies = "{:,}".format(n_assemblies)
-            formatted_sequences = "{:,}".format(n_sequences)
-            
-            print('{} assemblies and {} sequences done so far'.format(formatted_assemblies, formatted_sequences))           
+        # Format numbers with thousand separators
+        formatted_assemblies = "{:,}".format(n_assemblies)
+        formatted_sequences = "{:,}".format(n_sequences)
+        
+        print('{} assemblies and {} sequences done so far'.format(formatted_assemblies, formatted_sequences))           
             
     print('All Updating done')
     
     # get number of unique sequences
     n_unique = seq_db_handler.select_number_of_entries()
-    # enable indices
     seq_db_handler.enable_indices()
 
     return n_assemblies, n_sequences, n_unique                   

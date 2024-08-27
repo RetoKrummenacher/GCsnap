@@ -29,6 +29,7 @@ class Assemblies:
         │   └── assemblies.db
         │   └── mappings.db
         │   └── sequences.db
+        │   └── rankedlineage.dmp
 
     Attributes:
         n_nodes (int): Number of nodes to use for parallel processing.
@@ -92,6 +93,8 @@ class Assemblies:
         with self.console.status('Download assemblies and extract flanking genes'):
             dict_list = ParallelTools.parallel_wrapper(parallel_args, self.run_each)
             # combine results
+
+            return dict_list
             self.flanking_genes = {k: v for d in dict_list for k, v in d.items() 
                                    if v.get('flanking_genes') is not None}
             not_found = {k: v for d in dict_list for k, v in d.items() 
@@ -123,6 +126,7 @@ class Assemblies:
         # get the assembly urls
         # the result is a list of tuples with (target, ncbi_code, accession, url, taxid, species)
         target_tuples = self.get_assembly_info(target_tuples)
+        return target_tuples
 
         # loop over all targets and download and extract flanking genes
         flanking_genes = {}

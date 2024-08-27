@@ -58,9 +58,7 @@ class SequenceDBHandler:
 
     def batch_insert_sequences(self, sequences: list[tuple[str,str]]) -> None:
         conn = sqlite3.connect(self.db)
-        cursor = conn.cursor()
-        conn.execute('PRAGMA synchronous = OFF')
-        conn.execute('PRAGMA journal_mode = WAL')
+        cursor = conn.cursor()          
         cursor.executemany('INSERT OR REPLACE INTO sequences (ncbi_code, sequence) VALUES (?, ?)', sequences)
         conn.commit()
         conn.close()         
@@ -69,9 +67,8 @@ class SequenceDBHandler:
         # we need (new_sequence, ncbi_code)   
         updates = [(sequence[1], sequence[0]) for sequence in sequences]        
         conn = sqlite3.connect(self.db)
-        cursor = conn.cursor()
-        conn.execute('PRAGMA synchronous = OFF')
-        conn.execute('PRAGMA journal_mode = WAL')
+        cursor = conn.cursor()    
+        # Disable journaling and set performance-related settings in the same connection
         # Perform the bulk update using executemany
         sql = 'UPDATE sequences SET sequence = ? WHERE ncbi_code = ?'
         cursor.executemany(sql, updates)        

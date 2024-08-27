@@ -167,3 +167,13 @@ class AssembliesDBHandler:
         conn.close()
         
         return result
+    
+    def select_number_of_entries(self, table: str = 'mappings') -> int:
+        conn = sqlite3.connect(self.db)
+        cursor = conn.cursor()
+        cursor.execute('SELECT COUNT(*) FROM {}'.format(table))
+        result = cursor.fetchone()  # fetchall() gets all, fetchone() just the next in the result list
+        conn.close()   
+        
+        # extract the count from the tuple
+        return result[0]   

@@ -415,7 +415,7 @@ class Configuration:
                 "help": "Available memory per node in GB."
             },
             "n-worker-chunks": {
-                "value": 4,
+                "value": 16,
                 "type": "int",
                 "help": "Number of work chunks to split the work into for the processes. If set to 1, the work is not split. Values much smaller than the number of cores times number of nodes may lead to inefficient parallelization."
             },

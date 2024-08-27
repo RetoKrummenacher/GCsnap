@@ -16,7 +16,7 @@ class SequenceMapping:
     Methods and attributes to extract the target sequences from the mapping database.
     The resulting DataFrame is the base to map targets to other types and also
     retrieve the Taxonomy ID and the PDB ID.
-        They are stored in a structure like:
+    They are stored in a structure like:
         data-path as defined in config.yaml or via CLI
         ├── genbank
         │   └── data
@@ -28,6 +28,7 @@ class SequenceMapping:
         │   └── assemblies.db
         │   └── mappings.db
         │   └── sequences.db
+        │   └── rankedlineage.dmp
 
     Attributes:
         config (Configuration): The Configuration object containing the arguments.

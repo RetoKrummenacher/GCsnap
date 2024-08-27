@@ -24,6 +24,7 @@ class Sequences:
         │   └── assemblies.db
         │   └── mappings.db
         │   └── sequences.db
+        │   └── rankedlineage.dmp
 
     Attributes:
         config (Configuration): The Configuration object containing the arguments.

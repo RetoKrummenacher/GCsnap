@@ -1,24 +1,39 @@
-
+import os
 
 from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole
 from gcsnap.genomic_context import GenomicContext
-from gcsnap.entrez_query import EntrezQuery
+from gcsnap.parallel_tools import ParallelTools
 
 from gcsnap.utils import processpool_wrapper
 from gcsnap.utils import split_dict_chunks
 
 class Taxonomy:
     """
-    Methods and attributes to find and map taxonomy to the flanking genes of the target genes.
+    Methods and attributes to extract the taxonomy.
+    They are stored in a structure like:
+        data-path as defined in config.yaml or via CLI
+        ├── genbank
+        │   └── data
+        │       └── GCA_000001405.15_genomic.gff.gz
+        ├── refseq
+        │   └── data
+        │       └── GCF_000001405.38_genomic.gff.gz
+        ├── db
+        │   └── assemblies.db
+        │   └── mappings.db
+        │   └── sequences.db
+        │   └── rankedlineage.dmp
 
     Attributes:
         config (Configuration): The Configuration object containing the arguments.
-        cores (int): The number of CPU cores to use.
         mode (str): The mode of the taxonomy search.
         msg (str): The message to display during the search.
         gc (GenomicContext): The GenomicContext object containing all genomic context information.
-        cleaned_taxonomy (dict): The dictionary with the cleaned taxonomy information.
+        n_nodes (int): The number of nodes to use for parallel processing.
+        n_cpu (int): The number of CPUs to use for parallel processing.
+        n_worker_chunks (int): The number of worker chunks to use for parallel processing.
+        database_path (str): The path to the database.
         taxonomy (dict): The dictionary with the taxonomy assigned to the flanking genes.
         console (RichConsole): The RichConsole object to print messages.
     """
@@ -31,8 +46,13 @@ class Taxonomy:
             config (Configuration): The Configuration object containing the arguments.
             gc (GenomicContext): The GenomicContext object containing all genomic context information.
         """        
+        # get necessary configuration arguments      
         self.config = config
-        self.cores = config.arguments['n_cpu']['value']
+        self.gc = gc        
+        self.n_nodes = config.arguments['n_nodes']['value']
+        self.n_cpu = config.arguments['n_cpu_per_node']['value']
+        self.n_worker_chunks = config.arguments['n_worker_chunks']['value']        
+        self.database_path = os.path.join(config.arguments['data_path']['value'],'db') 
 
         if config.arguments['get_taxonomy']['value']:
             self.mode = 'taxonomy'
@@ -40,9 +60,6 @@ class Taxonomy:
         else:
             self.mode = 'as_input'
             self.msg = 'Create input taxonomy dictionary. No taxomomies are searched'
-
-        # set parameters
-        self.gc = gc
 
         self.console = RichConsole()
 
@@ -62,14 +79,10 @@ class Taxonomy:
             - Add taxonomy to the flanking genes.
         Uses parallel processing with the processpool_wrapper from utils.py.
         """        
-        self.cleaned_taxonomy = {}
-        if self.mode == 'taxonomy':
-            # find all taxonomies via entrez
-            self.find_taxonomies(self.gc.get_all_taxids())
 
         # here we parallellize over chunks, so as many chunks as 
         # there are cores
-        parallel_args = split_dict_chunks(self.gc.get_syntenies(), self.cores)
+        parallel_args = split_dict_chunks(self.gc.get_syntenies(), self.n_worker_chunks)
 
         with self.console.status(self.msg):
             dict_list = processpool_wrapper(self.cores, parallel_args, self.run_each)
@@ -87,6 +100,11 @@ class Taxonomy:
         Returns:
             dict: The dictionary with the hierarchy of the taxonomy as nested dictionaries.
         """        
+
+        if self.mode == 'taxonomy':
+            # find all taxonomies via entrez
+            clean_taxonomy = self.find_taxonomies(self.gc.get_all_taxids())
+
         content_dict = arg
         taxonomy = {}
         for target in content_dict.keys():
@@ -104,10 +122,10 @@ class Taxonomy:
             # take what is available from entrez taxonomies requests
             # if mode is as_input, we will have 'na' for all values as 
             # self.clean_taxonomy is empty
-            superkingdom = self.clean_taxonomy.get(taxID,{}).get('superkingdom','na')
-            phylum = self.clean_taxonomy.get(taxID,{}).get('phylum','na')
-            taxclass = self.clean_taxonomy.get(taxID,{}).get('class','na')
-            order = self.clean_taxonomy.get(taxID,{}).get('order','na')
+            superkingdom = clean_taxonomy.get(taxID,{}).get('superkingdom','na')
+            phylum = clean_taxonomy.get(taxID,{}).get('phylum','na')
+            taxclass = clean_taxonomy.get(taxID,{}).get('class','na')
+            order = clean_taxonomy.get(taxID,{}).get('order','na')
 
             if self.mode == 'taxonomy':
                 # now all are either correct string or 'na'
@@ -131,21 +149,54 @@ class Taxonomy:
 
     def find_taxonomies(self, taxids: list) -> None:
         """
-        Find taxonomies for all flanking genes using the EntrezQuery class.
+        Find taxonomies for all flanking genes in the file rankedlineage.dmp.
+        Details about the file can be found here:https://ftp.ncbi.nih.gov/pub/taxonomy/new_taxdump/taxdump_readme.txt
 
         Args:
             taxids (list): The list of taxids to find taxonomies for.
         """        
-        # get the information for all ncbi codes
-        entrez = EntrezQuery(self.config, taxids, db='taxonomy', 
-                             retmode='xml', logging=True)
-        self.entrez_taxonomy = entrez.run()
+        # read the content
+        with open(os.path.join(self.database_path,'rankedlineage.dmp'), 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        lines = content.splitlines()
+        parts = [line.strip().split('|') for line in lines]
+        entries = [part for part in parts if part[0].strip() in [str(taxid) for taxid in taxids]]
+
+        # extact
+        # tax_id                -- node id
+        # tax_name              -- scientific name of the organism
+        # species               -- name of a species (coincide with organism name for species-level nodes)
+        # genus					-- genus name when available
+        # family				-- family name when available
+        # order					-- order name when available
+        # class					-- class name when available
+        # phylum				-- phylum name when available
+        # kingdom				-- kingdom name when available
+        # superkingdom		    -- superkingdom (domain) name when available
+
+        taxonomy_dmp = {e[0].strip() : {
+                        'tax_name'  : e[1].strip() if len(e[1].strip()) > 0 else None,
+                        'species'   : e[2].strip() if len(e[2].strip()) > 0 else None,
+                        'genus'     : e[3].strip() if len(e[3].strip()) > 0 else None,
+                        'family'    : e[4].strip() if len(e[4].strip()) > 0 else None,
+                        'order'     : e[5].strip() if len(e[5].strip()) > 0 else None,
+                        'class'     : e[6].strip() if len(e[6].strip()) > 0 else None,
+                        'phylum'    : e[7].strip() if len(e[7].strip()) > 0 else None,
+                        'kingdom'   : e[8].strip() if len(e[8].strip()) > 0 else None,
+                        'superkingdom' : e[9].strip() if len(e[9].strip()) > 0 else None
+                    }
+                for e in entries
+            }
+
         # remove all entries that are None
-        # we do this here to have keep entrez result as is (to realy see what was not there)
-        self.clean_taxonomy = {
+        # we do this here to have keep entrez result as is (to see what was not there)
+        clean_taxonomy = {
             target: {key: value for key, value in sub_dict.items() if value is not None}
-            for target, sub_dict in self.entrez_taxonomy.items()
+            for target, sub_dict in self.taxonomy_dmp.items()
         }
+
+        return clean_taxonomy
 
     def merge_nested_dicts(self, dict1: dict, dict2: dict) -> dict: 
         """
