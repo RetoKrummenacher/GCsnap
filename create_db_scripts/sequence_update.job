@@ -1,0 +1,8 @@
+#!/bin/sh
+#SBATCH --time=14-0:00:00
+#SBATCH --qos=2weeks
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=64GB
+#SBATCH --hint=nomultithread
+
+python3 ${gcsnap_path}db_update_sequences.py ${n_processes}
