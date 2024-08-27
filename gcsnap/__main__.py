@@ -3,13 +3,6 @@ import shutil
 # TODO: For faster debugging
 import pickle
 
-#TODO: This part should work, once its installed with pip install .
-# from GCsnap import (
-#     RichConsole, Configuration, Timing, Target, SequenceMapping, Assemblies,
-#     GenomicContext, Sequences, Families, FamiliesFunctionsStructures,
-#     Operons, Taxonomy, TMsegments, Figures
-# )
-
 from gcsnap.rich_console import RichConsole 
 from gcsnap.configuration import Configuration 
 from gcsnap.timing import Timing
@@ -138,56 +131,56 @@ def main():
 
         if not config.arguments['collect_only']['value']:
 
-            # # 3. Block 'Find families'
-            # t_family = timing.timer('Step 2: Finding protein families')
-            # families = Families(config, gc, out_label)
-            # families.run()
-            # gc.update_syntenies(families.get_families())
-            # gc.create_and_write_families_summary()
-            # t_family.stop() 
+            # 3. Block 'Find families'
+            t_family = timing.timer('Step 2: Finding protein families')
+            families = Families(config, gc, out_label)
+            families.run()
+            gc.update_syntenies(families.get_families())
+            gc.create_and_write_families_summary()
+            t_family.stop() 
 
-            # # 4. Block 'Annotate'
-            # # a) Add functions and structures to families
-            # t_annotate_families = timing.timer('Step 3: Annotating functions and structures')
-            # # execution conditions handeled in the class
-            # ffs = FamiliesFunctionsStructures(config, gc)
-            # ffs.run()
-            # gc.update_families(ffs.get_annotations_and_structures())
-            # gc.write_families_to_json('protein_families_summary.json')
-            # t_annotate_families.stop()
+            # 4. Block 'Annotate'
+            # a) Add functions and structures to families
+            t_annotate_families = timing.timer('Step 3: Annotating functions and structures')
+            # execution conditions handeled in the class
+            ffs = FamiliesFunctionsStructures(config, gc)
+            ffs.run()
+            gc.update_families(ffs.get_annotations_and_structures())
+            gc.write_families_to_json('protein_families_summary.json')
+            t_annotate_families.stop()
 
-            # # b) Find and add operons        
-            # t_operons = timing.timer('Step 4-5: Finding operon/genomic_context')
-            # operons = Operons(config, gc, out_label)
-            # operons.run()
-            # gc.update_syntenies(operons.get_operons())
-            # gc.create_and_write_operon_types_summary()
-            # gc.find_most_populated_operon_types()   
-            # t_operons.stop()
+            # b) Find and add operons        
+            t_operons = timing.timer('Step 4-5: Finding operon/genomic_context')
+            operons = Operons(config, gc, out_label)
+            operons.run()
+            gc.update_syntenies(operons.get_operons())
+            gc.create_and_write_operon_types_summary()
+            gc.find_most_populated_operon_types()   
+            t_operons.stop()
 
-            # # c) Get taxonomy information
-            # t_taxonomy = timing.timer('Step 6: Mapping taxonomy')
-            # taxonomy = Taxonomy(config, gc)
-            # taxonomy.run()
-            # gc.update_taxonomy(taxonomy.get_taxonomy())
-            # gc.write_taxonomy_to_json('taxonomy.json')     
-            # t_taxonomy.stop()
+            # c) Get taxonomy information
+            t_taxonomy = timing.timer('Step 6: Mapping taxonomy')
+            taxonomy = Taxonomy(config, gc)
+            taxonomy.run()
+            gc.update_taxonomy(taxonomy.get_taxonomy())
+            gc.write_taxonomy_to_json('taxonomy.json')     
+            t_taxonomy.stop()
             
-            # # d) Annotate TM   
-            # t_tm = timing.timer('Step 7: Finding ALL proteins with transmembrane segments')
-            # tm = TMsegments(config, gc, out_label)
-            # tm.run()
-            # gc.update_syntenies(tm.get_annotations())
-            # t_tm.stop()     
-
             # # TODO: For debugging
             # with open('gc.pkl', 'wb') as file:
-            #     pickle.dump(gc, file)      
+            #     pickle.dump(gc, file)     
 
-            # TODO: For debugging        
-            with open('gc.pkl', 'rb') as file:
-                gc = pickle.load(file)                   
-             
+            # # TODO: For debugging        
+            # with open('gc.pkl', 'rb') as file:
+            #     gc = pickle.load(file)                      
+
+            # d) Annotate TM   
+            t_tm = timing.timer('Step 7: Finding ALL proteins with transmembrane segments')
+            tm = TMsegments(config, gc, out_label)
+            tm.run()
+            gc.update_syntenies(tm.get_annotations())
+            t_tm.stop()     
+
             # 5. Produce genomic context figures
             t_figures = timing.timer('Step 8-9: Producing figures')
             figures = Figures(config, gc, out_label, starting_directory)      
