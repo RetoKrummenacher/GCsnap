@@ -150,7 +150,7 @@ class TMsegments:
             with self.console.status('Get functional annotation from EBI'):
                 result_list = processpool_wrapper(self.cores, parallel_args, self.run_get_functional_annotations)
                 # combine results
-                all_uniprot_data = {k: v for dict_ in result_list for k, v in dict_.items()}            
+                all_uniprot_data = {k: v for dict_ in result_list for k, v in dict_.items()}        
 
             with self.console.status('Annotating TM segments with {}'.format(self.annotate_mode)):
                 # create parallel arguments
@@ -245,7 +245,7 @@ class TMsegments:
             else:
                 tm_annotation = 'nan'
 
-            result_list.append((ncbi_code, 'nan'))
+            result_list.append((ncbi_code, tm_annotation))
         return result_list
     
     def parse_annotation_file(self) -> None:

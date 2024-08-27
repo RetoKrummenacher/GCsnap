@@ -63,7 +63,6 @@ class Target():
             # target is a file
             if os.path.isfile(target):
                 if target.endswith('.clans'):
-                    # TODO: the cluster is a dictionary, the rest are lists??
                     self.get_clusters_from_clans(target)
                 else:
                     self.get_targets_from_file(target)

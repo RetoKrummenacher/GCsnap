@@ -87,11 +87,6 @@ class FamiliesFunctionsStructures:
                 # combine results
                 all_uniprot_data = {k: v for dict_ in result_list for k, v in dict_.items()}
 
-            # TODO: Ask what we actually report in plots (ressources meaning cores)
-            # As GCsnap1 uses threads (mostly as many as there are targets)
-            # GCsnap2.0 uses processes sometimes more than families like here Version2
-            # but for mapping as manny as there are sequence ID standards
-
             # # Version 1: Parallel processing with chunks
             # # split the dictionary into chunks
             # dict_list = split_dict_chunks(self.families, self.cores)

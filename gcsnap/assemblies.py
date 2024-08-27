@@ -104,10 +104,6 @@ class Assemblies:
         Returns:
             dict[str, dict]: The flanking genes and assembly information.
         """        
-        # TODO: What to do if no accession/url is found?
-        # adapt the two getter functions to return.
-        # right now, it raises an exception which returns None for flanking genes
-        # those are exluded from the flanking_genes dict and logged at the end.
         target, ncbi_code = args
         try:
             accession = self.get_assembly_accession(ncbi_code)
