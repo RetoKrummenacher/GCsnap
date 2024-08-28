@@ -41,7 +41,7 @@ class SequenceMapping:
         target_types (list): The list of target types.
     """
 
-    def __init__(self, config: Configuration, target_list: list):
+    def __init__(self, config: Configuration, target_list: list, msg: str = ''):
         """
         Initialize the SequenceMapping object.
 
@@ -53,6 +53,7 @@ class SequenceMapping:
         """        
         self.target_list = target_list
         self.config = config
+        self.msg = msg
 
         # extract needed values from config
         self.database_path = os.path.join(config.arguments['data_path']['value'],'db')        
@@ -67,7 +68,7 @@ class SequenceMapping:
             - Finalize the mapping.
         Uses parallel processing with the parallel_wrapper from ParallelTools. 
         """        
-        with self.console.status('Mapping'):
+        with self.console.status('Mapping {}'.format(self.msg)):
             self.create_uniprot_dbs_with_targets()
             parallel_args = self.create_parallel_input()
             mapping_df_list = ParallelTools.parallel_wrapper(parallel_args, self.do_mapping)
@@ -137,7 +138,7 @@ class SequenceMapping:
         self.target_types = uniprot_dict.get_target_types()
         self.uniprot_dict = uniprot_dict.get_uniprot_dict()
 
-    def create_parallel_input(self, api_limit: int = 5000) -> list[tuple]:
+    def create_parallel_input(self, api_limit: int = 1000) -> list[tuple]:
         """
         Create the parallel input for the mapping of target sequences from the
         correct database column.

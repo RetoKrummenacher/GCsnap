@@ -103,7 +103,7 @@ def main():
         # a) Map sequences to UniProtKB-AC and NCBI EMBL-CDS
         t_mapping = timing.timer('Step 1a: Mapping')
         # Map all targets to UniProtKB-AC
-        mapping = SequenceMapping(config, targets_list, 'UniProtKB-AC')
+        mapping = SequenceMapping(config, targets_list)
         mapping.run()
         targets_and_ncbi_codes = mapping.get_targets_and_ncbi_codes()  
         t_mapping.stop()

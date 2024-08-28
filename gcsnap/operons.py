@@ -22,7 +22,6 @@ class Operons:
 
     Attributes:
         config (Configuration): The Configuration object containing the arguments.
-        cores (int): The number of CPU cores to use.
         advanced (bool): The advanced operon clustering option.
         max_freq (float): The maximum frequency of a family to be considered.
         min_freq (float): The minimum frequency of a family to be considered.

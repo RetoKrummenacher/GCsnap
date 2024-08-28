@@ -5,8 +5,7 @@ from gcsnap.rich_console import RichConsole
 from gcsnap.genomic_context import GenomicContext
 from gcsnap.parallel_tools import ParallelTools
 
-from gcsnap.utils import processpool_wrapper
-from gcsnap.utils import split_dict_chunks
+from gcsnap.utils import split_dict_chunks_size
 
 class Taxonomy:
     """
@@ -30,9 +29,6 @@ class Taxonomy:
         mode (str): The mode of the taxonomy search.
         msg (str): The message to display during the search.
         gc (GenomicContext): The GenomicContext object containing all genomic context information.
-        n_nodes (int): The number of nodes to use for parallel processing.
-        n_cpu (int): The number of CPUs to use for parallel processing.
-        n_worker_chunks (int): The number of worker chunks to use for parallel processing.
         database_path (str): The path to the database.
         taxonomy (dict): The dictionary with the taxonomy assigned to the flanking genes.
         console (RichConsole): The RichConsole object to print messages.
@@ -48,10 +44,7 @@ class Taxonomy:
         """        
         # get necessary configuration arguments      
         self.config = config
-        self.gc = gc        
-        self.n_nodes = config.arguments['n_nodes']['value']
-        self.n_cpu = config.arguments['n_cpu_per_node']['value']
-        self.n_worker_chunks = config.arguments['n_worker_chunks']['value']        
+        self.gc = gc             
         self.database_path = os.path.join(config.arguments['data_path']['value'],'db') 
 
         if config.arguments['get_taxonomy']['value']:
@@ -82,10 +75,10 @@ class Taxonomy:
 
         # here we parallellize over chunks, so as many chunks as 
         # there are cores
-        parallel_args = split_dict_chunks(self.gc.get_syntenies(), self.n_worker_chunks)
+        parallel_args = split_dict_chunks_size(self.gc.get_syntenies())
 
         with self.console.status(self.msg):
-            dict_list = processpool_wrapper(self.cores, parallel_args, self.run_each)
+            dict_list = ParallelTools.process_wrapper(parallel_args, self.run_each)
             # combine results
             # as this is a heavily nested dictionary, we need some recursive functionality
             self.taxonomy = self.merge_all_dicts(dict_list)
@@ -193,7 +186,7 @@ class Taxonomy:
         # we do this here to have keep entrez result as is (to see what was not there)
         clean_taxonomy = {
             target: {key: value for key, value in sub_dict.items() if value is not None}
-            for target, sub_dict in self.taxonomy_dmp.items()
+            for target, sub_dict in taxonomy_dmp.items()
         }
 
         return clean_taxonomy

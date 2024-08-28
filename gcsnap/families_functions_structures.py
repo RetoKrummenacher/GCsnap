@@ -8,7 +8,7 @@ from gcsnap.rich_console import RichConsole
 from gcsnap.genomic_context import GenomicContext
 from gcsnap.parallel_tools import ParallelTools
 
-from gcsnap.utils import split_dict_chunks, split_list_chunks
+from gcsnap.utils import split_dict_chunks_size
 
 class FamiliesFunctionsStructures:
     """ 
@@ -25,9 +25,8 @@ class FamiliesFunctionsStructures:
     
     Attributes:
         config (Configuration): The Configuration object containing the arguments.
-        n_worker_chunks (int): The number of work chunks for parallel processing.
         get_pdb (bool): The flag to get the PDB structures.
-        get_annotations (bool): The flag to get the functional annotations.
+        annotation_files_path (str): The path to the functional annotation files. If None, no annotations are retrieved.
         families (dict): The dictionary with the families and their members.
         console (RichConsole): The RichConsole object to print messages.
         annotations_and_structures (dict): The dictionary with the functional annotations and structures
@@ -42,7 +41,6 @@ class FamiliesFunctionsStructures:
             gc (GenomicContext): The GenomicContext object containing all genomic context information.
         """        
         self.config = config
-        self.n_worker_chunks = config.arguments['n_worker_chunks']['value']
         self.get_pdb = config.arguments['get_pdb']['value']
         self.annotation_files_path = config.arguments['functional_annotation_file_path']['value']        
         self.annotations_and_structures = {}
@@ -88,13 +86,13 @@ class FamiliesFunctionsStructures:
                            if 0 < family]
             
             # map all members to UniProtKB-AC
-            mapping = SequenceMapping(self.config, all_members)
+            mapping = SequenceMapping(self.config, all_members, 'for functional annotation')
             mapping.run()
             mapping_dict = mapping.get_target_to_result_dict('UniProtKB-AC')
             mapping.log_failed()
 
             # get all found uniprot codes
-            split_families = split_dict_chunks(self.families, self.n_worker_chunks)
+            split_families = split_dict_chunks_size(self.families)
 
             # create parallel args with 4 items
             parallel_args = [(family, mapping_dict , self.get_pdb, self.get_annotation) 
@@ -209,10 +207,12 @@ class FamiliesFunctionsStructures:
         Returns:
             dict: The dictionary with the functional annotations and structures.
         """        
+        file = os.path.join(self.annotation_files_path, file_name) 
         try:
-            with open(os.path.join(self.annotation_files_path, file_name), 'r') as file:
+            with open(os.path.join(file), 'r') as file:
                 return json.load(file)
         except FileNotFoundError:
+            self.console.print_warning('Your specifed file {} could not be found.'.format(file)) 
             return {}
         
     def parse_uniprot_data(self, uniprot_data: dict, previous_annotations: dict = {}) -> dict:

@@ -68,7 +68,60 @@ def split_list_chunks(input_list: list, n_chunks: int) -> list[list]:
     return sub_lists
 # ------------------------------------------------------
 
+# Split list into chunks of at most size limit
 # ------------------------------------------------------
+def split_list_chunks_size(self, ids: list, size_limit: int = 1000) -> list:
+    """
+    Split the IDs into sublists of size less than or equal to the API limit.
+
+    Args:
+        ids (list): The list of IDs to split.
+        size_limit (int): The limit for the size of each sublist. Defaults to 1000.
+
+    Returns:
+        list: The list of sublists of IDs.
+    """
+    # Initialize an empty list to store the chunks
+    chunks = []
+
+    # Loop through the list in increments of api_limit
+    for i in range(0, len(ids), size_limit):
+        # Append a sublist of the current chunk to the chunks list
+        chunks.append(ids[i:i + size_limit])
+
+    return chunks
+# ------------------------------------------------------
+
+
+# Split dict into chunks of at most size limit
+# ------------------------------------------------------
+def split_dict_chunks_size(self, data: dict, size_limit: int = 1000) -> list:
+    """
+    Split the dictionary into sublists of dictionaries, each with a size
+    less than or equal to the size limit.
+
+    Args:
+        data (dict): The dictionary to split.
+        size_limit (int): The limit for the size of each sub-dictionary. Defaults to 1000.
+
+    Returns:
+        list: A list of dictionaries, each containing up to size_limit key-value pairs.
+    """
+    # Initialize an empty list to store the chunks
+    chunks = []
+
+    # Convert the dictionary items to a list of tuples
+    items = list(data.items())
+
+    # Loop through the list of items in increments of size_limit
+    for i in range(0, len(items), size_limit):
+        # Create a new dictionary for the current chunk and add it to chunks
+        chunk = dict(items[i:i + size_limit])
+        chunks.append(chunk)
+
+    return chunks
+# ------------------------------------------------------
+
 """ 
 Various parallelization methods to apply a function to a list of argument tuples in parallel.
 including:

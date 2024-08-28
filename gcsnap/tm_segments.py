@@ -1,15 +1,15 @@
 import os
 import subprocess
 import shutil
+import json
 
 from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole
 from gcsnap.genomic_context import GenomicContext
-from gcsnap.sequence_mapping import SequenceMapping
-from gcsnap.apis import EbiAPI
+from gcsnap.mapping import SequenceMapping
+from gcsnap.parallel_tools import ParallelTools
 
-from gcsnap.utils import processpool_wrapper
-from gcsnap.utils import split_list_chunks
+from gcsnap.utils import split_list_chunks_size
 
 import logging
 logger = logging.getLogger('iteration')
@@ -20,10 +20,10 @@ class TMsegments:
 
     Attributes:
         config (Configuration): The Configuration object containing the arguments.
-        cores (int): The number of CPU cores to use.
         annotate_TM (bool): The boolean to decide whether to annotate TM segments.
         annotate_mode (str): The mode to annotate TM segments.
         annotate_file (str): The path to the annotation file.
+        functional_annotation_files_path (str): The path to the functional annotation files.
         gc (GenomicContext): The GenomicContext object containing all genomic context information.
         syntenies (dict): The dictionary with the syntenies of the target genes.
         out_label (str): The label of the output.
@@ -45,10 +45,10 @@ class TMsegments:
             out_label (str): The label of the output.
         """        
         self.config = config
-        self.cores = config.arguments['n_cpu']['value']
         self.annotate_TM = config.arguments['annotate_TM']['value']
         self.annotate_mode = config.arguments['annotation_TM_mode']['value']
         self.annotate_file = config.arguments['annotation_TM_file']['value']
+        self.functional_annotation_files_path = config.arguments['functional_annotation_files_path']['value']      
 
         # set parameters
         self.gc = gc
@@ -106,7 +106,7 @@ class TMsegments:
             except FileNotFoundError:
                 self.console.print_error('Your specifed file {} could not be found.'. \
                                          format(self.annotate_file)) 
-                msg =  'Check file is at speciefed path {} ans run GCsnap by specifying --annotation-TM-file.'. \
+                msg =  'Check file is at speciefed path {} and run GCsnap by specifying --annotation-TM-file.'. \
                         format(self.annotate_file)
                 self.console.print_hint(msg)
                 self.console.stop_execution()             
@@ -135,29 +135,22 @@ class TMsegments:
         else:
             self.console.print_step('TM annotation with "uniprot" mode needs mapping first')
             # map all members to UniProtKB-AC
-            mapping = SequenceMapping(self.config, self.ncbi_code_order, 
-                                        to_type = 'UniProtKB-AC', msg = 'TM segments')
+            mapping = SequenceMapping(self.config, self.ncbi_code_order, 'for TM annotation')
             mapping.run()
-            mapping_dict = mapping.get_target_to_result_dict()
+            mapping_dict = mapping.get_target_to_result_dict('UniProtKB-AC')
             mapping.log_failed()
 
             # request all annotation information from EbiAPI for all ncbi_code
-            uniprot_codes = [mapping_dict.get(ncbi_code,'nan') for ncbi_code in self.ncbi_code_order]
-            
-            # split them into chunks of at most 90 (limit is at most 100)
-            n_chunks = len(uniprot_codes) // 90 + 1
-            parallel_args = split_list_chunks(uniprot_codes, n_chunks)
-            with self.console.status('Get functional annotation from EBI'):
-                result_list = processpool_wrapper(self.cores, parallel_args, self.run_get_functional_annotations)
-                # combine results
-                all_uniprot_data = {k: v for dict_ in result_list for k, v in dict_.items()}        
+            uniprot_codes = [mapping_dict.get(ncbi_code,'nan') for ncbi_code in self.ncbi_code_order]            
+            all_uniprot_data = {k : v for uniprot_code in uniprot_codes for 
+                                k,v in self.load_annotation_file('{}.json'.format(uniprot_code)).items()}      
 
             with self.console.status('Annotating TM segments with {}'.format(self.annotate_mode)):
                 # create parallel arguments
                 parallel_args = [(sub_list, mapping_dict, all_uniprot_data) 
-                                for sub_list in split_list_chunks(self.ncbi_code_order, self.cores)]
+                                for sub_list in split_list_chunks_size(self.ncbi_code_order)]
 
-                result_lists = processpool_wrapper(self.cores, parallel_args, self.uniprot_annotation)
+                result_lists = ParallelTools.process_wrapper(parallel_args, self.uniprot_annotation)
                 # combine results
                 result_list = [result for sub_list in result_lists for result in sub_list]   
 
@@ -379,17 +372,19 @@ class TMsegments:
         for msg in [msg_server, msg_run_mode, msg_output_file, msg_save_folder]:
             self.console.print_hint(msg)
 
-    def run_get_functional_annotations(self, uniprot_codes: list) -> dict:
+    def load_annotation_file(self, file_name: str) -> dict:
         """
-        Get functional annotations from EBI for a list of UniProt codes using
-        the EbiAPI.
-
-        Args:
-            uniprot_codes (list): The list of UniProt codes.
+        Load the annotation file containing the functional annotations and structures.
 
         Returns:
-            dict: The dictionary with the functional annotations of the flanking genes.
-        """        
-        return EbiAPI.get_uniprot_annotations_batch(uniprot_codes, with_parsing = True)
+            dict: The dictionary with the functional annotations and structures.
+        """       
+        file = os.path.join(self.functional_annotation_files_path, file_name) 
+        try:
+            with open(os.path.join(file), 'r') as file:
+                return json.load(file)
+        except FileNotFoundError:
+            self.console.print_warning('Your specifed file {} could not be found.'.format(file)) 
+            return {}
         
 

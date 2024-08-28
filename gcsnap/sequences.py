@@ -6,7 +6,7 @@ from gcsnap.configuration import Configuration
 from gcsnap.genomic_context import GenomicContext
 from gcsnap.db_handler_sequences import SequenceDBHandler
 from gcsnap.parallel_tools import ParallelTools
-from gcsnap.utils import split_dict_chunks
+from gcsnap.utils import split_dict_chunks_size
 
 
 class Sequences:
@@ -27,10 +27,6 @@ class Sequences:
         │   └── rankedlineage.dmp
 
     Attributes:
-        config (Configuration): The Configuration object containing the arguments.
-        n_nodes (int): The number of nodes to use for parallel processing.
-        n_cpu (int): The number of CPUs to use for parallel processing.
-        n_worker_chunks (int): The number of chunks to split the workload into.
         database_path (str): The path to the database.
         gc (GenomicContext): The GenomicContext object containing all genomic context information.
         sequences_dict (dict): The dictionary with the sequences of the flanking genes.
@@ -48,15 +44,8 @@ class Sequences:
         """        
         self.config = config
         # get necessary configuration arguments        
-        self.n_nodes = config.arguments['n_nodes']['value']
-        self.n_cpu = config.arguments['n_cpu_per_node']['value']
-        self.n_worker_chunks = config.arguments['n_worker_chunks']['value']
         self.database_path = os.path.join(config.arguments['data_path']['value'],'db') 
         self.gc = gc
-
-        # in how many sizes to split the workload
-        # 1 reserved for the main process
-        self.work_split = ((self.n_nodes * self.n_cpu) - 1) * 2
 
         self.console = RichConsole()
 
@@ -82,7 +71,7 @@ class Sequences:
         # extract target and neeeded flanking genes ncbi codes
         part_syntenies = {k: v['flanking_genes']['ncbi_codes'] for k, v in syntneies.items()}
         # split into chunks
-        parallel_args = split_dict_chunks(part_syntenies , self.n_worker_chunks)
+        parallel_args = split_dict_chunks_size(part_syntenies)
 
         with self.console.status('Add sequences, tax id and species name to flanking genes'):
             dict_list = ParallelTools.parallel_wrapper(parallel_args, self.run_each)

@@ -7,7 +7,7 @@ from gcsnap.genomic_context import GenomicContext
 from gcsnap.db_handler_assemblies import AssembliesDBHandler
 from gcsnap.parallel_tools import ParallelTools
 
-from gcsnap.utils import split_list_chunks
+from gcsnap.utils import split_list_chunks_size
 from gcsnap.utils import WarningToLog
 
 import logging
@@ -32,9 +32,6 @@ class Assemblies:
         │   └── rankedlineage.dmp
 
     Attributes:
-        n_nodes (int): Number of nodes to use for parallel processing.
-        n_cpu (int): Number of CPUs per node to use for parallel processing.
-        n_worker_chunks (int): Number of chunks to split the work into.
         n_flanking5 (int): Number of flanking genes to extract at the 5' end of target.
         n_flanking3 (int): Number of flanking genes to extract at the 3' end of target.
         exclude_partial (bool): Exclude partial genomic blocks.
@@ -54,9 +51,6 @@ class Assemblies:
             mappings (list[tuple[str,str]]): Contains the target and its ncbi code.
         """        
         # get necessary configuration arguments        
-        self.n_nodes = config.arguments['n_nodes']['value']
-        self.n_cpu = config.arguments['n_cpu_per_node']['value']
-        self.n_worker_chunks = config.arguments['n_worker_chunks']['value']
         self.n_flanking5 = config.arguments['n_flanking5']['value']  
         self.n_flanking3 = config.arguments['n_flanking3']['value']
         self.exclude_partial = config.arguments['exclude_partial']['value']
@@ -88,13 +82,12 @@ class Assemblies:
         # we don't want to have only as many chunks as processes to have better load
         # balance as the assembly files are very different in size
         # this is acutally set arbitrarily
-        parallel_args = split_list_chunks(self.targets_and_ncbi_codes, self.n_worker_chunks)
+        parallel_args = split_list_chunks_size(self.targets_and_ncbi_codes)
 
         with self.console.status('Download assemblies and extract flanking genes'):
             dict_list = ParallelTools.parallel_wrapper(parallel_args, self.run_each)
             # combine results
 
-            return dict_list
             self.flanking_genes = {k: v for d in dict_list for k, v in d.items() 
                                    if v.get('flanking_genes') is not None}
             not_found = {k: v for d in dict_list for k, v in d.items() 
