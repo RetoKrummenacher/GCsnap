@@ -42,7 +42,9 @@ class FamiliesFunctionsStructures:
         """        
         self.config = config
         self.get_pdb = config.arguments['get_pdb']['value']
-        self.annotation_files_path = config.arguments['functional_annotation_file_path']['value']        
+        self.annotation_files_path = config.arguments['functional_annotation_files_path']['value']        
+        if self.annotation_files_path is not None:
+            self.get_annotation = True
         self.annotations_and_structures = {}
 
         if self.annotation_files_path is not None:
@@ -63,7 +65,6 @@ class FamiliesFunctionsStructures:
             dict: The dictionary with the functional annotations and structures.
         """        
         return self.annotations_and_structures
-
 
     def run(self) -> None:
         """
