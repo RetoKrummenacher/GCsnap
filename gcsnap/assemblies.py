@@ -119,7 +119,8 @@ class Assemblies:
         # get the assembly urls
         # the result is a list of tuples with (target, ncbi_code, accession, url, taxid, species)
         target_tuples = self.get_assembly_info(target_tuples)
-        return target_tuples
+        # used to exctract a list of needed assembly files to run evaluation. Those were added to the sequences.db
+        #return target_tuples 
 
         # loop over all targets and download and extract flanking genes
         flanking_genes = {}

@@ -70,7 +70,7 @@ def split_list_chunks(input_list: list, n_chunks: int) -> list[list]:
 
 # Split list into chunks of at most size limit
 # ------------------------------------------------------
-def split_list_chunks_size(self, ids: list, size_limit: int = 1000) -> list:
+def split_list_chunks_size(ids: list, size_limit: int = 1000) -> list:
     """
     Split the IDs into sublists of size less than or equal to the API limit.
 
@@ -95,7 +95,7 @@ def split_list_chunks_size(self, ids: list, size_limit: int = 1000) -> list:
 
 # Split dict into chunks of at most size limit
 # ------------------------------------------------------
-def split_dict_chunks_size(self, data: dict, size_limit: int = 1000) -> list:
+def split_dict_chunks_size(data: dict, size_limit: int = 1000) -> list:
     """
     Split the dictionary into sublists of dictionaries, each with a size
     less than or equal to the size limit.

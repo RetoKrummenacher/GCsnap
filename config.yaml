@@ -14,19 +14,6 @@ n-cpu-per-node:
     value: 2
     type: int
     help: Number of cores per node to use.
-memory-per-node:
-    value: 16
-    type: int
-    help: Available memory per node in GB.
-parallel-tool:
-    value: dask_local
-    type: str
-    help: Tool to use for parallelization. Dask local only works on 1 node, but is more efficient than Dask distributed on 1 node. Dask distributed is more efficient on multiple nodes.
-    choices: [dask, mpi, dask_local]
-dask-scheduler:
-    value: None
-    type: str
-    help: Scheduler file (.json), to use in case Dask was set up handisch in job script. Ignored if Dask is not used.
 data-path:
     value: /scicore/home/schwede/GROUP/gcsnap_db/
     type: str
