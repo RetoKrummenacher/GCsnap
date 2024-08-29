@@ -377,13 +377,6 @@ class Configuration:
 
         self.arguments['clans_file']['value'] = clans_file
 
-        # cpu count
-        physical_cpus = psutil.cpu_count(logical=False)
-        if self.arguments['n_cpu']['value'] > physical_cpus:
-            self.console.print_warning('More CPU cores requested than available. --n-cpu set to {}'.format(
-                physical_cpus))
-            self.arguments['n_cpu']['value'] = physical_cpus
-
     def get_default_configuration(self) -> dict:
         """
         Define the default configuration dictionary if no config.yaml is found.
