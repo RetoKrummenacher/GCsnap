@@ -60,8 +60,21 @@ class GenomicContext:
         for k,v in input_dict.items():
             current = self.syntenies.get(k, {})
             # merge dictionaries (|= in python 3.9+ in place merge)
-            current |= v
+            self.deep_merge(current, v)
             self.syntenies[k] = current
+
+    def deep_merge(self, dict1: dict,  dict2: dict) -> None:
+        """Perfroms a deep merge of two dictionaries to handle nested dictionaries.
+
+        Args:
+            dict1 (dict): The first dictionary.
+            dict2 (dict): The second dictionary.
+        """        
+        for k, v in dict2.items():
+            if isinstance(v, dict) and k in dict1 and isinstance(dict1[k], dict):
+                self.deep_merge(dict1[k], v)
+            else:
+                dict1[k] = v    
 
     def update_families(self, input_dict: dict) -> None:
         """
