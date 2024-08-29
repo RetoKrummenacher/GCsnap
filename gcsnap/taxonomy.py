@@ -78,7 +78,7 @@ class Taxonomy:
         parallel_args = split_dict_chunks_size(self.gc.get_syntenies())
 
         with self.console.status(self.msg):
-            dict_list = ParallelTools.process_wrapper(parallel_args, self.run_each)
+            dict_list = ParallelTools.parallel_wrapper(parallel_args, self.run_each)
             # combine results
             # as this is a heavily nested dictionary, we need some recursive functionality
             self.taxonomy = self.merge_all_dicts(dict_list)
