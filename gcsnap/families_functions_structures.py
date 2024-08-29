@@ -89,7 +89,7 @@ class FamiliesFunctionsStructures:
             # map all members to UniProtKB-AC
             mapping = SequenceMapping(self.config, all_members, 'for functional annotation')
             mapping.run()
-            mapping_dict = mapping.get_target_to_result_dict('UniProtKB-AC')
+            mapping_dict = mapping.get_target_to_result_dict('UniProtKB_AC')
             mapping.log_failed()
 
             # get all found uniprot codes
