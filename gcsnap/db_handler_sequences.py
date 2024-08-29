@@ -6,7 +6,6 @@ class SequenceDBHandler:
     def __init__(self, db_path: str , db_name: str = 'sequences.db'):
         self.db = os.path.join(db_path, db_name)
         self.db_name = db_name
-        print(self.db)
         
     def create_table(self) -> None:
         self.create_sequence_table()
