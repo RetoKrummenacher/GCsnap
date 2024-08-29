@@ -90,7 +90,8 @@ class SequenceMapping:
         self.log_failed_finalize()
 
         # write dataframe to csv file
-        #self.mapping_df.to_csv('mapping.csv', index=False) 
+        self.mapping_df.to_csv('mapping.csv', index=False) 
+        self.console.print_done('All mapping done. Table saved to mapping.csv')        
     
     def get_codes(self, id_type: str) -> list:
         """
@@ -306,6 +307,17 @@ class SequenceMapping:
         Log the failed mappings and finalize the mapping of target sequences to the specified database.
         """        
         df = self.mapping_df.copy()
+
+        # those that were not found at all in the mapping
+        targets = []
+        for key in self.target_types:
+            targets += self.uniprot_dict[key]['targets']
+        missing = list(set(targets).difference(set(df['target'].to_list())))
+        if len(missing) > 0:
+            message = '{} ids is not containd in mapping database.'.format(len(missing))
+            self.console.print_warning(message)
+            for id in missing:
+                logger.warning(f'Target sequence {id}') 
 
         # RefSeqs where no UniProtKB-AC was found
         ref_no_uniprot = df.loc[(df['RefSeq'].notna()) & (df['UniProtKB_AC'].isna()) ,'target'].to_list()

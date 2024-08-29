@@ -66,12 +66,12 @@ class Sequences:
         Uses parallel processing with the parallel_wrapper from ParallelTools.
         """        
         # Get syntenies
-        syntneies = self.gc.get_syntenies()
+        syntenies = self.gc.get_syntenies()
 
         # extract target and neeeded flanking genes ncbi codes
-        part_syntenies = {k: v['flanking_genes']['ncbi_codes'] for k, v in syntneies.items()}
+        targets_ncbi_codes = {k: v['flanking_genes']['ncbi_codes'] for k, v in syntenies.items()}
         # split into chunks
-        parallel_args = split_dict_chunks_size(part_syntenies)
+        parallel_args = split_dict_chunks_size(targets_ncbi_codes)
 
         with self.console.status('Add sequences, tax id and species name to flanking genes'):
             dict_list = ParallelTools.parallel_wrapper(parallel_args, self.run_each)
@@ -90,24 +90,23 @@ class Sequences:
         Returns:
             dict: The dictionary with the flanking genes and their sequences.
         """        
-        part_syntenies = args
+        targets_ncbi_codes = args
 
         # get all ncbi codes
-        ncbi_codes = [ncbi_code for content_dict in part_syntenies.values() 
-                      for ncbi_code in content_dict['flanking_genes']['ncbi_codes']]
+        ncbi_codes = [ncbi_code for content_dict in targets_ncbi_codes.values() for ncbi_code in content_dict]
 
         # get from database
         self.find_sequences(ncbi_codes)
 
+        results = {}
         # adapt syntenies
-        for target, content_dict in part_syntenies.items():
+        for target, values in targets_ncbi_codes.items():
             # update flanking genes with sequence
             # update flanking genes with sequence
-            sequence_list = [self.get_sequence(ncbi_code) for ncbi_code in content_dict['flanking_genes']['ncbi_codes']]
-            content_dict['flanking_genes']['sequences'] = sequence_list
-            part_syntenies |= {target: content_dict}
-
-        return part_syntenies
+            sequence_list = [self.get_sequence(ncbi_code) for ncbi_code in values]
+            results |= {target: {'flanking_genes': {'sequences': sequence_list}}}
+  
+        return results
 
     def find_sequences(self, ncbi_codes: list) -> None:
         """
@@ -131,7 +130,7 @@ class Sequences:
         Returns:
             str: The sequence for the NCBI code.
         """        
-        entry = self.sequences_dict.get(ncbi_code, {})        
-        return entry.get('seq', 'FAKESEQUENCEFAKESEQUENCEFAKESEQUENCEFAKESEQUENCE')
+        return self.sequences_dict.get(ncbi_code, 'FAKESEQUENCEFAKESEQUENCEFAKESEQUENCEFAKESEQUENCE')        
+
 
     

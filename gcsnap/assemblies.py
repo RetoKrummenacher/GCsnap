@@ -91,9 +91,23 @@ class Assemblies:
             self.flanking_genes = {k: v for d in dict_list for k, v in d.items() 
                                    if v.get('flanking_genes') is not None}
             not_found = {k: v for d in dict_list for k, v in d.items() 
-                         if v.get('flanking_genes') is None}
+                         if v.get('flanking_genes') is None and v.get('msg').startswith('File')}
+            partial = {k: v for d in dict_list for k, v in d.items()
+                          if v.get('flanking_genes') is None and v.get('msg').startswith('Partial')}
+            
         if not_found:
             self.log_not_found(not_found)
+        if partial:
+            self.log_partial(partial)
+
+        if len(self.targets_and_ncbi_codes) != len(self.flanking_genes):
+            # check here for those no information was in the found
+            not_found = [target[0] for target in self.targets_and_ncbi_codes 
+                         if target[0] not in self.flanking_genes 
+                         and target[0] not in not_found
+                         and target[0] not in partial]
+            missing = {target: {'msg': 'No assembly info found in databse'} for target in not_found}
+            self.log_not_found(missing)
 
         if not self.flanking_genes: 
             msg = 'No flanking genes found for any target sequence. Continuing is not possible.'
@@ -114,17 +128,17 @@ class Assemblies:
         """        
         target_tuples = args
         # get the assembly accessions
-        target_tuples = self.get_assembly_accessions(target_tuples)
+        accession_tuples = self.get_assembly_accessions(target_tuples)
 
         # get the assembly urls
         # the result is a list of tuples with (target, ncbi_code, accession, url, taxid, species)
-        target_tuples = self.get_assembly_info(target_tuples)
+        info_tuples = self.get_assembly_info(accession_tuples)
         # used to exctract a list of needed assembly files to run evaluation. Those were added to the sequences.db
         #return target_tuples 
 
         # loop over all targets and download and extract flanking genes
         flanking_genes = {}
-        for element in target_tuples:
+        for element in info_tuples:
             # merge them to results
             flanking_genes |= self.read_and_parse_assembly(element)
 
@@ -414,3 +428,15 @@ class Assemblies:
         self.console.print_warning(message)
         for k,v in not_found.items():
             logger.warning('For target {}: {}'.format(k,v.get('msg'))) 
+
+    def log_partial(self, partial: dict) -> None:
+        """
+        Write the targets for which partial genomic context blocks were found to the log file.
+
+        Args:
+            not_found (dict): The targets for which partial blocks were found.
+        """        
+        message = 'Partial genomic blocks for {} target sequences excluded. Set --exclude-partial False to include.'.format(len(partial))
+        self.console.print_warning(message)
+        for k,v in partial.items():
+            logger.warning('For target {}: {}'.format(k,v.get('msg')))             

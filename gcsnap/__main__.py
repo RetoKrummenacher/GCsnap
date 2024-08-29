@@ -116,7 +116,7 @@ def main():
         t_assemblies = timing.timer('Step 1b: Assemblies')
         assemblies = Assemblies(config, targets_and_ncbi_codes)
         assemblies.run()
-        gc.update_syntenies(assemblies.get_flanking_genes())
+        gc.update_syntenies(assemblies.get_flanking_genes())         
         t_assemblies.stop()
 
         # c). Add sequence information to flanking genes
