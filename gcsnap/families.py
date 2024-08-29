@@ -78,7 +78,7 @@ class Families:
             # is this might be large, we use as many batches as there are cores
             parallel_args = split_dict_chunks_size(self.syntenies)  
             # a list of tuple[dict, list] is returned
-            result_list = ParallelTools.parallel_wrapper_wrapper(parallel_args, self.assign_families)
+            result_list = ParallelTools.parallel_wrapper(parallel_args, self.assign_families)
             # combine results
             self.families = {k: v for tup in result_list for k, v in tup[0].items()}
             curr_numbers = [num for tup in result_list for num in tup[1]]
@@ -90,7 +90,7 @@ class Families:
             # 2. adapt the families where its outside possible ranges
             parallel_args = [(sub_dict, curr_numbers) 
                              for sub_dict in split_dict_chunks_size(self.families)] 
-            dict_list = ParallelTools.parallel_wrapper(self.cores, parallel_args, self.adapt_families)
+            dict_list = ParallelTools.parallel_wrapper(parallel_args, self.adapt_families)
             # combine results
             self.families_adapted = {k: v for sub_dict in dict_list for k, v in sub_dict.items()}  
 

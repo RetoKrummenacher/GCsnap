@@ -39,22 +39,23 @@ class MMseqsCluster:
             out_dir (str): The path to store the output.
         """        
         self.config = config
-        self.cores = os.getenv('SLURM_CPUS_PER_TASK')
+        self.cores = config.arguments['n_cpu_per_node']['value']
         self.max_evalue = config.arguments['max_evalue']['value']
         self.min_coverage = config.arguments['min_coverage']['value']
         self.num_iterations = config.arguments['num_iterations']['value']
         self.mmseqs_executable = r'{}'.format(config.arguments['mmseqs_executable_path']['value'])
         self.default_base = config.arguments['default_base']['value']
 
-        # set CPUS per task based on SLURM setting
-        cpus_per_task = os.getenv('SLURM_CPUS_PER_TASK')
-        # Check if the environment variable is set
-        if cpus_per_task is not None:
-            # Convert it to an integer
-            self.cores = int(cpus_per_task)
-        else:
-            # If the environment variable is not set
-            self.cores = 1
+        # would be needed for working with Dask if implemented
+        # # set CPUS per task based on SLURM setting
+        # cpus_per_task = os.getenv('SLURM_CPUS_PER_TASK')
+        # # Check if the environment variable is set
+        # if cpus_per_task is not None:
+        #     # Convert it to an integer
+        #     self.cores = int(cpus_per_task)
+        # else:
+        #     # If the environment variable is not set
+        #     self.cores = 1
 
         # set arguments
         self.gc = gc

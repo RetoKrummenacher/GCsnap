@@ -412,6 +412,11 @@ class Configuration:
                 "type": "str",
                 "help": "The temporary folder to store mmseqs files. May be changed so that intermediary mmseqs files are saved somewhere else then the automatic 'out-label' directory."
             },
+            "mmseqs-executable-path": {
+                "value": None,
+                "type": "str",
+                "help": "Path of MMseqs executable (i.e., mmseqs.bat) if not installed in Conda environment."
+            },            
             "collect-only": {
                 "value": False,
                 "type": "bool",
