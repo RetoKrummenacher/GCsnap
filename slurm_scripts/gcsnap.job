@@ -1,0 +1,44 @@
+#!/bin/bash
+#SBATCH --time=06:00:00
+#SBATCH --qos=6hours
+#SBATCH --mem=64G    
+
+#SBATCH --hint=nomultithread
+
+## working with conda
+source /scicore/home/schwede/kruret00/miniconda3/etc/profile.d/conda.sh
+conda activate GCsnap
+# here the idea: https://stackoverflow.com/questions/63776246/srun-used-in-a-loop-srun-job-step-aborted-waiting-up-to-32-seconds-for-job-st
+
+# change directory
+cd ${gcsnap_path}
+# checkout the correct branch
+git checkout gcsnap2cluster
+
+## call the python script
+#python -m mpi4py.futures ${exp_path}mpi_distributed_assembly_parsing.py ${n_targets} ${nodes} ${ranks_per_node} ${repetition} ${result_path}
+srun    --job-name=${ident} \
+        --output=${exp_path}run_${ident}.out \
+        --nodes=${nodes} \
+        --ntasks-per-node=${ranks_per_node} \
+        --cpus-per-task=${cpus_per_task} \
+        --mem=64G \
+        --time=06:00:00 \
+        --qos=6hours \
+        --mpi=pmi2  python -m mpi4py.futures ./gcsnap/__main__.py   --targets ${target_files}target_sequences_${n_targets}.txt \
+                                                                    --n-nodes ${nodes} \
+                                                                    --n-cpu-per-node ${ranks_per_node} \
+                                                                    --out-label ${ident} \
+                                                                    > ${exp_path}out_${ident}.txt
+
+# srun --mpi=pmi2 bash -c "source /scicore/home/schwede/kruret00/miniconda3/etc/profile.d/conda.sh && conda activate GCsnap &&  python -m mpi4py.futures  ${gcsnap_path}/gcsnap/__main__.py --targets ${target_files}target_sequences_${n_targets}.txt --n-nodes ${nodes} --n-cpu-per-node ${ranks_per_node}" > ${exp_path}out_${ident}.txt                                        
+
+# move output files to GCsnaps output folder
+mv ${exp_path}out_${ident}.txt ${ident}
+mv ${exp_path}run_${ident}.out ${ident}		
+
+# move output folder to experiment folder 
+mv ${ident} ${exp_path}results/${n_targets}_targets_${nodes}_nodes_${ranks_per_node}_ranks_${cpus_per_task}_cpus_${rep}_rep
+
+# deactivate conda
+conda deactivate

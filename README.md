@@ -99,11 +99,8 @@ GCsnap takes as main input a list of sequence identifiers, which can be in **Ent
   
 ## Usage
 
-In its most simple mode of usage, GCsnap only requires a list of sequence identifiers. 
+To execute it on sciCORE, please refer to the scripts in [SLURM scripts](/slurm_scripts) folder. However, it is also working from terminal in a similar way as GCsnap2.0 Desktop version.  
 
-**Required** arguments are:
-```
-  GCsnap --targets: which can be a list of sequence identifiers, a text file, a fasta file, a clans file or a list of files
 ```
 **Optional** arguments allow for the tweaking of GCsnap behaviour. Default values for arguments are taken from the  ```config.yaml```. They can be changed there directly or passed via the CLI, e.g., --n-nodes 2.
 A list of all possible arguments and their current default value can be show in the terminal via:
