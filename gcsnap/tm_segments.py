@@ -138,7 +138,6 @@ class TMsegments:
             mapping = SequenceMapping(self.config, self.ncbi_code_order, 'for TM annotation')
             mapping.run()
             mapping_dict = mapping.get_target_to_result_dict('UniProtKB_AC')
-            mapping.log_failed()
 
             # request all annotation information from EbiAPI for all ncbi_code
             uniprot_codes = [mapping_dict.get(ncbi_code,'nan') for ncbi_code in self.ncbi_code_order]            

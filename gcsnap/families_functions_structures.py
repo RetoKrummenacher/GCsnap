@@ -8,7 +8,7 @@ from gcsnap.rich_console import RichConsole
 from gcsnap.genomic_context import GenomicContext
 from gcsnap.parallel_tools import ParallelTools
 
-from gcsnap.utils import split_dict_chunks_size
+from gcsnap.utils import split_dict_chunks
 
 class FamiliesFunctionsStructures:
     """ 
@@ -41,10 +41,9 @@ class FamiliesFunctionsStructures:
             gc (GenomicContext): The GenomicContext object containing all genomic context information.
         """        
         self.config = config
+        #self.chunks = (config.arguments['n_nodes']['value'] * config.arguments['n_cpu_per_node']['value']) - 1
         self.get_pdb = config.arguments['get_pdb']['value']
         self.annotation_files_path = config.arguments['functional_annotation_files_path']['value']        
-        if self.annotation_files_path is not None:
-            self.get_annotation = True
         self.annotations_and_structures = {}
 
         if self.annotation_files_path is not None:
@@ -90,14 +89,10 @@ class FamiliesFunctionsStructures:
             mapping = SequenceMapping(self.config, all_members, 'for functional annotation')
             mapping.run()
             mapping_dict = mapping.get_target_to_result_dict('UniProtKB_AC')
-            mapping.log_failed()
-
-            # get all found uniprot codes
-            split_families = split_dict_chunks_size(self.families)
 
             # create parallel args with 4 items
-            parallel_args = [(family, mapping_dict , self.get_pdb, self.get_annotation) 
-                             for family in split_families],
+            parallel_args = [({k: v}, mapping_dict, self.get_pdb, self.get_annotation)
+                             for k,v in self.families.items()]
 
             with self.console.status('Get functional annotations and structures'):
                 result_list = ParallelTools.parallel_wrapper(parallel_args, self.run_each)
@@ -156,7 +151,7 @@ class FamiliesFunctionsStructures:
                     uniprot_code = mapping_dict.get(member,'nan')
 
                     if (family_uniprot_code == '' or family_structure == '' or 
-                        (family_function == '' or family_function['Function_description'] == '')):
+                        family_function == {} or family_function['Function_description'] == ''):
                     
                         if get_pdb and family_structure == '' and uniprot_code != 'nan':
                             
