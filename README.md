@@ -1,4 +1,6 @@
-# GCsnap
+# GCsnap2.0 Desktop
+
+This is the implementation of GCsnap2.0 as a desktop application.
 
 GCsnap is a flexible Python-based tool that allows for the interactive comparison of the genomic contexts of protein-coding genes from any genome at any taxonomic level, integrating them with functional and structural information for any of the genes shown. 
 
@@ -15,7 +17,7 @@ Thank you for using and showing interest on GCsnap!
 
 ## Dependencies
 
-GCsnap is written in Python 3.11. It was tested on Python 3.11. It requires mostly core Python modules and some external packages: 
+GCsnap2.0 was written in Python 3.11. It was tested on Python 3.11. It requires mostly core Python modules and some external packages: 
   - Biopython
   - Bokeh
   - Matplotlib
