@@ -95,12 +95,11 @@ class Taxonomy:
         Returns:
             dict: The dictionary with the hierarchy of the taxonomy as nested dictionaries.
         """        
+        content_dict = arg
 
         if self.mode == 'taxonomy':
-            # find all taxonomies via entrez
             clean_taxonomy = self.find_taxonomies(self.gc.get_all_taxids())
 
-        content_dict = arg
         taxonomy = {}
         for target in content_dict.keys():
             ncbi_code = content_dict[target]['assembly_id'][0]
