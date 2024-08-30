@@ -99,23 +99,7 @@ GCsnap takes as main input a list of sequence identifiers, which can be in **Ent
   
 ## Usage
 
-To execute it on sciCORE, please refer to the scripts in [SLURM scripts](/slurm_scripts) folder. However, it is also working from terminal in a similar way as GCsnap2.0 Desktop version.  
-
+To execute it on sciCORE, please refer to the scripts in [SLURM scripts](/slurm_scripts) folder. However, it is also working from terminal in a similar way as GCsnap2.0 Desktop version but with the use of srun:
 ```
-**Optional** arguments allow for the tweaking of GCsnap behaviour. Default values for arguments are taken from the  ```config.yaml```. They can be changed there directly or passed via the CLI, e.g., --n-nodes 2.
-A list of all possible arguments and their current default value can be show in the terminal via:
-```  
-  GCsnap --help 
-```
-
-The most relevant arguments are:
-```  
-  --n-nodes: the number of nodes to use in the cluster.
-  --n-cpu-per-node: the number of CPUs to use per node.
-  --data-path: the path to the data folder.
-  --n-flanking5: the number of flanking genes to be taken on the 5' side.
-  --n-flanking3: the number of flanking genes to be taken on the 3' side.
-  --get-taxonomy: set to false if no taxonomy is to be collected.
-  --functional-annotation-files-path: the path to the functional annotation files. If not specified, nothing annotated.
-  --annotate-TM: set to true to annotate the presence of transmembrane segments and signal peptides.
+srun --mpi=pmi2 -N 2 --ntasks-per-node=4 python -m mpi4py.futures ./gcsnap/__main__.py --n-nodes 2 --n-cpu-per-node 4 --targets /scicore/home/schwede/kruret00/MT/experiments/targets/target_sequences_10.txt
 ```
