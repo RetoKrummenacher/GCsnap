@@ -9,7 +9,7 @@ from gcsnap.genomic_context import GenomicContext
 from gcsnap.mapping import SequenceMapping
 from gcsnap.parallel_tools import ParallelTools
 
-from gcsnap.utils import split_list_chunks_size
+from gcsnap.utils import split_list_chunks
 
 import logging
 logger = logging.getLogger('iteration')
@@ -20,6 +20,7 @@ class TMsegments:
 
     Attributes:
         config (Configuration): The Configuration object containing the arguments.
+        chunks (int): The number of chunks to split the syntenies.
         annotate_TM (bool): The boolean to decide whether to annotate TM segments.
         annotate_mode (str): The mode to annotate TM segments.
         annotate_file (str): The path to the annotation file.
@@ -45,6 +46,7 @@ class TMsegments:
             out_label (str): The label of the output.
         """        
         self.config = config
+        self.chunks = (config.arguments['n_nodes']['value'] * config.arguments['n_cpu_per_node']['value']) - 1        
         self.annotate_TM = config.arguments['annotate_TM']['value']
         self.annotate_mode = config.arguments['annotation_TM_mode']['value']
         self.annotate_file = config.arguments['annotation_TM_file']['value']
@@ -147,7 +149,7 @@ class TMsegments:
             with self.console.status('Annotating TM segments with {}'.format(self.annotate_mode)):
                 # create parallel arguments
                 parallel_args = [(sub_list, mapping_dict, all_uniprot_data) 
-                                for sub_list in split_list_chunks_size(self.ncbi_code_order)]
+                                for sub_list in split_list_chunks(self.ncbi_code_order, self.chunks)]
 
                 result_lists = ParallelTools.process_wrapper(parallel_args, self.uniprot_annotation)
                 # combine results

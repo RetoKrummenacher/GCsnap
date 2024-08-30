@@ -6,7 +6,7 @@ from gcsnap.configuration import Configuration
 from gcsnap.genomic_context import GenomicContext
 from gcsnap.db_handler_sequences import SequenceDBHandler
 from gcsnap.parallel_tools import ParallelTools
-from gcsnap.utils import split_dict_chunks_size
+from gcsnap.utils import split_dict_chunks
 
 
 class Sequences:
@@ -29,6 +29,7 @@ class Sequences:
     Attributes:
         database_path (str): The path to the database.
         gc (GenomicContext): The GenomicContext object containing all genomic context information.
+        chunks (int): The number of chunks to split the syntenies.
         sequences_dict (dict): The dictionary with the sequences of the flanking genes.
         console (RichConsole): The RichConsole object to print messages.
         sequences (dict): The results dictionary with the flanking genes and their sequences.
@@ -45,6 +46,7 @@ class Sequences:
         self.config = config
         # get necessary configuration arguments        
         self.database_path = os.path.join(config.arguments['data_path']['value'],'db') 
+        self.chunks = (config.arguments['n_nodes']['value'] * config.arguments['n_cpu_per_node']['value']) - 1
         self.gc = gc
 
         self.console = RichConsole()
@@ -71,7 +73,7 @@ class Sequences:
         # extract target and neeeded flanking genes ncbi codes
         targets_ncbi_codes = {k: v['flanking_genes']['ncbi_codes'] for k, v in syntenies.items()}
         # split into chunks
-        parallel_args = split_dict_chunks_size(targets_ncbi_codes)
+        parallel_args = split_dict_chunks(targets_ncbi_codes, self.chunks)
 
         with self.console.status('Add sequences, tax id and species name to flanking genes'):
             dict_list = ParallelTools.parallel_wrapper(parallel_args, self.run_each)

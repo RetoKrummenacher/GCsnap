@@ -5,7 +5,7 @@ from gcsnap.rich_console import RichConsole
 from gcsnap.genomic_context import GenomicContext
 from gcsnap.parallel_tools import ParallelTools
 
-from gcsnap.utils import split_dict_chunks_size
+from gcsnap.utils import split_dict_chunks
 
 class Taxonomy:
     """
@@ -27,6 +27,7 @@ class Taxonomy:
     Attributes:
         config (Configuration): The Configuration object containing the arguments.
         mode (str): The mode of the taxonomy search.
+        chunks (int): The number of chunks to split the syntenies.
         msg (str): The message to display during the search.
         gc (GenomicContext): The GenomicContext object containing all genomic context information.
         database_path (str): The path to the database.
@@ -45,6 +46,7 @@ class Taxonomy:
         # get necessary configuration arguments      
         self.config = config
         self.gc = gc             
+        self.chunks = (config.arguments['n_nodes']['value'] * config.arguments['n_cpu_per_node']['value']) - 1
         self.database_path = os.path.join(config.arguments['data_path']['value'],'db') 
 
         if config.arguments['get_taxonomy']['value']:
@@ -75,7 +77,7 @@ class Taxonomy:
 
         # here we parallellize over chunks, so as many chunks as 
         # there are cores
-        parallel_args = split_dict_chunks_size(self.gc.get_syntenies())
+        parallel_args = split_dict_chunks(self.gc.get_syntenies(), self.chunks)
 
         with self.console.status(self.msg):
             dict_list = ParallelTools.parallel_wrapper(parallel_args, self.run_each)

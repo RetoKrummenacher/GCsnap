@@ -7,7 +7,7 @@ from gcsnap.genomic_context import GenomicContext
 from gcsnap.db_handler_assemblies import AssembliesDBHandler
 from gcsnap.parallel_tools import ParallelTools
 
-from gcsnap.utils import split_list_chunks_size
+from gcsnap.utils import split_list_chunks
 from gcsnap.utils import WarningToLog
 
 import logging
@@ -34,6 +34,7 @@ class Assemblies:
     Attributes:
         n_flanking5 (int): Number of flanking genes to extract at the 5' end of target.
         n_flanking3 (int): Number of flanking genes to extract at the 3' end of target.
+        chunks (int): Number of chunks to split the syntenies.
         exclude_partial (bool): Exclude partial genomic blocks.
         database_path (str): Path to directory containing the database.
         data_path (str): Path to the parent directory with the assembly files folders for genbank and refseq.
@@ -53,6 +54,7 @@ class Assemblies:
         # get necessary configuration arguments        
         self.n_flanking5 = config.arguments['n_flanking5']['value']  
         self.n_flanking3 = config.arguments['n_flanking3']['value']
+        self.chunks = (config.arguments['n_nodes']['value'] * config.arguments['n_cpu_per_node']['value']) - 1        
         self.exclude_partial = config.arguments['exclude_partial']['value']
         self.database_path = os.path.join(config.arguments['data_path']['value'],'db') 
         self.data_path = os.path.join(config.arguments['data_path']['value']) 
@@ -82,7 +84,7 @@ class Assemblies:
         # we don't want to have only as many chunks as processes to have better load
         # balance as the assembly files are very different in size
         # this is acutally set arbitrarily
-        parallel_args = split_list_chunks_size(self.targets_and_ncbi_codes)
+        parallel_args = split_list_chunks(self.targets_and_ncbi_codes, self.chunks)
 
         with self.console.status('Download assemblies and extract flanking genes'):
             dict_list = ParallelTools.parallel_wrapper(parallel_args, self.run_each)

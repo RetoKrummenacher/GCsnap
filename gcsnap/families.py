@@ -6,7 +6,7 @@ from gcsnap.genomic_context import GenomicContext
 from gcsnap.mmseqs_cluster import MMseqsCluster
 
 from gcsnap.parallel_tools import ParallelTools
-from gcsnap.utils import split_dict_chunks_size
+from gcsnap.utils import split_dict_chunks
 
 class Families:
     """ 
@@ -16,6 +16,7 @@ class Families:
         config (Configuration): The Configuration object containing the arguments.
         out_label (str): The label of the output.
         out_dir (str): The path to store the output.
+        chunks (int): The number of chunks to split the syntenies.
         gc (GenomicContext): The GenomicContext object containing all genomic context information.
         syntenies (dict): The dictionary with the syntenies of the target genes.
         families (dict): The dictionary with the families assigned to the flanking genes.
@@ -41,6 +42,7 @@ class Families:
         self.out_dir = os.path.join(os.getcwd(), f'{out_label}_all_against_all_searches')     
         self.gc = gc
         self.syntenies = gc.get_syntenies()
+        self.chunks = (config.arguments['n_nodes']['value'] * config.arguments['n_cpu_per_node']['value']) - 1
         self.families_adapted = {}
 
         self.console = RichConsole()
@@ -76,7 +78,7 @@ class Families:
             # 1. Add the family to the flanking genes
             # do in parallel, however, each needs the self.cluster_list and self.cluster_order
             # is this might be large, we use as many batches as there are cores
-            parallel_args = split_dict_chunks_size(self.syntenies)  
+            parallel_args = split_dict_chunks(self.syntenies, self.chunks)  
             # a list of tuple[dict, list] is returned
             result_list = ParallelTools.parallel_wrapper(parallel_args, self.assign_families)
             # combine results
@@ -89,7 +91,7 @@ class Families:
 
             # 2. adapt the families where its outside possible ranges
             parallel_args = [(sub_dict, curr_numbers) 
-                             for sub_dict in split_dict_chunks_size(self.families)] 
+                             for sub_dict in split_dict_chunks(self.families,self.chunks)] 
             dict_list = ParallelTools.parallel_wrapper(parallel_args, self.adapt_families)
             # combine results
             self.families_adapted = {k: v for sub_dict in dict_list for k, v in sub_dict.items()}  
