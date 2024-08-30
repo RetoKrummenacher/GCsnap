@@ -50,7 +50,7 @@ The scripts to create the databases are available in [creade_db_scripts](/create
 
 ## Dependencies
 
-GCsnap is written in Python 3.11. It was tested on Python 3.11. It requires mostly core Python modules and some external packages: 
+GCsnap2.0 Cluster is written in Python 3.11. It was tested on Python 3.11. It requires mostly core Python modules and some external packages: 
   - Biopython
   - Bokeh
   - Matplotlib
