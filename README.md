@@ -17,7 +17,7 @@ Thank you for using and showing interest on GCsnap!
 
 ## Dependencies
 
-GCsnap2.0 was written in Python 3.11. It was tested on Python 3.11. It requires mostly core Python modules and some external packages: 
+GCsnap2.0 Desktop was written in Python 3.11. It was tested on Python 3.11. It requires mostly core Python modules and some external packages: 
   - Biopython
   - Bokeh
   - Matplotlib
