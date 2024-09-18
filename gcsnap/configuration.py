@@ -395,12 +395,17 @@ class Configuration:
             "n-nodes": {
                 "value": 1,
                 "type": "int",
-                "help": "Number of nodes to use."
+                "help": "Number of nodes to use (SLURM --nodes)."
             },
-            "n-cpu-per-node": {
-                "value": 2,
+            "n-ranks-per-node": {
+                "value": 1,
                 "type": "int",
-                "help": "Number of cores per node to use."
+                "help": "Number of MPI ranks per node to use (SLURM --ntasks-per-node)."
+            },
+            "n-cpus-per-rank": {
+                "value": 1,
+                "type": "int",
+                "help": "Number of CPUs per rank to use (SLURM --cpus-per-task) for MMseqs2. Total number of CPU cores per node needed = n-ranks-per-node * n-cpus-per-rank."   
             },
             "data-path": {
                 "value": "/scicore/home/schwede/GROUP/gcsnap_db/",
@@ -475,7 +480,7 @@ class Configuration:
             "functional-annotation-files-path": {
                 "value": None,
                 "type": "str",
-                "help": "Path to the functional annotation files.  If not specified, nothing annotated."
+                "help": "Path to the functional annotation files. If not specified, nothing annotated."
             },
             "operon-cluster-advanced": {
                 "value": False,

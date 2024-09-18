@@ -39,7 +39,7 @@ class MMseqsCluster:
             out_dir (str): The path to store the output.
         """        
         self.config = config
-        self.cores = config.arguments['n_cpu_per_node']['value']
+        self.cores = config.arguments['n_cpus_per_rank']['value']
         self.max_evalue = config.arguments['max_evalue']['value']
         self.min_coverage = config.arguments['min_coverage']['value']
         self.num_iterations = config.arguments['num_iterations']['value']
