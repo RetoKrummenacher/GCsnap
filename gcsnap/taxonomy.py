@@ -1,4 +1,5 @@
 import os
+import pandas
 
 from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole
@@ -75,6 +76,9 @@ class Taxonomy:
         Uses parallel processing with the processpool_wrapper from utils.py.
         """        
 
+        if self.mode == 'taxonomy':
+            self.clean_taxonomy = self.find_taxonomies(self.gc.get_all_taxids())
+
         # here we parallellize over chunks, so as many chunks as 
         # there are cores
         parallel_args = split_dict_chunks(self.gc.get_syntenies(), self.chunks)
@@ -97,9 +101,6 @@ class Taxonomy:
         """        
         content_dict = arg
 
-        if self.mode == 'taxonomy':
-            clean_taxonomy = self.find_taxonomies(self.gc.get_all_taxids())
-
         taxonomy = {}
         for target in content_dict.keys():
             ncbi_code = content_dict[target]['assembly_id'][0]
@@ -116,10 +117,10 @@ class Taxonomy:
             # take what is available from entrez taxonomies requests
             # if mode is as_input, we will have 'na' for all values as 
             # self.clean_taxonomy is empty
-            superkingdom = clean_taxonomy.get(taxID,{}).get('superkingdom','na')
-            phylum = clean_taxonomy.get(taxID,{}).get('phylum','na')
-            taxclass = clean_taxonomy.get(taxID,{}).get('class','na')
-            order = clean_taxonomy.get(taxID,{}).get('order','na')
+            superkingdom = self.clean_taxonomy.get(taxID,{}).get('superkingdom','na')
+            phylum = self.clean_taxonomy.get(taxID,{}).get('phylum','na')
+            taxclass = self.clean_taxonomy.get(taxID,{}).get('class','na')
+            order = self.clean_taxonomy.get(taxID,{}).get('order','na')
 
             if self.mode == 'taxonomy':
                 # now all are either correct string or 'na'
@@ -141,7 +142,7 @@ class Taxonomy:
 
         return taxonomy
 
-    def find_taxonomies(self, taxids: list) -> None:
+    def find_taxonomies_old(self, taxids: list) -> dict:
         """
         Find taxonomies for all flanking genes in the file rankedlineage.dmp.
         Details about the file can be found here:https://ftp.ncbi.nih.gov/pub/taxonomy/new_taxdump/taxdump_readme.txt
@@ -182,6 +183,75 @@ class Taxonomy:
                     }
                 for e in entries
             }
+
+        # remove all entries that are None
+        # we do this here to have keep entrez result as is (to see what was not there)
+        clean_taxonomy = {
+            target: {key: value for key, value in sub_dict.items() if value is not None}
+            for target, sub_dict in taxonomy_dmp.items()
+        }
+
+        return clean_taxonomy
+
+    def find_taxonomies(self, taxids: list) -> dict:
+        """
+        Find taxonomies for all flanking genes in the file rankedlineage.dmp.
+        Details about the file can be found here:https://ftp.ncbi.nih.gov/pub/taxonomy/new_taxdump/taxdump_readme.txt
+
+        Args:
+            taxids (list): The list of taxids to find taxonomies for.
+        """        
+        
+        # Define the path to the file
+        file_path = os.path.join(self.database_path, 'rankedlineage.dmp')
+        
+        # Read the .dmp file into a pandas DataFrame
+        # Assuming the delimiter is '|' and the file has no header
+        df = pandas.read_csv(file_path, sep='|', header=None, encoding='utf-8', skipinitialspace=True, engine='python')
+        
+        # Optionally, drop the last column if it's filled with NaN values
+        df = df.dropna(axis=1, how='all')
+        
+        # If necessary, rename columns for better readability (optional)
+        df.columns = ['tax_id','tax_name','species','genus','family','order','class','phylum','kingdom','superkingdom']  
+            
+        # Fill all empty cells with None
+        df = df.where(pandas.notnull(df), None)
+        
+        # Remove tabs and any leading/trailing whitespace from all cells
+        df = df.map(lambda x: x.strip() if isinstance(x, str) else x)
+        
+        # Convert the list of taxids to int for comparison (thez might be strings as read from JSON)
+        taxids_int = [int(taxid) for taxid in taxids]
+
+        # Filter the DataFrame to get the entries with taxids in the provided list
+        filtered_entries = df[df['tax_id'].isin(taxids_int)]
+        # extact
+        # tax_id          -- node id
+        # tax_name        -- scientific name of the organism
+        # species         -- name of a species (coincide with organism name for species-level nodes)
+        # genus		      -- genus name when available
+        # family				-- family name when available
+        # order			   -- order name when available
+        # class			   -- class name when available
+        # phylum				-- phylum name when available
+        # kingdom			-- kingdom name when available
+        # superkingdom		-- superkingdom (domain) name when available
+
+        taxonomy_dmp = {
+            str(row.iloc[0]): {
+                'tax_name': row.iloc[1],
+                'species': row.iloc[2],
+                'genus': row.iloc[3],
+                'family': row.iloc[4],
+                'order': row.iloc[5],
+                'class': row.iloc[6],
+                'phylum': row.iloc[7],
+                'kingdom': row.iloc[8],
+                'superkingdom': row.iloc[9]
+            }
+            for index, row in filtered_entries.iterrows()
+        }
 
         # remove all entries that are None
         # we do this here to have keep entrez result as is (to see what was not there)
