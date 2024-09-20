@@ -2,6 +2,7 @@ import os
 import gzip # to work with .gz
 import urllib.request
 import time
+from datetime import datetime, timedelta
 
 from gcsnap.configuration import Configuration
 from gcsnap.rich_console import RichConsole
@@ -49,8 +50,13 @@ class Assemblies:
 
         self.console = RichConsole()
 
-        # set path to store assembly summaries
-        parent_path = os.path.dirname(os.getcwd())
+        self.age = config.arguments['assemblies-data-update-age']['value']
+        parent_path = config.arguments['assemblies-data-folder']['value']
+        
+        if parent_path is None:
+            # set path to store assembly summaries
+            parent_path = os.path.dirname(os.getcwd())
+
         self.assembly_dir = os.path.join(parent_path,'data','assemblies')
         self.create_folder()
 
@@ -221,16 +227,23 @@ class Assemblies:
         assembly_file_gz = '{}_genomic.gff.gz'.format(assembly_label)
         full_path = os.path.join(self.assembly_dir, assembly_file_gz)
 
-        # TODO: Skip this for experiments and developpment
-        # Idea: At a time check and redownload if older then certain time, like assembly_summaries
-        # Check if file already exists
-        # if os.path.exists(full_path):
-        #     return full_path
-
-        # Download the .gz file and save it without uncompressing
-        with urllib.request.urlopen(url + '/' + assembly_file_gz) as response:
-            with open(full_path, 'wb') as out_file:
-                out_file.write(response.read())
+        file = os.path.join(self.assembly_dir,'assembly_summary_{0}.txt'.format(db))
+        days = self.age
+        if os.path.exists(file):
+            # time check, download again if older than days
+            file_time = datetime.fromtimestamp(os.path.getmtime(full_path))
+            if datetime.now() - file_time > timedelta(days=days):
+                # Download the .gz file and save it without uncompressing
+                with urllib.request.urlopen(url + '/' + assembly_file_gz) as response:
+                    with open(full_path, 'wb') as out_file:
+                        out_file.write(response.read())
+            else:
+                return full_path
+        else:
+            # Download the .gz file and save it without uncompressing
+            with urllib.request.urlopen(url + '/' + assembly_file_gz) as response:
+                with open(full_path, 'wb') as out_file:
+                    out_file.write(response.read())
 
         return full_path
 

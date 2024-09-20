@@ -31,9 +31,14 @@ class AssemblyLinks:
 
         # get necessary configuration arguments        
         self.cores = config.arguments['n_cpu']['value']
+        self.age = config.arguments['assemblies-data-update-age']['value']
+
+        parent_path = config.arguments['assemblies-data-folder']['value']
         
-        # set path to store assembly summaries
-        parent_path = os.path.dirname(os.getcwd())
+        if parent_path is None:
+            # set path to store assembly summaries
+            parent_path = os.path.dirname(os.getcwd())
+        
         self.assembly_dir = os.path.join(parent_path,'data','assembly_summaries')
         
         # database list
@@ -76,7 +81,7 @@ class AssemblyLinks:
             db (_type_): The database (genbank or refseq) to download the assembly summary.
         """        
         file = os.path.join(self.assembly_dir,'assembly_summary_{0}.txt'.format(db))
-        days=14
+        days=self.age
         if os.path.exists(file):
             # time check, download again if older than days
             file_time = datetime.fromtimestamp(os.path.getmtime(file))
