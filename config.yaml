@@ -123,7 +123,7 @@ get-taxonomy:
     type: bool
     help: Boolean statement to get and map taxonomy information.
 annotate-TM:
-    value: true
+    value: false
     type: bool
     help: Boolean statement to find sequence features in the flanking genes.
 annotation-TM-mode:
@@ -196,3 +196,7 @@ overwrite-config:
     value: false
     type: bool
     help: Overwrite the argument value in config file with CLI value.
+timing:
+    value: false
+    type: bool
+    help: Measure time of all GCsnap steps and export it as csv file.
