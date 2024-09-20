@@ -4,7 +4,7 @@ __pycache__/
 *$py.class
 
 # Data folder
-data/*
+data/assembly_summaries/*
 # results folder
 target*/
 # debugging folder
