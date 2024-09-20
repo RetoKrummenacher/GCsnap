@@ -31,13 +31,13 @@ class AssemblyLinks:
 
         # get necessary configuration arguments        
         self.cores = config.arguments['n_cpu']['value']
-        self.age = config.arguments['assemblies-data-update-age']['value']
+        self.age = config.arguments['assemblies_data_update_age']['value']
 
-        parent_path = config.arguments['assemblies-data-folder']['value']
+        parent_path = config.arguments['assemblies_data_folder']['value']
         
         if parent_path is None:
             # set path to store assembly summaries
-            parent_path = os.path.dirname(os.getcwd())
+            parent_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
         self.assembly_dir = os.path.join(parent_path,'data','assembly_summaries')
         

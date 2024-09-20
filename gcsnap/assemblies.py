@@ -50,12 +50,12 @@ class Assemblies:
 
         self.console = RichConsole()
 
-        self.age = config.arguments['assemblies-data-update-age']['value']
-        parent_path = config.arguments['assemblies-data-folder']['value']
+        self.age = config.arguments['assemblies_data_update_age']['value']
+        parent_path = config.arguments['assemblies_data_folder']['value']
         
         if parent_path is None:
             # set path to store assembly summaries
-            parent_path = os.path.dirname(os.getcwd())
+            parent_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
         self.assembly_dir = os.path.join(parent_path,'data','assemblies')
         self.create_folder()
@@ -79,11 +79,12 @@ class Assemblies:
             - Download and extract flanking genes for each target in parallel.
         Uses parallel processing with the processpool_wrapper from utils.py
         """        
-        # download and parse the assembly summary files
-        self.load_summaries()
         # find the assembly accessions
         ncbi_codes = [target[1] for target in self.targets_and_ncbi_codes]
         self.find_accessions(ncbi_codes)
+
+        # download and parse the assembly summary files
+        self.load_summaries()
 
         with self.console.status('Download assemblies and extract flanking genes'):
             dict_list = processpool_wrapper(self.cores, self.targets_and_ncbi_codes, self.run_each)
@@ -137,7 +138,9 @@ class Assemblies:
         # get file with assembly links
         assembly_links = AssemblyLinks(self.config)
         assembly_links.run()
-        self.links = assembly_links.get()   
+        self.links = assembly_links.get()  
+        # filter them to keep small memory footprint
+        self.links = {k:v for k,v in self.links.items() if k in self.accessions.values()} 
 
     def find_accessions(self, ncbi_codes: list) -> None:
         """
@@ -227,9 +230,8 @@ class Assemblies:
         assembly_file_gz = '{}_genomic.gff.gz'.format(assembly_label)
         full_path = os.path.join(self.assembly_dir, assembly_file_gz)
 
-        file = os.path.join(self.assembly_dir,'assembly_summary_{0}.txt'.format(db))
         days = self.age
-        if os.path.exists(file):
+        if os.path.exists(full_path):
             # time check, download again if older than days
             file_time = datetime.fromtimestamp(os.path.getmtime(full_path))
             if datetime.now() - file_time > timedelta(days=days):
