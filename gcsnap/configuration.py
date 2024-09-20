@@ -588,5 +588,10 @@ class Configuration:
                 "value": False,
                 "type": "bool",
                 "help": "Overwrite the argument value in config file with CLI value."
+            },
+            "timing": {
+                "value": False,
+                "type": "bool",
+                "help": "Measure time of all GCsnap steps and export it as csv file."
             }
         }

@@ -52,6 +52,30 @@ class Timer:
             return time.time() - self.start_time
         else:
             return 0
+        
+class NoOpTimer:
+    """ 
+    Methods for no timing objects.
+    """
+    
+    def start(self) -> None:
+        """
+        Does nothing.
+        """
+        pass
+    
+    def stop(self) -> None:
+        """
+        Does nothing.
+        """
+        pass
+    
+    def get_elapsed_time(self) -> float:
+        """
+        Returns:
+            float: 0 for elapsed time.
+        """
+        return 0
 
 class Timing:
     """
@@ -62,12 +86,16 @@ class Timing:
         counter (int): The counter to keep track of the timers.
     """
 
-    def __init__(self):
+    def __init__(self, enable_timing: str = True):
         """
         Initialize the Timing object.
+
+        Args:
+            enable_timing (str): Enable timing. Defaults to True.
         """        
         self.timers = {}
         self.counter = 0
+        self.noop = not enable_timing
 
     def timer(self, name: str) -> Timer:
         """
@@ -79,6 +107,10 @@ class Timing:
         Returns:
             Timer: The new Timer object.
         """        
+
+        if self.noop:
+            return NoOpTimer()
+
         self.counter += 1
         timer = Timer(name)
         self.timers[self.counter] = timer
@@ -109,7 +141,6 @@ class Timing:
         Returns:
             pd.DataFrame: The timing data as a pandas DataFrame.
         """        
-        
         data = self.get_timing_data()
         return pd.DataFrame(data)
 
@@ -119,6 +150,9 @@ class Timing:
 
         Args:
             file_name (str): Name of the CSV file.
-        """        
+        """       
+        if self.noop:
+            return
+
         df = self.to_dataframe()
-        df.to_csv(file_name, index=False)
+        df.to_csv(file_name, index=False)     
