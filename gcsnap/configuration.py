@@ -400,9 +400,19 @@ class Configuration:
                 "help": "Name of output directory. If default, name of the input file."
             },
             "tmp-mmseqs-folder": {
-                "value": None,
+                "value": "None",
                 "type": "str",
                 "help": "The temporary folder to store mmseqs files. May be changed so that intermediary mmseqs files are saved somewhere else then the automatic 'out-label' directory."
+            },
+            "assemblies-data-folder": {
+                "value": "None",
+                "type": "str",
+                "help": "Folder to store the downloaded assemblies. If not set, the assemblies will be stored in the data directory in the GCsnap repository folder."
+            },
+            "assemblies-data-update-age": {
+                "value": 14,
+                "type": "int",
+                "help": "Age in days after which the assembly summaries are downloaded again."
             },
             "collect-only": {
                 "value": False,
@@ -415,22 +425,22 @@ class Configuration:
                 "help": "Number of cores to use."
             },
             "clans-patterns": {
-                "value": None,
+                "value": "None",
                 "type": "str",
                 "help": "Patterns to identify the clusters to analyse. They will be used to select the individual clusters in the clans map to analyse."
             },
             "clans-file": {
-                "value": None,
+                "value": "None",
                 "type": "str",
                 "help": "Used only for advanced interactive output representation (Clans file if the input is a clans file and -operon_cluster_advanced is set to True)."
             },
             "ncbi-user-email": {
-                "value": None,
+                "value": "None",
                 "type": "str",
                 "help": "Email address of the user. May be required to access NCBI databases and is not used for anything else."
             },
             "ncbi-api-key": {
-                "value": None,
+                "value": "None",
                 "type": "str",
                 "help": "The key for NCBI API, which allows for up to 10 queries per second to NCBI databases. Shall be obtained after obtaining an NCBI account."
             },
@@ -470,7 +480,7 @@ class Configuration:
                 "help": "Number of iterations for all-against-all searches. Required to define protein families."
             },
             "mmseqs-executable-path": {
-                "value": None,
+                "value": "None",
                 "type": "str",
                 "help": "Path of MMseqs executable (i.e., mmseqs.bat) if not installed in Conda environment."
             },
@@ -526,7 +536,7 @@ class Configuration:
                 "choices": ["phobius", "tmhmm", "uniprot"]
             },
             "annotation-TM-file": {
-                "value": None,
+                "value": "None",
                 "type": "str",
                 "help": "File with pre-computed transmembrane features. Only use when the targets correspond to a single project (no multiple fasta or text files)."
             },
@@ -558,7 +568,7 @@ class Configuration:
                 "help": "Minimum maximum co-occurrence of two genes to be connected in the graphs."
             },
             "in-tree": {
-                "value": None,
+                "value": "None",
                 "type": "str",
                 "help": "Input phylogenetic tree. Only use when the targets correspond to a single project (no multiple fasta or text files)."
             },
