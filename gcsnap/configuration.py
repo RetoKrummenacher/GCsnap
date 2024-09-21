@@ -47,6 +47,9 @@ class CustomArgumentParser(argparse.ArgumentParser):
             help_text = details['help']
             help_choices = details.get('choices')            
             default_value = self.str_to_none(details['value'])
+             # Check if this argument can take multiple values
+            nargs_value = details.get('nargs', None)  # Default to None if 'nargs' is not in the config
+
             
             if value_type == bool:
                 # argparse does not support bool type in config, so we need to convert it
@@ -54,7 +57,7 @@ class CustomArgumentParser(argparse.ArgumentParser):
                                   help=help_text)
             else:
                 self.add_argument(f'--{key}', type=value_type, default=default_value, 
-                                  help=help_text, choices=help_choices)
+                                  help=help_text, choices=help_choices, nargs=nargs_value)
 
     def error(self, message: str) -> None:
         """
@@ -427,7 +430,8 @@ class Configuration:
             "clans-patterns": {
                 "value": "None",
                 "type": "str",
-                "help": "Patterns to identify the clusters to analyse. They will be used to select the individual clusters in the clans map to analyse."
+                "help": "Patterns to identify the clusters to analyse. They will be used to select the individual clusters in the clans map to analyse.",
+                "nargs": "+"
             },
             "clans-file": {
                 "value": "None",

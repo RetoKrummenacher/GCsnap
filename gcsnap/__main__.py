@@ -54,7 +54,7 @@ def main():
     config.parse_arguments()
 
     # start timing
-    timing = Timing()
+    timing = Timing(config.arguments['timing']['value'])
     t_all = timing.timer('All steps 0-10')
 
     t_parse = timing.timer('Step 0: Parse Targets')
@@ -91,8 +91,7 @@ def main():
         # Datastructure to store all information
         gc = GenomicContext(config, out_label)
         # add targets to genomic context
-        gc.curr_targets = targets_list        
-
+        gc.curr_targets = targets_list      
 
         #  2. Block 'Collect'
         t_collect = timing.timer('Step 1: Collecting the genomic contexts')
@@ -170,15 +169,7 @@ def main():
             taxonomy.run()
             gc.update_taxonomy(taxonomy.get_taxonomy())
             gc.write_taxonomy_to_json('taxonomy.json')     
-            t_taxonomy.stop()
-            
-            # # TODO: For debugging
-            # with open('gc.pkl', 'wb') as file:
-            #     pickle.dump(gc, file)     
-
-            # # TODO: For debugging        
-            # with open('gc.pkl', 'rb') as file:
-            #     gc = pickle.load(file)                      
+            t_taxonomy.stop()                  
 
             # d) Annotate TM   
             t_tm = timing.timer('Step 7: Finding ALL proteins with transmembrane segments')
@@ -187,12 +178,21 @@ def main():
             gc.update_syntenies(tm.get_annotations())
             t_tm.stop()     
 
+            # TODO: For debugging
+            with open('gc.pkl', 'wb') as file:
+                pickle.dump(gc, file)     
+
+            exit(1)
+
+            # TODO: For debugging        
+            with open('gc.pkl', 'rb') as file:
+                gc = pickle.load(file)    
+
             # 5. Produce genomic context figures
             t_figures = timing.timer('Step 8-9: Producing figures')
             figures = Figures(config, gc, out_label, starting_directory)      
             figures.run()
-
-            t_figures.stop()             
+            t_figures.stop()    
 
             # 6. Write output to summary file
             t_output = timing.timer('Step 10: Write output')

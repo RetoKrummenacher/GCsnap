@@ -3,25 +3,16 @@ import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 import pandas as pd
-import statistics
-from scipy import stats
-from scipy.cluster import hierarchy
-from scipy.spatial import distance
 # pip install pacmap
 import pacmap
 
-from collections import Counter
-
-import networkx as nx
-from Bio import Phylo
-
 from bokeh.plotting import figure, output_file, gridplot, save
 from bokeh.colors import RGB
-from bokeh.models import HoverTool, TapTool, LassoSelectTool, Range1d, LinearAxis, WheelZoomTool, Circle, MultiLine, Panel, Tabs
-from bokeh.models import ColumnDataSource, DataTable, DateFormatter, TableColumn, Legend, HTMLTemplateFormatter
+from bokeh.models import HoverTool, TapTool, LassoSelectTool, Panel, Tabs
+from bokeh.models import ColumnDataSource, DataTable, TableColumn, Legend, HTMLTemplateFormatter
 from bokeh.models.callbacks import OpenURL
 from bokeh.models.widgets import Div
-from bokeh.layouts import row, column
+from bokeh.layouts import row
 
 from gcsnap.configuration import Configuration
 from gcsnap.genomic_context import GenomicContext
@@ -69,13 +60,7 @@ class AdvancedInteractiveFigure:
         self.gc_legend_mode_start = kwargs['gc_legend_mode']
         # remove from kwargs
         kwargs.pop('sort_mode')
-        kwargs.pop('gc_legend_mode')
-
-        # handling of mode in case in_tree argument was set
-        if kwargs['in_tree'] is not None:
-            self.sort_mode_start = 'tree'   
-            self.input_targets_start = [target for operon in self.operons 
-                                       for target in self.operons[operon]['target_members']]                 
+        kwargs.pop('gc_legend_mode')           
 
         # Set all attributes
         self._set_attributes(**kwargs)
@@ -197,34 +182,44 @@ class AdvancedInteractiveFigure:
                             The depiction is interactive, <b>hover</b> and <b>click</b> to get more information!</br></br>  """) 
 
                 # Work on most conserved genomic context figure
-                # remove operons to not have multiple values in keyqord arguments
-                operons = self.operons
+                # remove operons to not have multiple values in keyword arguments
+                operons_tmp = self.operons
                 kwargs.pop('operons', None)
                 most_common_gc_figure = Figure.create_most_common_genomic_features_figure(
-                                            operons = curr_operon, **kwargs) 
-                kwargs['operons'] = operons
+                                            operons = curr_operon, **kwargs)       
+            
                 # Work on dendogram for the genomic context block
-                syn_dendogram, syn_den_data = Figure.make_dendogram_figure(show_leafs = False, 
-                                                                    input_targets = self.input_targets_start,
+                if kwargs['in_tree'] is not None:
+                    input_targets = [target for operon in self.operons 
+                                            for target in curr_operon[operon]['target_members']]     
+                else:
+                    input_targets = self.input_targets_start
+                
+                    
+                syn_dendogram, syn_den_data = Figure.make_dendogram_figure(operons = curr_operon,
+                                                                    show_leafs = False, 
+                                                                    input_targets = input_targets,
                                                                     sort_mode = self.sort_mode_start,                                                                       
                                                                     height_factor = 25*1.2, 
                                                                     distance_matrix = None, 
                                                                     labels = None, 
                                                                     colors = None,
-                                                                    **kwargs)
+                                                                    **kwargs)        
+                
                 # Work on the genomic context block
-                genomic_context_figure = Figure.create_genomic_context_figure(
+                genomic_context_figure = Figure.create_genomic_context_figure(operons = curr_operon,
                                                 most_common_gc_figure = most_common_gc_figure,
                                                 syn_dendogram = syn_dendogram,
                                                 syn_den_data = syn_den_data,
                                                 gc_legend_mode = 'species',
+                                                height_factor = 25*1.2,
                                                 **kwargs)
                 
                 # Make the table of family frequencies
                 family_table, table_div = self.create_families_frequency_table(**kwargs)
 
                 gc_row = row(syn_dendogram, genomic_context_figure)
-
+  
                 grid = gridplot([[gc_row],[table_div],[family_table]], merge_tools = True)
                 curr_tab = Panel(child = grid, title = operon_type)
                 all_tabs.append(curr_tab)
@@ -235,6 +230,8 @@ class AdvancedInteractiveFigure:
                 f_name = '{}_advanced_operons_interactive_output_{}.html'.format(self.out_label, operon_type)
                 output_file(os.path.join(os.getcwd(),f_name))
                 save(grid)
+
+                kwargs['operons'] = operons_tmp
 
     def define_operons_colors(self, **kwargs) -> dict:
         """
@@ -544,8 +541,8 @@ class AdvancedInteractiveFigure:
                                                           **kwargs)
 
         p = figure(title = 'Genomic context types/clusters similarity network', 
-                   plot_width=self.operons_scatter.width,
-                   plot_height=self.operons_scatter.height, 
+                   plot_width=self.operons_scatter.plot_width,
+                   plot_height=self.operons_scatter.plot_height, 
                    x_range = self.operons_scatter.x_range, 
                    y_range = self.operons_scatter.y_range)
         p.add_layout(Legend(orientation="horizontal"), 'above')
@@ -765,7 +762,7 @@ class AdvancedInteractiveFigure:
         """        
         self._set_attributes(**kwargs)
 
-        families_frequencies = self.compute_families_frequencies_per_operon_cluster(**kwargs)
+        families_frequencies = self.compute_families_frequencies_per_operon_cluster(**kwargs)        
         families_frequencies_matrix = self.clean_uncommon_families(families_frequencies = families_frequencies,
                                                                    operons_labels = self.oprn_den_data['leaf_label'], 
                                                                    **kwargs)
@@ -856,7 +853,7 @@ class AdvancedInteractiveFigure:
         """        
         self._set_attributes(**kwargs)
 
-        families_labels = [i for i in sorted(self.families_summary.keys()) if i < 0]
+        families_labels = [i for i in sorted(self.families_summary.keys()) if i > 0]
         matrix = [[0 for family in families_labels] for operon_type in self.operons_labels]
 
         for i, operon_type in enumerate(self.operons_labels):
@@ -864,7 +861,10 @@ class AdvancedInteractiveFigure:
                 if family in self.families_frequencies[operon_type]:
                     matrix[i][j] = self.families_frequencies[operon_type][family]
 
+
         matrix = pd.DataFrame(matrix, index=self.operons_labels, columns=families_labels).T
+
+
         matrix = matrix.loc[matrix.max(axis=1) > self.min_freq]
         matrix['sum'] = matrix.sum(axis=1)
         matrix = matrix.sort_values(by='sum', ascending=False)
@@ -921,6 +921,7 @@ class AdvancedInteractiveFigure:
                     data['text'].append(self.families_summary[family]['name'])
 
                 data['family'].append(family)
+
 
                 if 'model_state' in self.families_summary[family]:
                     model_state = self.families_summary[family]['model_state']
@@ -1004,7 +1005,7 @@ class AdvancedInteractiveFigure:
                     ('Keywords', '@keywords'),
                     ('GO terms', '@go_terms'),
                     ('Function', '@function')]
-
+        
         return tooltips, data, yyticklabels     
 
     def create_families_frequency_table(self, **kwargs) -> tuple:

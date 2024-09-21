@@ -696,13 +696,13 @@ class Figure:
         p_tooltips, p_data, p_yyticklabels = Figure.create_genomic_context_features(**kwargs)
 
         # the genomic_context figure
-        p = figure(plot_width=Figure.most_common_gc_figure.width, 
-                   plot_height=Figure.syn_dendogram.height, 
+        p = figure(plot_width=Figure.most_common_gc_figure.plot_width, 
+                   plot_height=Figure.syn_dendogram.plot_height, 
                    x_range = Figure.most_common_gc_figure.x_range, 
                    y_range = Figure.syn_dendogram.y_range, 
                    toolbar_location="left", 
-                   title = 'Representative genomic contexts (hover to get more information)')  
-
+                   title = 'Representative genomic contexts (hover to get more information)')    
+       
         for i, xs in enumerate(p_data['xs']):
             p.patch(xs, p_data['ys'][i], fill_color = p_data['facecolor'][i], 
                     line_color = p_data['edgecolor'][i], line_width = 1)
@@ -717,7 +717,7 @@ class Figure:
                text_font_size = {'value': '6pt'}, source = p_data)
         p.text('tm_text_x', 'tm_text_y', text = 'tm_text', text_color = "white", text_baseline="middle", 
                text_align="center", text_font_size = {'value': '6pt'}, source = p_data)
-
+        
         # define yticks on the left
         p.yaxis.ticker = [int(n) for n in list(p_yyticklabels.keys())]
         p.yaxis.major_tick_line_color = None
