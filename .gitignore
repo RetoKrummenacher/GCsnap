@@ -6,8 +6,6 @@ __pycache__/
 # Data folder
 data/assembly_summaries/*
 data/assemblies/*
-# results folder
-target*/
 # debugging folder
 debugging/*
 debugging_test/*
