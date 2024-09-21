@@ -35,6 +35,7 @@ clans-patterns:
     type: str
     help: Patterns to identify the clusters to analyse. They will be used to select
         the individual clusters in the clans map to analyse.
+    nargs: +
 clans-file:
     value: None
     type: str
