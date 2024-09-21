@@ -308,7 +308,10 @@ class Assemblies:
                             val.startswith('##sequence-region')] + [len(lines)]   
              
         # line number of target
-        target_position = [index for index, val in enumerate(lines) if target_ncbi_code in val]
+        target_position = [index for index, val in enumerate(lines) 
+                           if 'ID=cds-{}'.format(target_ncbi_code) in val or
+                           'Name={}'.format(target_ncbi_code) in val or
+                           'protein_id={}'.format(target_ncbi_code) in val]
         
         if not target_position:
             raise WarningToLog('{} not found in'.format(target_ncbi_code))
