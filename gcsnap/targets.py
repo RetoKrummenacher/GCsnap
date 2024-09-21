@@ -124,7 +124,10 @@ class Target():
             dict: The dictionary with the clusters.
         """        
         ncbis_ordered = self.get_ncbicodes_order_in_clans(clans_file)
-        cluster_codes = self.arguments['cluster_patterns']['value']
+        cluster_codes = self.arguments['clans_patterns']['value']
+
+        # split cluster codes into list
+
         
         if cluster_codes != None:
             found_seqgroup = False

@@ -55,7 +55,7 @@ class TMsegments:
         self.syntenies = gc.get_syntenies()
         self.out_label = out_label  
         self.out_dir = os.path.join(os.getcwd(), f'{out_label}_TM_annotations')   
-        if not os.path.isdir(self.out_dir):
+        if not os.path.isdir(self.out_dir) and self.annotate_TM:
             os.mkdir(self.out_dir)    
         self.annotations = {}                          
 
