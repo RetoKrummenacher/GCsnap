@@ -144,16 +144,6 @@ class GenomicContextFigure:
         ax[0].set_xlim(min(all_xs)-100, max(all_xs)+100)
         ax[0].set_ylim(0, len(self.operons.keys())+1)
 
-        # TODO: Here 
-        #   File "C:\MT\GCsnap\gcsnap\figure_genomic_context.py", line 115, in draw_genomic_context
-        #     ax[0].set_yticklabels(yticklabels, fontsize = 10, horizontalalignment='left')
-        #   File "C:\Users\retok\miniconda3\envs\gcsnap\Lib\site-packages\matplotlib\axes\_base.py", line 74, in wrapper
-        #     return get_method(self)(*args, **kwargs)
-        #            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        #   File "C:\Users\retok\miniconda3\envs\gcsnap\Lib\site-packages\matplotlib\axis.py", line 2060, in set_ticklabels
-        #     raise ValueError(
-        # ValueError: The number of FixedLocator locations (3), usually from a call to set_ticks, does not match the number of labels (2).        
-
         ax[0].set_yticks(np.arange(0, len(yticklabels), 1.0))
         ax[0].set_yticklabels(yticklabels, fontsize = 10, horizontalalignment='left')
         ax[0].spines['right'].set_visible(False)

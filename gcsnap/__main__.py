@@ -1,7 +1,5 @@
 import os
 import shutil
-# TODO: For faster debugging
-import pickle
 
 from gcsnap.rich_console import RichConsole 
 from gcsnap.configuration import Configuration 
@@ -178,16 +176,6 @@ def main():
             gc.update_syntenies(tm.get_annotations())
             t_tm.stop()     
 
-            # TODO: For debugging
-            with open('gc.pkl', 'wb') as file:
-                pickle.dump(gc, file)     
-
-            exit(1)
-
-            # TODO: For debugging        
-            with open('gc.pkl', 'rb') as file:
-                gc = pickle.load(file)    
-
             # 5. Produce genomic context figures
             t_figures = timing.timer('Step 8-9: Producing figures')
             figures = Figures(config, gc, out_label, starting_directory)      
@@ -212,7 +200,7 @@ def main():
         console.print_done('Task {} with {} targets'.format(out_label,len(targets_list)))
         t_output.stop()
 
-        # # copy log file to working direcotry
+        # copy log file to working direcotry
         # shutil.copy(os.path.join(starting_directory,'gcsnap.log'), os.getcwd())
 
     t_all.stop()
