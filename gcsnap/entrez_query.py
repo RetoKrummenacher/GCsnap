@@ -221,17 +221,36 @@ class EntrezQuery:
 
         # Entrez has an API limit of 3 request per second without an API key
         # and 10 request per second with an API key.
-        # we need to handle '429 Too Many Requests error'
         initial_wait_time = 1  # Initial wait time in seconds
         max_wait_time = 10  # Maximum wait time in seconds
         factor = 2  # Exponential backoff factor
+        retries = 3  # Number of retries on failure
+        retry_delay = 2  # Delay between retries
+
+        attempt = 0  # Track the number of attempts
 
         while True:
-            response = requests.get(url, timeout=timeout)
-            if response.status_code == 200:
-                xml_string = response.text
-                return ET.fromstring(xml_string) 
-            elif response.status_code == 429:
+            response = requests.get(url, timeout=None)                
+            if response.status_code == 200 and attempt < retries:  # Successful request
+                attempt += 1
+                # Check content type for XML
+                content_type = response.headers.get('Content-Type', '').lower()
+                if 'xml' not in content_type:
+                    time.sleep(retry_delay)
+                    continue  # Retry      
+                # empty reply or other parsing error          
+                xml_string = response.text.strip()
+                if not xml_string:
+                    time.sleep(retry_delay)
+                    continue  # Retry
+                try:
+                    # Try parsing the XML
+                    return ET.fromstring(xml_string)
+                except ET.ParseError as e:
+                    time.sleep(retry_delay)
+                    continue  # Retry
+            elif response.status_code == 429:  # Too Many Requests
+                # don't count this as attempt
                 # extract the time with wait suggestion from the response
                 retry_after = response.headers.get('Retry-After')
                 if retry_after:
@@ -245,11 +264,15 @@ class EntrezQuery:
                     wait_time = int(retry_after)
                 else:
                     # Decorrelated Jitter
-                    wait_time = min(random.uniform(initial_wait_time, wait_time
-                                                * factor), max_wait_time)
+                    wait_time = min(random.uniform(initial_wait_time, initial_wait_time * factor), max_wait_time)
                 time.sleep(wait_time)
             else:
-                raise WarningToLog('Entrez request failed with status code {}'.format(response.status_code))
+                attempt += 1
+                if attempt < retries:
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    raise WarningToLog('Entrez request failed in {} attempts with status code {}'.format(retries, response.status_code))
   
     def extract_accessions(self, chunk_list: list, root: ET.Element) -> dict:
         """
