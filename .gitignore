@@ -172,5 +172,5 @@ cython_debug/
 
 # mmseqs-win64 folder
 mmseqs-win64/
+*latest
 .VSCodeCounter/2024-07-15_11-45-21/details.md
-data/assemblies/GCA_000011605.1_ASM1160v1_genomic.gff.gz
