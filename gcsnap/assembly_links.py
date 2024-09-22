@@ -153,6 +153,7 @@ class AssemblyLinks:
                 if not line.startswith('#'):
                     data = line.strip().split('\t')
                     # the first column has the Assemlby id, column 19 the url to it
-                    links[data[0]] = data[19]
+                    if data[19] != 'na':
+                        links[data[0]] = data[19]
                     
         return links
